@@ -1,0 +1,1 @@
+Ask gpt4 questions straight from the command line

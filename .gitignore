@@ -1,0 +1,11 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# System
+.DS_Store
