@@ -5,6 +5,8 @@ import json
 import argparse
 import requests
 
+SHORTCUTS = {'gpt3': 'gpt-3.5-turbo', 'gpt4': 'gpt-4'}
+
 def query(message, model):
   api_key = os.getenv('OPENAI_API_KEY')
   headers = {"Authorization": f"Bearer {api_key}"}
@@ -28,13 +30,13 @@ def query(message, model):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4'], default='gpt-3.5-turbo')
+  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *SHORTCUTS.keys()], default='gpt-4')
   parser.add_argument('question', nargs='?')
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
   args = parser.parse_args()
 
   question = parser.parse_args().stdin.read() if not sys.stdin.isatty() else ' '.join(args.question)
-  response = query(question.strip(), args.model)
+  response = query(question.strip(), SHORTCUTS.get(args.model, args.model))
   print(response)
 
 if __name__ == '__main__':
