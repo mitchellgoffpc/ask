@@ -5,7 +5,7 @@ import json
 import argparse
 import requests
 
-SHORTCUTS = {'gpt3': 'gpt-3.5-turbo', 'gpt4': 'gpt-4'}
+SHORTCUTS = {'gpt3': 'gpt-3.5-turbo', 'gpt4': 'gpt-4', '3': 'gpt-3.5-turbo', '4': 'gpt-4'}
 
 def query(message, model):
   api_key = os.getenv('OPENAI_API_KEY')
@@ -30,9 +30,10 @@ def query(message, model):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *SHORTCUTS.keys()], default='gpt-4')
+  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *SHORTCUTS.keys()], default='gpt-3.5-turbo')
   parser.add_argument('-f', '--file')
-  parser.add_argument('question', nargs='?')
+  parser.add_argument('-c', '--context')
+  parser.add_argument('question', nargs=argparse.REMAINDER)
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
   args = parser.parse_args()
 
@@ -44,7 +45,13 @@ def main():
   else:
     question = ' '.join(args.question)
 
-  response = query(question.strip(), SHORTCUTS.get(args.model, args.model))
+  question = question.strip()
+  if args.context:
+    with open(args.context) as f:
+      context = f.read().strip()
+      question = f"{question}\n\n```\n{context}\n```"
+
+  response = query(question, SHORTCUTS.get(args.model, args.model))
   print(response)
 
 if __name__ == '__main__':
