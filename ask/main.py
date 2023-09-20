@@ -31,11 +31,19 @@ def query(message, model):
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *SHORTCUTS.keys()], default='gpt-4')
+  parser.add_argument('-f', '--file')
   parser.add_argument('question', nargs='?')
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
   args = parser.parse_args()
 
-  question = parser.parse_args().stdin.read() if not sys.stdin.isatty() else ' '.join(args.question)
+  if not sys.stdin.isatty():
+    question = parser.parse_args().stdin.read()
+  elif args.file:
+    with open(args.file) as f:
+      question = f.read()
+  else:
+    question = ' '.join(args.question)
+
   response = query(question.strip(), SHORTCUTS.get(args.model, args.model))
   print(response)
 
