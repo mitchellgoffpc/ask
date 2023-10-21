@@ -6,7 +6,7 @@ from typing import List, Dict, Union
 Message = Union[str, List[Dict[str, str]]]
 
 
-def query(message: Message, model: str):
+def query(message: Message, model: str) -> str:
   assert isinstance(message, (list, str))
   if isinstance(message, str):
     message = [{"role": "user", "content": message}]
