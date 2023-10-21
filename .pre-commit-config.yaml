@@ -1,0 +1,27 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: check-ast
+      - id: check-json
+      - id: check-yaml
+  - repo: local
+    hooks:
+      - id: flake8
+        name: flake8
+        entry: flake8 ask/ --indent-size=2 --ignore=E501,E302 --statistics -j4
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: mypy
+        name: mypy
+        entry: mypy -p ask --check-untyped-defs --explicit-package-bases --warn-unreachable # --warn-return-any
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: pylint
+        name: pylint
+        entry: pylint ask/
+        language: system
+        always_run: true
+        pass_filenames: false

@@ -29,9 +29,10 @@ def query(message, model):
 
   return result['choices'][0]['message']['content']
 
+
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *MODEL_SHORTCUTS.keys()], default='gpt-3.5-turbo')
+  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *MODEL_SHORTCUTS], default='gpt-3.5-turbo')
   parser.add_argument('-f', '--file')
   parser.add_argument('-c', '--context')
   parser.add_argument('-t', '--translate')
@@ -58,6 +59,7 @@ def main():
 
   response = query(question, MODEL_SHORTCUTS.get(args.model, args.model))
   print(response)
+
 
 if __name__ == '__main__':
   main()
