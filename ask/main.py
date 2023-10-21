@@ -4,17 +4,23 @@ import sys
 import json
 import argparse
 import requests
+from typing import List, Dict, Union
 
 MODEL_SHORTCUTS = {'gpt3': 'gpt-3.5-turbo', 'gpt4': 'gpt-4', '3': 'gpt-3.5-turbo', '4': 'gpt-4'}
 LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
+AVAILABLE_MODELS = ['gpt-3.5-turbo', 'gpt-4', *MODEL_SHORTCUTS]
+DEFAULT_MODEL = 'gpt-3.5-turbo'
 
-def query(message, model):
+Message = Union[str, List[Dict[str, str]]]
+
+def query(message: Message, model: str = DEFAULT_MODEL):
+  assert isinstance(message, (list, str))
+  if isinstance(message, str):
+    message = [{"role": "user", "content": message}]
+
   api_key = os.getenv('OPENAI_API_KEY')
   headers = {"Authorization": f"Bearer {api_key}"}
-  params = {
-    "model": model,
-    "messages": [{"role": "user", "content": message}],
-    "temperature": 0.7}
+  params = {"model": model, "messages": message, "temperature": 0.7}
 
   assert api_key, "OPENAI_API_KEY environment variable isn't set!"
   r = requests.post('https://api.openai.com/v1/chat/completions', timeout=None, headers=headers, json=params)
@@ -32,7 +38,7 @@ def query(message, model):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-m', '--model', choices=['gpt-3.5-turbo', 'gpt-4', *MODEL_SHORTCUTS], default='gpt-3.5-turbo')
+  parser.add_argument('-m', '--model', choices=AVAILABLE_MODELS, default=DEFAULT_MODEL)
   parser.add_argument('-f', '--file')
   parser.add_argument('-c', '--context')
   parser.add_argument('-t', '--translate')

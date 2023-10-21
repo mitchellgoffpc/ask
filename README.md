@@ -1,1 +1,1 @@
-Ask gpt4 questions straight from the command line
+CLI tool for querying gpt3/gpt4
