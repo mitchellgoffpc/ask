@@ -15,7 +15,7 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: mypy -p ask --check-untyped-defs --explicit-package-bases --warn-unreachable # --warn-return-any
+        entry: mypy -p ask --check-untyped-defs --explicit-package-bases --warn-unreachable --cache-dir=/dev/null
         language: system
         always_run: true
         pass_filenames: false
