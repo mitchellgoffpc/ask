@@ -2,16 +2,15 @@
 import sys
 import argparse
 from ask.query import query
+from ask.models import MODELS
 
-MODEL_SHORTCUTS = {'gpt3': 'gpt-3.5-turbo', 'gpt4': 'gpt-4', '3': 'gpt-3.5-turbo', '4': 'gpt-4'}
+MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
-AVAILABLE_MODELS = ['gpt-3.5-turbo', 'gpt-4', *MODEL_SHORTCUTS]
-DEFAULT_MODEL = 'gpt-3.5-turbo'
 
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-m', '--model', choices=AVAILABLE_MODELS, default=DEFAULT_MODEL)
+  parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='gpt-3.5-turbo')
   parser.add_argument('-f', '--file')
   parser.add_argument('-c', '--context')
   parser.add_argument('-t', '--translate')
@@ -36,7 +35,7 @@ def main():
       context = f.read().strip()
       question = f"{question}\n\n```\n{context}\n```"
 
-  response = query(question, MODEL_SHORTCUTS.get(args.model, args.model))
+  response = query(question, MODEL_SHORTCUTS[args.model])
   print(response)
 
 

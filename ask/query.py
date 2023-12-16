@@ -2,21 +2,23 @@ import os
 import json
 import requests
 from typing import List, Dict, Union
+from ask.models import Model, APIS
 
 Message = Union[str, List[Dict[str, str]]]
 
 
-def query(message: Message, model: str) -> str:
+def query(message: Message, model: Model) -> str:
   assert isinstance(message, (list, str))
   if isinstance(message, str):
     message = [{"role": "user", "content": message}]
 
-  api_key = os.getenv('OPENAI_API_KEY')
+  api = APIS[model.api]
+  api_key = os.getenv(api.key)
   headers = {"Authorization": f"Bearer {api_key}"}
-  params = {"model": model, "messages": message, "temperature": 0.7}
+  params = {"model": model.name, "messages": message, "temperature": 0.7}
 
-  assert api_key, "OPENAI_API_KEY environment variable isn't set!"
-  r = requests.post('https://api.openai.com/v1/chat/completions', timeout=None, headers=headers, json=params)
+  assert api_key, f"{api.key!r} environment variable isn't set!"
+  r = requests.post(api.url, timeout=None, headers=headers, json=params)
 
   result = r.json()
   if r.status_code != 200:
