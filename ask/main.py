@@ -3,18 +3,20 @@ import sys
 import glob
 import argparse
 import itertools
+from typing import List
 from pathlib import Path
 from ask.query import query
 from ask.models import MODELS
+from ask.interactive import interactive
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
 
-def read_file(path):
+def read_file(path: Path) -> str:
   with open(path) as f:
     return f.read().strip()
 
-def list_files(path):
+def list_files(path: Path) -> List[Path]:
   if path.name.startswith('.'):
     return []
   elif path.is_file():
@@ -26,8 +28,8 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='gpt-3.5-turbo')
   parser.add_argument('-f', '--file', action='append', default=[])
-  parser.add_argument('-c', '--context')
   parser.add_argument('-t', '--translate')
+  parser.add_argument('-i', '--interactive', action='store_true')
   parser.add_argument('question', nargs=argparse.REMAINDER)
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
   args = parser.parse_args()
@@ -48,8 +50,11 @@ def main():
     context = '\n\n'.join(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
     question = f"{context}\n\n{question}"
 
-  response = query(question, MODEL_SHORTCUTS[args.model])
-  print(response)
+  if args.interactive:
+    interactive(question, MODEL_SHORTCUTS[args.model])
+  else:
+    response = query(question, MODEL_SHORTCUTS[args.model])
+    print(response)
 
 
 if __name__ == '__main__':
