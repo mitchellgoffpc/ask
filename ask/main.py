@@ -8,7 +8,6 @@ from typing import List
 from pathlib import Path
 from ask.query import query
 from ask.models import MODELS
-from ask.interactive import interactive
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
@@ -30,7 +29,6 @@ def main():
   parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='gpt-3.5-turbo')
   parser.add_argument('-f', '--file', action='append', default=[])
   parser.add_argument('-t', '--translate')
-  parser.add_argument('-i', '--interactive', action='store_true')
   parser.add_argument('-j', '--json', action='store_true')
   parser.add_argument('question', nargs=argparse.REMAINDER)
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
@@ -55,11 +53,8 @@ def main():
     assert not args.file, "files not supported in JSON mode"
     question = json.loads(question)
 
-  if args.interactive:
-    interactive(question, MODEL_SHORTCUTS[args.model])
-  else:
-    response = query(question, MODEL_SHORTCUTS[args.model])
-    print(response)
+  response = query(question, MODEL_SHORTCUTS[args.model])
+  print(response)
 
 
 if __name__ == '__main__':
