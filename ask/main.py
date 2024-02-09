@@ -53,8 +53,11 @@ def main():
     assert not args.file, "files not supported in JSON mode"
     question = json.loads(question)
 
-  response = query(question, MODEL_SHORTCUTS[args.model])
-  print(response)
+  try:
+    response = query(question, MODEL_SHORTCUTS[args.model])
+    print(response)
+  except KeyboardInterrupt:
+    pass
 
 
 if __name__ == '__main__':
