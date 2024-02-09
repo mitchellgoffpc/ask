@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import glob
+import json
 import argparse
 import itertools
 from typing import List
@@ -30,6 +31,7 @@ def main():
   parser.add_argument('-f', '--file', action='append', default=[])
   parser.add_argument('-t', '--translate')
   parser.add_argument('-i', '--interactive', action='store_true')
+  parser.add_argument('-j', '--json', action='store_true')
   parser.add_argument('question', nargs=argparse.REMAINDER)
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
   args = parser.parse_args()
@@ -49,6 +51,9 @@ def main():
     file_data = {path: read_file(path) for path in file_paths}
     context = '\n\n'.join(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
     question = f"{context}\n\n{question}"
+  if args.json:
+    assert not args.file, "files not supported in JSON mode"
+    question = json.loads(question)
 
   if args.interactive:
     interactive(question, MODEL_SHORTCUTS[args.model])
