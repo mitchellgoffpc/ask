@@ -2,21 +2,20 @@
 import os
 import json
 import requests
-from typing import List, Dict, Union, Generator
-from ask.models import Model
-
-Message = Union[str, List[Dict[str, str]]]
+from typing import Generator
+from ask.models import Model, Prompt
 
 
-def query(message: Message, model: Model) -> Generator[str, None, None]:
-  assert isinstance(message, (list, str))
-  if isinstance(message, str):
-    message = [{"role": "user", "content": message}]
+def query(prompt: Prompt, model: Model, system_prompt: str = '') -> Generator[str, None, None]:
+  assert isinstance(prompt, (list, str))
+  if isinstance(prompt, str):
+    prompt = [{"role": "user", "content": prompt}]
 
   api = model.api
   api_key = os.getenv(api.key)
+  params = api.params(model.name, prompt, system_prompt)
   assert api_key, f"{api.key!r} environment variable isn't set!"
-  with requests.post(api.url, timeout=None, headers=api.headers(api_key), json=api.params(model.name, message), stream=True) as r:
+  with requests.post(api.url, timeout=None, headers=api.headers(api_key), json=params, stream=True) as r:
     if r.status_code != 200:
       result = r.json()
       print(json.dumps(result, indent=2))

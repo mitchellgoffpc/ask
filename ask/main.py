@@ -29,6 +29,7 @@ def main():
   parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='gpt-3.5-turbo')
   parser.add_argument('-f', '--file', action='append', default=[])
   parser.add_argument('-t', '--translate')
+  parser.add_argument('-s', '--system')
   parser.add_argument('-j', '--json', action='store_true')
   parser.add_argument('question', nargs=argparse.REMAINDER)
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
@@ -49,12 +50,15 @@ def main():
     file_data = {path: read_file(path) for path in file_paths}
     context = '\n\n'.join(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
     question = f"{context}\n\n{question}"
+
   if args.json:
     assert not args.file, "files not supported in JSON mode"
-    question = json.loads(question)
+    prompt = json.loads(question)
+  else:
+    prompt = [{'role': 'user', 'content': question}]
 
   try:
-    for chunk in query(question, MODEL_SHORTCUTS[args.model]):
+    for chunk in query(prompt, MODEL_SHORTCUTS[args.model], system_prompt=args.system):
       print(chunk, end='', flush=True)
   except KeyboardInterrupt:
     pass
