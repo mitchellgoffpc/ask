@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
@@ -8,11 +9,17 @@ class API:
 
   def headers(self, api_key: str) -> Dict[str, str]:
     return {"Authorization": f"Bearer {api_key}"}
-  def params(self, model_name: str, message: Dict[str, str], temperature: float = 0.7):
-    return {"model": model_name, "messages": message, "temperature": temperature, 'max_tokens': 4096}
+  def params(self, model_name: str, message: Dict[str, str], temperature: float = 0.7) -> Dict[str, Any]:
+    return {"model": model_name, "messages": message, "temperature": temperature, 'max_tokens': 4096, 'stream': True}
   def result(self, response: Dict[str, Any]) -> str:
     assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(result['choices'])}!"
     return response['choices'][0]['message']['content']
+  def decode(self, chunk: str) -> str:
+    if chunk.startswith("data: ") and chunk != 'data: [DONE]':
+      line = json.loads(chunk[6:])
+      return line['choices'][0]['delta'].get('content', '')
+    else:
+      return ''
 
 class AnthropicAPI(API):
   def headers(self, api_key: str) -> Dict[str, str]:
@@ -20,6 +27,12 @@ class AnthropicAPI(API):
   def result(self, response: Dict[str, Any]) -> str:
     assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(result['content'])}!"
     return response['content'][0]['text']
+  def decode(self, chunk: str) -> str:
+    if chunk.startswith("data: ") and chunk != 'data: [DONE]':
+      line = json.loads(chunk[6:])
+      if line['type'] == 'content_block_delta':
+        return line['delta']['text']
+    return ''
 
 @dataclass
 class Model:

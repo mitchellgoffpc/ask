@@ -54,8 +54,8 @@ def main():
     question = json.loads(question)
 
   try:
-    response = query(question, MODEL_SHORTCUTS[args.model])
-    print(response)
+    for chunk in query(question, MODEL_SHORTCUTS[args.model]):
+      print(chunk, end='', flush=True)
   except KeyboardInterrupt:
     pass
 
