@@ -1,4 +1,4 @@
-## CLI tool for querying gpt3/gpt4
+## CLI tool for querying LLMs
 
 ### Installation:
 
