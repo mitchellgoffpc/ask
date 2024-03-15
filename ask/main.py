@@ -2,6 +2,7 @@
 import sys
 import glob
 import json
+import readline
 import argparse
 import itertools
 from typing import List
@@ -24,6 +25,48 @@ def list_files(path: Path) -> List[Path]:
   elif path.is_dir():
     return list(itertools.chain.from_iterable(list_files(child) for child in path.iterdir()))
 
+
+# Ask / Chat
+
+def ask(prompt, model, system_prompt):
+  try:
+    for chunk in query(prompt, MODEL_SHORTCUTS[model], system_prompt=system_prompt):
+      print(chunk, end='', flush=True)
+  except KeyboardInterrupt:
+    pass
+
+def chat(prompt, model, system_prompt):
+  while True:
+    try:
+      user_input = input("> ")
+      cmd = user_input.lower().strip().split()
+      cmd = cmd[0] if cmd else ''
+      if cmd in ('exit', 'quit', '.exit', '.quit', ':exit', ':quit', ':q'):
+        return
+      elif cmd in ('.model', ':model', ':m'):
+        model_name = user_input[len(cmd + ' '):].strip()
+        if not model_name:
+          print(f"Current model is {MODEL_SHORTCUTS[model].name}.")
+        elif model_name in MODEL_SHORTCUTS:
+          model = model_name
+          print(f"Model switched to {MODEL_SHORTCUTS[model_name].name}.")
+        else:
+          print(f"Model {model_name!r} not found.")
+      else:
+        prompt.append({'role': 'user', 'content': user_input})
+        chunks = []
+        for chunk in query(prompt, MODEL_SHORTCUTS[model], system_prompt=system_prompt):
+          chunks.append(chunk)
+          print(chunk, end='', flush=True)
+        prompt.append({'role': 'assistant', 'content': ''.join(chunks)})
+
+    except KeyboardInterrupt:
+      print()
+      return
+
+
+# Entry point
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='gpt-3.5-turbo')
@@ -31,6 +74,7 @@ def main():
   parser.add_argument('-t', '--translate')
   parser.add_argument('-s', '--system')
   parser.add_argument('-j', '--json', action='store_true')
+  parser.add_argument('-c', '--chat', action='store_true')
   parser.add_argument('question', nargs=argparse.REMAINDER)
   parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
   args = parser.parse_args()
@@ -57,11 +101,10 @@ def main():
   else:
     prompt = [{'role': 'user', 'content': question}]
 
-  try:
-    for chunk in query(prompt, MODEL_SHORTCUTS[args.model], system_prompt=args.system):
-      print(chunk, end='', flush=True)
-  except KeyboardInterrupt:
-    pass
+  if args.chat:
+    chat(prompt, args.model, args.system)
+  else:
+    ask(prompt, args.model, args.system)
 
 
 if __name__ == '__main__':

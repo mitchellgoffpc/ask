@@ -12,7 +12,8 @@ class API:
   def headers(self, api_key: str) -> Dict[str, str]:
     return {"Authorization": f"Bearer {api_key}"}
   def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> Dict[str, Any]:
-    messages = [{"role": "system", "content": system_prompt}, *messages]
+    if system_prompt:
+      messages = [{"role": "system", "content": system_prompt}, *messages]
     return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True}
   def result(self, response: Dict[str, Any]) -> str:
     assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(result['choices'])}!"
@@ -28,7 +29,8 @@ class AnthropicAPI(API):
   def headers(self, api_key: str) -> Dict[str, str]:
     return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
   def params(self, model_name: str, messages: Dict[str, str], system_prompt: str = '', temperature: float = 0.7) -> Dict[str, Any]:
-    return {"model": model_name, "messages": messages, 'system': system_prompt, "temperature": temperature, 'max_tokens': 4096, 'stream': True}
+    system = {'system': system_prompt} if system_prompt else {}
+    return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True} | system
   def result(self, response: Dict[str, Any]) -> str:
     assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(result['content'])}!"
     return response['content'][0]['text']
