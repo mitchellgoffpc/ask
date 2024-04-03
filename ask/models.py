@@ -60,5 +60,7 @@ MODELS = [
   Model(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'x']),
   Model(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'i']),
   Model(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'l']),
-  Model(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'c']),
+  Model(name='claude-3-haiku-20240307', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
+  Model(name='claude-3-sonnet-20240229', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
+  Model(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c', 'o']),
 ]
