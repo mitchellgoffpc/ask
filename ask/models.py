@@ -56,11 +56,12 @@ APIS = {
 MODELS = [
   Model(name='gpt-3.5-turbo', api=APIS['openai'], shortcuts=['gpt3', '3']),
   Model(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4']),
-  Model(name='gpt-4-turbo-preview', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
+  Model(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
+  Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o', 'o']),
   Model(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'x']),
   Model(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'i']),
   Model(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'l']),
   Model(name='claude-3-haiku-20240307', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
-  Model(name='claude-3-sonnet-20240229', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
-  Model(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c', 'o']),
+  Model(name='claude-3-5-sonnet-20240620', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
+  Model(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c']),
 ]
