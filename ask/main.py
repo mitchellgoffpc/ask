@@ -36,6 +36,7 @@ def ask(prompt, model, system_prompt):
     pass
 
 def chat(prompt, model, system_prompt):
+  prompt = [msg for msg in prompt if msg['content']]
   while True:
     try:
       user_input = input("> ")
@@ -43,6 +44,10 @@ def chat(prompt, model, system_prompt):
       cmd = cmd[0] if cmd else ''
       if cmd in ('exit', 'quit', '.exit', '.quit', ':exit', ':quit', ':q'):
         return
+      elif cmd in ('.models', ':models'):
+        print("Available models:")
+        for model in MODELS:
+          print(f"- {model.name} ({', '.join(model.shortcuts)})")
       elif cmd in ('.model', ':model', ':m'):
         model_name = user_input[len(cmd + ' '):].strip()
         if not model_name:
