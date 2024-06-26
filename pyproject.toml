@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ask"
+version = "0.1.0"
+description = "ask questions to a chatbot"
+authors = [
+    {name = "Mitchell Goff", email = "mitchellgoffpc@gmail.com"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "requests",
+    "tqdm",
+]
+
+[project.scripts]
+ask = "ask.main:main"
+
+[project.optional-dependencies]
+linting = [
+    "flake8",
+    "mypy",
+    "pre-commit",
+]
+
+[tool.setuptools]
+packages = ["ask"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*"]
