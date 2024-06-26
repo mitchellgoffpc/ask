@@ -122,7 +122,8 @@ def main():
         file_path = Path(args.edit)
         context.append(f'{file_path}```\n{read_file(file_path)}\n```')
     if context:
-        question = f"{'\n\n'.join(context)}\n\n{question}"
+        context_str = '\n\n'.join(context)
+        question = f"{context_str}\n\n{question}"
 
     if args.json:
         assert not args.file and not args.edit, "files not supported in JSON mode"
