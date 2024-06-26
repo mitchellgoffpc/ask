@@ -54,7 +54,7 @@ def apply_edit(original, patch):
         new_start_idx = start_idx
         for i, (tag, alo, ahi, blo, bhi) in enumerate(ops):
             if i == 0 and tag == 'delete':
-                output_lines.extend(original_lines[start_idx+alo:start_idx+ahi])
+                output_lines.extend(original_lines[start_idx + alo:start_idx + ahi])
             elif tag in ('insert', 'replace', 'equal'):
                 output_lines.extend(section_lines[blo:bhi])
                 new_start_idx = start_idx + ahi

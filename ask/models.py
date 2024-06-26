@@ -11,16 +11,16 @@ class API:
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
-    
+
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         if system_prompt:
             messages = [{"role": "system", "content": system_prompt}, *messages]
         return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True}
-    
+
     def result(self, response: dict[str, Any]) -> str:
-        assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(result['choices'])}!"
+        assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
         return response['choices'][0]['message']['content']
-    
+
     def decode(self, chunk: str) -> str:
         if chunk.startswith("data: ") and chunk != 'data: [DONE]':
             line = json.loads(chunk[6:])
@@ -31,15 +31,15 @@ class API:
 class AnthropicAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
-    
-    def params(self, model_name: str, messages: dict[str, str], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+
+    def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         system = {'system': system_prompt} if system_prompt else {}
         return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True} | system
-    
+
     def result(self, response: dict[str, Any]) -> str:
-        assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(result['content'])}!"
+        assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(response['content'])}!"
         return response['content'][0]['text']
-    
+
     def decode(self, chunk: str) -> str:
         if chunk.startswith("data: ") and chunk != 'data: [DONE]':
             line = json.loads(chunk[6:])
@@ -59,6 +59,7 @@ APIS = {
     'mistral': API(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY'),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY'),
 }
+
 MODELS = [
     Model(name='gpt-3.5-turbo', api=APIS['openai'], shortcuts=['gpt3', '3']),
     Model(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4']),

@@ -5,10 +5,6 @@ from typing import Generator
 from ask.models import Model, Prompt
 
 def query(prompt: Prompt, model: Model, system_prompt: str = '') -> Generator[str, None, None]:
-    assert isinstance(prompt, (list, str))
-    if isinstance(prompt, str):
-        prompt = [{"role": "user", "content": prompt}]
-
     api = model.api
     api_key = os.getenv(api.key)
     params = api.params(model.name, prompt, system_prompt)
