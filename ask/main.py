@@ -91,7 +91,7 @@ def chat(prompt: Prompt, model: Model, system_prompt: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='gpt-3.5-turbo', help="Model to use for the query")
+    parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-e', '--edit', type=str, help="File to edit")
     parser.add_argument('-t', '--translate', type=str, help="Language to translate into")
