@@ -12,7 +12,7 @@ EDIT_SYSTEM_PROMPT = """
     Don't add comments like '... rest of the code remains unchanged', just get to a natural breaking point
     and then add an [UNCHANGED] and move onto the next section that you want to modify.
     Be sure to include some surrounding context in each section so I know where it's supposed to go.
-""".replace('\n    ', ' ').strip()
+""".replace('\n    ', ' ').strip()  # dedent and strip
 
 def print_diff(expected, actual, file_path):
     expected_lines = expected.splitlines(keepends=True)
