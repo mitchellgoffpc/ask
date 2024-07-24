@@ -1,0 +1,35 @@
+@@ -13,7 +13,7 @@
+ """.replace('\n    ', ' ').strip()  # dedent and strip
+
+
+-def print_diff(expected, actual, file_path):
++def print_diff(expected: str, actual: str, file_path: str) -> None:
+     expected_lines = expected.splitlines(keepends=True)
+     actual_lines = actual.splitlines(keepends=True)
+     diff = difflib.unified_diff(expected_lines, actual_lines, fromfile=f'a/{file_path}', tofile=f'b/{file_path}')
+@@ -28,14 +28,14 @@
+         else:
+             print(line, end='')
+
+-def extract_code_block(text):
++def extract_code_block(text: str) -> str:
+     pattern = r'```(?:\w+)?\n(.*?)\n```'
+     match = re.search(pattern, text, re.DOTALL)
+     if match:
+         return match.group(1).strip()
+     return text.strip()
+
+-def apply_section_edit(original, patch):
++def apply_section_edit(original: str, patch: str) -> str:
+     patch = extract_code_block(patch)
+     original_lines = original.splitlines(keepends=True)
+     patch_sections = patch.split('[UNCHANGED]')
+@@ -62,7 +62,7 @@
+         output_lines.extend(original_lines[start_idx:])
+     return ''.join(output_lines)
+
+-def apply_udiff_edit(original, patch):
++def apply_udiff_edit(original: str, patch: str) -> str:
+     try:
+         patch = extract_code_block(patch)
+         original_lines = original.splitlines(keepends=True)

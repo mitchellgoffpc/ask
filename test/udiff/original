@@ -90,7 +90,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Apply edits to a file and show the diff.")
     parser.add_argument("original", help="Path to the original file")
     parser.add_argument("patch", help="Path to the patch file")
-    parser.add_argument("-d", "--diff", action="store_true", help="Interpret the patch as a unified diff")
+    parser.add_argument("--diff", action="store_true", help="Interpret the patch as a unified diff")
     args = parser.parse_args()
 
     with open(args.original) as f:
