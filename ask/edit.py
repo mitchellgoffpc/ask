@@ -64,3 +64,20 @@ def apply_edit(original, patch):
     if patch_sections and not patch_sections[-1].strip():  # Ends with an [UNCHANGED]
         output_lines.extend(original_lines[start_idx:])
     return ''.join(output_lines)
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Apply edits to a file and show the diff.")
+    parser.add_argument("original", help="Path to the original file")
+    parser.add_argument("patch", help="Path to the patch file")
+    args = parser.parse_args()
+
+    with open(args.original) as f:
+        original_content = f.read()
+    with open(args.patch) as f:
+        patch_content = f.read()
+    edited_content = apply_edit(original_content, patch_content)
+
+    print("Diff between original and edited content:")
+    print_diff(original_content, edited_content, args.original)
