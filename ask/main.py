@@ -8,7 +8,7 @@ import itertools
 from pathlib import Path
 from ask.query import query
 from ask.models import MODELS, Prompt, Model
-from ask.edit import EDIT_SYSTEM_PROMPT, print_diff, apply_edit
+from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
@@ -40,10 +40,11 @@ def ask(prompt: Prompt, model: Model, system_prompt: str):
     except KeyboardInterrupt:
         return []
 
-def edit(prompt: Prompt, model: Model, system_prompt: str, file_path: Path):
+def edit(prompt: Prompt, model: Model, system_prompt: str, file_path: Path, diff: bool):
     file_data = read_file(file_path)
-    response = ask(prompt, model, system_prompt or EDIT_SYSTEM_PROMPT)
-    modified = apply_edit(file_data, response)
+    default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
+    response = ask(prompt, model, system_prompt or default_system_prompt)
+    modified = apply_udiff_edit(file_data, response) if diff else apply_section_edit(file_data, response)
     print_diff(file_data, modified, file_path)
 
     user_input = input("Do you want to apply this edit? (y/n): ").strip().lower()
@@ -96,6 +97,7 @@ def main():
     parser.add_argument('-e', '--edit', type=str, help="File to edit")
     parser.add_argument('-t', '--translate', type=str, help="Language to translate into")
     parser.add_argument('-s', '--system', type=str, default='', help="System prompt for the model")
+    parser.add_argument('-d', '--diff', action='store_true', help="Interpret model response as udiff patches for editing")
     parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
     parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
     parser.add_argument('question', nargs=argparse.REMAINDER)
@@ -136,7 +138,7 @@ def main():
         assert not args.edit, "editing not supported in chat mode"
         chat(prompt, model, args.system)
     elif args.edit:
-        edit(prompt, model, args.system, file_path)
+        edit(prompt, model, args.system, file_path, args.diff)
     else:
         ask(prompt, model, args.system)
 

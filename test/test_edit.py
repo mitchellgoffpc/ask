@@ -1,5 +1,5 @@
 import unittest
-from ask.edit import apply_edit
+from ask.edit import apply_udiff_edit, apply_section_edit
 
 original = """
 import random

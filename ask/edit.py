@@ -14,6 +14,13 @@ EDIT_SYSTEM_PROMPT = """
     Be sure to include some surrounding context in each section so I know where it's supposed to go.
 """.replace('\n    ', ' ').strip()  # dedent and strip
 
+UDIFF_SYSTEM_PROMPT = """
+    You are an AI programming assistent. When asked to modify a file, you should return edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
+    Start each hunk of changes with a `@@ ... @@` line, and be sure to include some surrounding context in each hunk so I know where it's supposed to go.
+    You don't need to include line numbers or timestamps, just the content of the patch.
+""".replace('\n    ', ' ').strip()
+
+
 def print_diff(expected, actual, file_path):
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)
@@ -36,7 +43,7 @@ def extract_code_block(text):
         return match.group(1).strip()
     return text.strip()
 
-def apply_edit(original, patch):
+def apply_section_edit(original, patch):
     patch = extract_code_block(patch)
     original_lines = original.splitlines(keepends=True)
     patch_sections = patch.split('[UNCHANGED]')
@@ -65,19 +72,32 @@ def apply_edit(original, patch):
         output_lines.extend(original_lines[start_idx:])
     return ''.join(output_lines)
 
+def apply_udiff_edit(original, patch):
+    try:
+        patch = extract_code_block(patch)
+        original_lines = original.splitlines(keepends=True)
+        patcher = difflib.unified_diff(original_lines, patch.splitlines(keepends=True))
+        return difflib.restore(patcher, 2)
+    except Exception as e:
+        print(f"Error: Unable to parse the patch as a unified diff. {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return original
+
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Apply edits to a file and show the diff.")
     parser.add_argument("original", help="Path to the original file")
     parser.add_argument("patch", help="Path to the patch file")
+    parser.add_argument("--diff", action="store_true", help="Interpret the patch as a unified diff")
     args = parser.parse_args()
 
     with open(args.original) as f:
         original_content = f.read()
     with open(args.patch) as f:
         patch_content = f.read()
-    edited_content = apply_edit(original_content, patch_content)
+    edited_content = apply_udiff_edit(original_content, patch_content) if args.diff else apply_section_edit(original_content, patch_content)
 
     print("Diff between original and edited content:")
     print_diff(original_content, edited_content, args.original)
