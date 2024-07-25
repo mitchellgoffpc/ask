@@ -84,8 +84,8 @@ def apply_section_edit(original: str, patch: str) -> str:
 # Unified diff patch
 
 def apply_patch(original: str, patch: str) -> str:
-    lines = original.splitlines()
-    patch_lines = patch.splitlines()
+    lines = original.splitlines(keepends=True)
+    patch_lines = patch.splitlines(keepends=True)
 
     for i, line in enumerate(patch_lines):
         if line.startswith("@@"):
@@ -94,8 +94,10 @@ def apply_patch(original: str, patch: str) -> str:
             for change in patch_lines[i + 1:]:
                 if change.startswith("@@"):
                     break
-                elif not change or change.startswith((" ", "-")):
+                elif change.startswith(('-', ' ')):
                     context_lines.append(change[1:])
+                elif not change or change.startswith('\n'):
+                    context_lines.append(change)
 
             # Use difflib to find the best match for the context
             matcher = difflib.SequenceMatcher(None, lines, context_lines)
@@ -106,21 +108,21 @@ def apply_patch(original: str, patch: str) -> str:
             removed = 0
             added = 0
             for change in patch_lines[i + 1:]:
-                if change.startswith("@@"):
+                if change.startswith('@@'):
                     break
-                elif change.startswith("-"):
+                elif change.startswith('-'):
                     lines.pop(current_line)
                     removed += 1
-                elif change.startswith("+"):
+                elif change.startswith('+'):
                     lines.insert(current_line, change[1:])
                     current_line += 1
                     added += 1
-                elif not change or change.startswith(" "):
+                elif not change or change.startswith((' ', '\n')):
                     current_line += 1
                 else:
-                    raise ValueError(f"Invalid change line: {change}")
+                    raise ValueError(f"Invalid change line: {change!r}")
 
-    return "\n".join(lines)
+    return ''.join(lines)
 
 def apply_udiff_edit(original: str, patch: str) -> str:
     try:

@@ -13,10 +13,6 @@ from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
 
-def read_file(path: Path) -> str:
-    with open(path) as f:
-        return f.read().strip()
-
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
         return []
@@ -41,7 +37,7 @@ def ask(prompt: Prompt, model: Model, system_prompt: str):
         return []
 
 def edit(prompt: Prompt, model: Model, system_prompt: str, file_path: Path, diff: bool):
-    file_data = read_file(file_path)
+    file_data = file_path.read_text()
     default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
     response = ask(prompt, model, system_prompt or default_system_prompt)
     modified = apply_udiff_edit(file_data, response) if diff else apply_section_edit(file_data, response)
@@ -118,11 +114,11 @@ def main():
     if args.file:
         file_paths = list(itertools.chain.from_iterable(glob.glob(fn) for fn in args.file))
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
-        file_data = {path: read_file(path) for path in file_paths}
+        file_data = {path: path.read_text().strip() for path in file_paths}
         context.extend(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
     if args.edit:
         file_path = Path(args.edit)
-        context.append(f'{file_path}```\n{read_file(file_path)}\n```')
+        context.append(f'{file_path}```\n{file_path.read_text().strip()}\n```')
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"
