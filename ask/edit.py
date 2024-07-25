@@ -1,5 +1,6 @@
 import re
 import difflib
+from pathlib import Path
 
 RED = '\033[91m'
 GREEN = '\033[92m'
@@ -21,7 +22,7 @@ UDIFF_SYSTEM_PROMPT = """
 """.replace('\n    ', ' ').strip()
 
 
-def print_diff(expected, actual, file_path):
+def print_diff(expected: str, actual: str, file_path: str | Path) -> None:
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)
     diff = difflib.unified_diff(expected_lines, actual_lines, fromfile=f'a/{file_path}', tofile=f'b/{file_path}')
@@ -40,7 +41,7 @@ def print_diff(expected, actual, file_path):
         if not line.endswith('\n'):
             print(f"\n{color}\\ No newline at end of file{RESET}")
 
-def extract_code_block(text):
+def extract_code_block(text: str) -> str:
     pattern = r'```(?:\w+)?\n(.*?)\n```'
     match = re.search(pattern, text, re.DOTALL)
     if match:
@@ -50,7 +51,7 @@ def extract_code_block(text):
 
 # Section patch
 
-def apply_section_edit(original, patch):
+def apply_section_edit(original: str, patch: str) -> str:
     patch = extract_code_block(patch)
     original_lines = original.splitlines(keepends=True)
     patch_sections = patch.split('[UNCHANGED]')
@@ -82,7 +83,7 @@ def apply_section_edit(original, patch):
 
 # Unified diff patch
 
-def apply_patch(original, patch):
+def apply_patch(original: str, patch: str) -> str:
     lines = original.splitlines()
     patch_lines = patch.splitlines()
 
@@ -121,7 +122,7 @@ def apply_patch(original, patch):
 
     return "\n".join(lines)
 
-def apply_udiff_edit(original, patch):
+def apply_udiff_edit(original: str, patch: str) -> str:
     try:
         patch = extract_code_block(patch)
         return apply_patch(original, patch)
