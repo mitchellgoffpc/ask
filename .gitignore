@@ -9,3 +9,7 @@ build/
 
 # System
 .DS_Store
+
+# Cache
+.mypy_cache/
+.pytest_cache/
