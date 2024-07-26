@@ -1,0 +1,51 @@
+Here's the unified diff patch with the requested changes:
+
+```diff
+@@ -83,7 +83,7 @@
+     best_action = max(action_results, key=action_results.get)
+     return best_action, action_results
+
+-def run_episode(model_path, num_simulations, epsilon, render=False, save=False):
++def run_episode(policy_path, num_simulations, epsilon, render=False, save=False):
+     model = None
+-    if model_path:
++    if policy_path:
+         model = MLP(input_size=4, output_size=2, hidden_size=64).eval()
+-        model.load_state_dict(torch.load(model_path))
++        model.load_state_dict(torch.load(policy_path))
+
+@@ -127,10 +127,10 @@
+ def _run_episode(args):
+     return run_episode(*args)
+
+-def run_multiple_episodes(model_path, episode_dir, num_episodes, num_simulations, epsilon):
++def run_multiple_episodes(policy_path, episode_dir, num_episodes, num_simulations, epsilon):
+     st = time.time()
+     with mp.Pool(processes=mp.cpu_count()) as pool:
+-        results = list(tqdm(pool.imap(_run_episode, [(model_path, num_simulations, epsilon, False, True) for i in range(num_episodes)]), total=num_episodes))
++        results = list(tqdm(pool.imap(_run_episode, [(policy_path, num_simulations, epsilon, False, True) for i in range(num_episodes)]), total=num_episodes))
+     et = time.time()
+
+     if episode_dir is not None:
+@@ -146,7 +146,7 @@
+
+ if __name__ == "__main__":
+     parser = argparse.ArgumentParser(description='Run CartPole episodes with optional model.')
+-    parser.add_argument('-m', '--model', type=str, help='Path to the policy model checkpoint')
++    parser.add_argument('-p', '--policy', type=str, help='Path to the policy model checkpoint')
+     parser.add_argument('-n', '--num_episodes', type=int, default=100, help='Number of episodes to run')
+     parser.add_argument('-s', '--num_simulations', type=int, default=50, help='Number of simulations to run')
+     parser.add_argument('-e', '--epsilon', type=float, default=0.0, help='Epsilon value for epsilon-greedy policy')
+@@ -161,8 +161,8 @@
+             f.unlink()
+
+     if args.render:
+-        steps, *_ = run_episode(args.model, args.num_simulations, args.epsilon, render=True)
++        steps, *_ = run_episode(args.policy, args.num_simulations, args.epsilon, render=True)
+         print(f"Episode finished after {steps} steps.")
+     else:
+-        run_multiple_episodes(args.model, episode_dir, args.num_episodes, args.num_simulations, args.epsilon)
++        run_multiple_episodes(args.policy, episode_dir, args.num_episodes, args.num_simulations, args.epsilon)
+```
+
+This patch renames the 'model' argument to 'policy' in the argparse, and 'model_path' to 'policy_path' in all of the functions.

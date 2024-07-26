@@ -23,7 +23,7 @@
 +def apply_section_edit(original: str, patch: str) -> str:
      patch = extract_code_block(patch)
      original_lines = original.splitlines(keepends=True)
-     patch_sections = patch.split('[UNCHANGED]')
+     patch_sections = patch.split('<UNCHANGED>')
 @@ -62,7 +62,7 @@
          output_lines.extend(original_lines[start_idx:])
      return ''.join(output_lines)

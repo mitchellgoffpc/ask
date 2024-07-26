@@ -48,6 +48,10 @@ def extract_code_block(text: str) -> str:
         return match.group(1).strip()
     return text.strip()
 
+def add_trailing_newlines(original: str, edited: str) -> str:
+    original_trailing_newlines = len(original) - len(original.rstrip('\n'))
+    return edited.rstrip('\n') + '\n' * original_trailing_newlines
+
 
 # Section patch
 
@@ -67,22 +71,19 @@ def apply_section_edit(original: str, patch: str) -> str:
         matcher = difflib.SequenceMatcher(None, original_lines[start_idx:], section_lines)
         matching_blocks = matcher.get_matching_blocks()
 
-        if matching_blocks:
+        if len(matching_blocks) > 1:
             first_match = matching_blocks[0]
+            last_match = matching_blocks[-2]  # Last block is always a dummy block
             output_lines.extend(original_lines[start_idx:start_idx + first_match.a - first_match.b])
             output_lines.extend(section_lines)
-            start_idx += first_match.a + first_match.size  # NOTE: Might need to increment start_idx by the sum of all matching block sizes?
+            start_idx += last_match.a + last_match.size  # NOTE: Might need to increment start_idx by the sum of all matching block sizes?
         else:
             output_lines.extend(section_lines)  # If no match found, append the entire section
 
     if patch_sections and not patch_sections[-1].strip():  # Ends with an [UNCHANGED]
         output_lines.extend(original_lines[start_idx:])
 
-    # Preserve the number of trailing newlines from the original
-    result = ''.join(output_lines)
-    original_trailing_newlines = len(original) - len(original.rstrip('\n'))
-    result = result.rstrip('\n') + '\n' * original_trailing_newlines
-    return result
+    return add_trailing_newlines(original, ''.join(output_lines))
 
 
 # Unified diff patch
@@ -126,7 +127,7 @@ def apply_patch(original: str, patch: str) -> str:
                 else:
                     raise ValueError(f"Invalid change line: {change!r}")
 
-    return ''.join(lines)
+    return add_trailing_newlines(original, ''.join(lines))
 
 def apply_udiff_edit(original: str, patch: str) -> str:
     try:

@@ -1,60 +1,37 @@
 import unittest
-from ask.edit import apply_udiff_edit, apply_section_edit
+from pathlib import Path
+from ask.edit import apply_section_edit, apply_udiff_edit, print_diff
 
-original = """
-import random
+class TestEdit(unittest.TestCase):
+    def test_section_edit(self):
+        for subdir in (Path(__file__).parent / 'test-cases').iterdir():
+            if subdir.is_dir():
+                with self.subTest(subdir=subdir):
+                    original = (subdir / 'original.txt').read_text()
+                    patch = (subdir / 'section.patch').read_text()
+                    expected_result = (subdir / 'result.txt').read_text()
+                    actual_result = apply_section_edit(original, patch)
+                    try:
+                        self.assertEqual(expected_result, actual_result)
+                    except AssertionError:
+                        print(f"Mismatch in {subdir}:")
+                        print_diff(expected_result, actual_result, file_path=subdir)
+                        raise
 
-def generate_number():
-    return random.randint(1, 100)
-
-def is_even(number):
-    return number % 2 == 0
-
-def is_odd(number):
-    return number % 2 != 0
-
-def main():
-    num = generate_number()
-    print(f"Generated number: {num}")
-    if is_even(num):
-        print("The number is even")
-    else:
-        print("The number is odd")
-""".lstrip()
-
-simple_edit_patch = """
-import random
-
-def generate_number():
-    return random.randint(5, 50)
-
-[UNCHANGED]
-"""
-
-middle_edit_patch = """
-import random
-
-[UNCHANGED]
-
-def is_even(number):
-    return number % 2 == 0
-
-def is_odd(number):
-    return (number + 1) % 2 == 0
-
-def main():
-[UNCHANGED]
-"""
-
-
-class TestApplyEdit(unittest.TestCase):
-    def test_simple_edit(self):
-        expected = original.replace("return random.randint(1, 100)", "return random.randint(5, 50)")
-        self.assertEqual(expected, apply_edit(original, simple_edit_patch))
-
-    def test_edit_with_unchanged_in_middle(self):
-        expected = original.replace("return number % 2 != 0", "return (number + 1) % 2 == 0")
-        self.assertEqual(expected, apply_edit(original, middle_edit_patch))
+    def test_udiff_edit(self):
+        for subdir in (Path(__file__).parent / 'test-cases').iterdir():
+            if subdir.is_dir():
+                with self.subTest(subdir=subdir):
+                    original = (subdir / 'original.txt').read_text()
+                    patch = (subdir / 'udiff.patch').read_text()
+                    expected_result = (subdir / 'result.txt').read_text()
+                    actual_result = apply_udiff_edit(original, patch)
+                    try:
+                        self.assertEqual(expected_result, actual_result)
+                    except AssertionError:
+                        print(f"Mismatch in {subdir}:")
+                        print_diff(expected_result, actual_result, file_path=subdir)
+                        raise
 
 
 if __name__ == '__main__':

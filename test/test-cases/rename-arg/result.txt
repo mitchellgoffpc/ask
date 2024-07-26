@@ -49,14 +49,6 @@ def run_episode(policy_path, num_simulations, epsilon, render=False, save=False)
     observation, _ = env.reset()
     env.step(env.action_space.sample())  # state is a numpy array on the first iter, after the first step it becomes a tuple
 
-    if model_path:
-        model = MLP(input_size=4, output_size=2, hidden_size=64).eval()
-        model.load_state_dict(torch.load(model_path))
-
-    env = gym.make('CartPole-v1', render_mode='human' if render else None)
-    observation, _ = env.reset()
-    env.step(env.action_space.sample())  # state is a numpy array on the first iter, after the first step it becomes a tuple
-
     done = False
     trunc = False
     total_reward = 1
@@ -97,12 +89,6 @@ def run_multiple_episodes(policy_path, episode_dir, num_episodes, num_simulation
     st = time.time()
     with mp.Pool(processes=mp.cpu_count()) as pool:
         results = list(tqdm(pool.imap(_run_episode, [(policy_path, num_simulations, epsilon, False, True) for i in range(num_episodes)]), total=num_episodes))
-    et = time.time()
-
-def run_multiple_episodes(model_path, episode_dir, num_episodes, num_simulations, epsilon):
-    st = time.time()
-    with mp.Pool(processes=mp.cpu_count()) as pool:
-        results = list(tqdm(pool.imap(_run_episode, [(model_path, num_simulations, epsilon, False, True) for i in range(num_episodes)]), total=num_episodes))
     et = time.time()
 
     if episode_dir is not None:
