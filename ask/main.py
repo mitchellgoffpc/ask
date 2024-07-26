@@ -11,7 +11,6 @@ from ask.models import MODELS, Prompt, Model
 from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
-LANGUAGE_SHORTCUTS = {'fr': 'french', 'es': 'spanish'}
 
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
@@ -91,7 +90,6 @@ def main():
     parser.add_argument('-m', '--model', choices=MODEL_SHORTCUTS.keys(), default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-e', '--edit', type=str, help="File to edit")
-    parser.add_argument('-t', '--translate', type=str, help="Language to translate into")
     parser.add_argument('-s', '--system', type=str, default='', help="System prompt for the model")
     parser.add_argument('-d', '--diff', action='store_true', help="Interpret model response as udiff patches for editing")
     parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
@@ -106,10 +104,6 @@ def main():
         question = ' '.join(args.question)
 
     question = question.strip()
-    if args.translate:
-        language = LANGUAGE_SHORTCUTS.get(args.translate, args.translate)
-        question = f'How do I translate "{question}" into {language}?'
-
     context: list[str] = []
     if args.file:
         file_paths = list(itertools.chain.from_iterable(glob.glob(fn) for fn in args.file))
