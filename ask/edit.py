@@ -65,20 +65,24 @@ def apply_section_edit(original: str, patch: str) -> str:
         section_lines = section.splitlines(keepends=True)
 
         matcher = difflib.SequenceMatcher(None, original_lines[start_idx:], section_lines)
-        ops = matcher.get_opcodes()
-        new_start_idx = start_idx
-        for i, (tag, alo, ahi, blo, bhi) in enumerate(ops):
-            if i == 0 and tag == 'delete':
-                output_lines.extend(original_lines[start_idx + alo:start_idx + ahi])
-            elif tag in ('insert', 'replace', 'equal'):
-                output_lines.extend(section_lines[blo:bhi])
-                new_start_idx = start_idx + ahi
+        matching_blocks = matcher.get_matching_blocks()
 
-        start_idx = new_start_idx
+        if matching_blocks:
+            first_match = matching_blocks[0]
+            output_lines.extend(original_lines[start_idx:start_idx + first_match.a - first_match.b])
+            output_lines.extend(section_lines)
+            start_idx += first_match.a + first_match.size  # NOTE: Might need to increment start_idx by the sum of all matching block sizes?
+        else:
+            output_lines.extend(section_lines)  # If no match found, append the entire section
 
     if patch_sections and not patch_sections[-1].strip():  # Ends with an [UNCHANGED]
         output_lines.extend(original_lines[start_idx:])
-    return ''.join(output_lines)
+
+    # Preserve the number of trailing newlines from the original
+    result = ''.join(output_lines)
+    original_trailing_newlines = len(original) - len(original.rstrip('\n'))
+    result = result.rstrip('\n') + '\n' * original_trailing_newlines
+    return result
 
 
 # Unified diff patch
