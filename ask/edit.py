@@ -1,6 +1,7 @@
 import re
 import difflib
 from pathlib import Path
+from collections import defaultdict
 
 RED = '\033[91m'
 GREEN = '\033[92m'
@@ -55,6 +56,46 @@ def add_trailing_newlines(original: str, edited: str) -> str:
 
 # Section patch
 
+def find_most_unique_match(original_lines, section_lines):
+    def find_all_matches(alo, ahi):
+        if alo >= ahi:
+            return []
+        i, j, k = x = matcher.find_longest_match(alo, ahi, 0, len(section_lines))
+        return [*find_all_matches(alo, i), x, *find_all_matches(i + k, ahi)] if k else []
+
+    # First we find all possible matches
+    matcher = difflib.SequenceMatcher(None, original_lines, section_lines)
+    matching_blocks = find_all_matches(0, len(original_lines))
+
+    # Then we group the matching blocks by (block.b, block.size) and find the group with the fewest matches
+    candidates = defaultdict(list)
+    for block in sorted(matching_blocks):
+        candidates[(block.b, block.size)].append(block.a)
+    j, k = min(candidates, key=lambda k: (len(candidates[k]), -k[1], k[0]))  # sort by (n_matches, -size, start_pos)
+    return difflib.Match._make((candidates[j, k][0], j, k))  # return the first block from the winning group
+
+def get_matching_blocks(original_lines, section_lines):
+    def find_matching_blocks(alo, ahi, blo, bhi, reverse):
+        if alo >= ahi or blo >= bhi:
+            return []
+        if reverse:
+            i, j, k = reverse_matcher.find_longest_match(la - ahi, la - alo, lb - bhi, lb - blo)
+            i, j = la - i - k, lb - j - k
+            x = difflib.Match._make((i, j, k))
+        else:
+            i, j, k = x = forward_matcher.find_longest_match(alo, ahi, blo, bhi)
+        return [*find_matching_blocks(alo, i, blo, j, True), x, *find_matching_blocks(i + k, ahi, j + k, bhi, False)] if k else []
+
+    # First we find the most unique match
+    i, j, k = first_match = find_most_unique_match(original_lines, section_lines)
+
+    # Then we expand outwards from that match to find all matching blocks.
+    # We always want to find the closest matches to the starting block, so we use a reverse matcher to extend the match backwards.
+    forward_matcher = difflib.SequenceMatcher(None, original_lines, section_lines)
+    reverse_matcher = difflib.SequenceMatcher(None, original_lines[::-1], section_lines[::-1])
+    la, lb = len(original_lines), len(section_lines)
+    return [*find_matching_blocks(0, i, 0, j, True), first_match, *find_matching_blocks(i + k, la, j + k, lb, False)]
+
 def apply_section_edit(original: str, patch: str) -> str:
     patch = extract_code_block(patch)
     original_lines = original.splitlines(keepends=True)
@@ -63,24 +104,22 @@ def apply_section_edit(original: str, patch: str) -> str:
     start_idx = 0
 
     for section in patch_sections:
-        section = section.lstrip('\n')
+        section = section.lstrip('\n').rstrip('\t ')
         if not section.strip():
             continue
         section_lines = section.splitlines(keepends=True)
+        matching_blocks = get_matching_blocks(original_lines[start_idx:], section_lines)
 
-        matcher = difflib.SequenceMatcher(None, original_lines[start_idx:], section_lines)
-        matching_blocks = matcher.get_matching_blocks()
-
-        if len(matching_blocks) > 1:
+        if len(matching_blocks) > 0:
             first_match = matching_blocks[0]
-            last_match = matching_blocks[-2]  # Last block is always a dummy block
+            last_match = matching_blocks[-1]
             output_lines.extend(original_lines[start_idx:start_idx + first_match.a - first_match.b])
             output_lines.extend(section_lines)
-            start_idx += last_match.a + last_match.size  # NOTE: Might need to increment start_idx by the sum of all matching block sizes?
+            start_idx += last_match.a + last_match.size
         else:
             output_lines.extend(section_lines)  # If no match found, append the entire section
 
-    if patch_sections and not patch_sections[-1].strip():  # Ends with an [UNCHANGED]
+    if patch_sections and not patch_sections[-1].strip():  # it patch ends with [UNCHANGED], append the rest of the file
         output_lines.extend(original_lines[start_idx:])
 
     return add_trailing_newlines(original, ''.join(output_lines))

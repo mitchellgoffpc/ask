@@ -7,6 +7,7 @@ class TestEdit(unittest.TestCase):
         for subdir in (Path(__file__).parent / 'test-cases').iterdir():
             if subdir.is_dir():
                 with self.subTest(subdir=subdir):
+                    if not (subdir / 'section.patch').exists(): continue
                     original = (subdir / 'original.txt').read_text()
                     patch = (subdir / 'section.patch').read_text()
                     expected_result = (subdir / 'result.txt').read_text()
@@ -22,6 +23,7 @@ class TestEdit(unittest.TestCase):
         for subdir in (Path(__file__).parent / 'test-cases').iterdir():
             if subdir.is_dir():
                 with self.subTest(subdir=subdir):
+                    if not (subdir / 'udiff.patch').exists(): continue
                     original = (subdir / 'original.txt').read_text()
                     patch = (subdir / 'udiff.patch').read_text()
                     expected_result = (subdir / 'result.txt').read_text()
