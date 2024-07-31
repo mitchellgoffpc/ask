@@ -65,6 +65,7 @@ MODELS = [
     Model(name='gpt-3.5-turbo', api=APIS['openai'], shortcuts=['gpt3', '3']),
     Model(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4']),
     Model(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
+    Model(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4o-mini', 'gpt4om', 'gpt4m', '4m']),
     Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o', 'o']),
     Model(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'mx']),
     Model(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'md']),
