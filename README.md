@@ -23,6 +23,13 @@ $ ask -o ~/astronauts.py "No yapping: Write a python script that queries the ast
 # Edit a file
 $ ask -e ~/astronauts.py "Make this into a tkinter window"
 
+# Fix bugs
+ask "I'm getting ImportError: dlopen(/Users/mitchell/.pyenv/versions/3.12.2/lib/python3.12/lib-dynload/_tkinter.cpython-312-darwin.so, 0x0002): Library not loaded: /opt/homebrew/opt/tcl-tk/lib/libtk8.6.dylib when I try to import tkinter in python, what can I do?"
+
 # Chat mode
 $ ask -c
 ```
+
+### Notes
+
+The defualt model is currently claude sonnet 3.5.
