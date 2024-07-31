@@ -32,4 +32,4 @@ $ ask -c
 
 ### Notes
 
-The defualt model is currently claude sonnet 3.5.
+The default model is currently `claude-3-5-sonnet-20240620`.
