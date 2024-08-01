@@ -13,7 +13,7 @@ def common_prefix(strings: list[str]) -> str:
     return prefix
 
 def complete(text: str, state: int) -> str | None:
-    file_commands = ('.file', ':file', ':f', '.edit', ':edit', ':e')
+    file_commands = ('.file', ':file', ':f')
     buffer = readline.get_line_buffer()
     cmd, *args = buffer.lstrip().split()
     if cmd.lower() in file_commands:
@@ -123,7 +123,7 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 show_models()
             elif cmd in ('.model', ':model', ':m'):
                 model = switch_model(arg, model)
-            elif cmd in ('.file', ':file', ':f', '.edit', ':edit', ':e'):
+            elif cmd in ('.file', ':file', ':f'):
                 prompt = attach_file(arg, prompt, attached_files)
             elif cmd in ('.files', ':files'):
                 show_files(attached_files)
