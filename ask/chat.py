@@ -1,7 +1,35 @@
-import readline  # noqa: F401
+import readline
 from pathlib import Path
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
+
+# Tab completion
+
+def common_prefix(strings: list[str]) -> str:
+    prefix = strings[0]
+    for s in strings[1:]:
+        while not s.startswith(prefix):
+            prefix = prefix[:-1]
+    return prefix
+
+def complete(text: str, state: int) -> str | None:
+    file_commands = ('.file', ':file', ':f', '.edit', ':edit', ':e')
+    buffer = readline.get_line_buffer()
+    cmd, *args = buffer.lstrip().split()
+    if cmd.lower() in file_commands:
+        path = Path(args[-1])
+        if not text:
+            matches = path.expanduser().glob('*')
+        else:
+            matches = path.parent.expanduser().glob(path.name + '*')
+        completions = [f"{p.name}{'/' if p.is_dir() else ''}" for p in matches]
+        if len(completions) > 1:
+            common = common_prefix(completions)
+            if common != text and state == 0:
+                return common
+        return (completions + [None])[state]
+    return None
+
 
 # Commands
 
@@ -74,6 +102,10 @@ def get_chat_response(user_input: str, prompt: Prompt, model: Model, system_prom
 # Main chat loop
 
 def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
+    readline.set_completer_delims(' \t\n/;')
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer(complete)
+
     prompt = [msg for msg in prompt if msg['content']]
     attached_files: dict[Path, str] = {}
     while True:
@@ -91,7 +123,7 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 show_models()
             elif cmd in ('.model', ':model', ':m'):
                 model = switch_model(arg, model)
-            elif cmd in ('.file', ':file', ':f'):
+            elif cmd in ('.file', ':file', ':f', '.edit', ':edit', ':e'):
                 prompt = attach_file(arg, prompt, attached_files)
             elif cmd in ('.files', ':files'):
                 show_files(attached_files)

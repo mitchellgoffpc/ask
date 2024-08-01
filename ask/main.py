@@ -2,7 +2,6 @@
 import sys
 import glob
 import json
-import readline  # noqa: F401
 import argparse
 import itertools
 from pathlib import Path
