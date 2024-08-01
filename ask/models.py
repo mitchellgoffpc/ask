@@ -77,3 +77,5 @@ MODELS = [
     Model(name='claude-3-5-sonnet-20240620', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
     Model(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c']),
 ]
+
+MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
