@@ -66,8 +66,8 @@ def main() -> None:
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-e', '--edit', type=str, help="File to edit")
+    parser.add_argument('-d', '--diff', type=str, help="File to edit using udiff patches")
     parser.add_argument('-s', '--system', type=str, default='', help="System prompt for the model")
-    parser.add_argument('-d', '--diff', action='store_true', help="Interpret model response as udiff patches for editing")
     parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
     parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
     parser.add_argument('-o', '--output', type=str, help="Output file path for generated code")
@@ -103,8 +103,8 @@ def main() -> None:
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
         file_data = {path: path.read_text().strip() for path in file_paths}
         context.extend(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
-    if args.edit:
-        file_path = Path(args.edit)
+    if args.edit or args.diff:
+        file_path = Path(args.edit or args.diff)
         context.append(f'{file_path}```\n{file_path.read_text().strip()}\n```')
     if context:
         context_str = '\n\n'.join(context)
@@ -120,11 +120,11 @@ def main() -> None:
     # Run the query
     model = MODEL_SHORTCUTS[args.model]
     if args.chat:
-        assert not args.edit and not args.output, "editing and output not supported in chat mode"
+        assert not args.edit and not args.diff and not args.output, "editing, diff, and output not supported in chat mode"
         chat(prompt, model, args.system)
-    elif args.edit:
+    elif args.edit or args.diff:
         assert not args.output, "output not supported in edit mode"
-        edit(prompt, model, args.system, file_path, args.diff)
+        edit(prompt, model, args.system, file_path, not bool(args.edit))  # edit takes priority
     elif args.output:
         output(prompt, model, args.system, Path(args.output))
     else:

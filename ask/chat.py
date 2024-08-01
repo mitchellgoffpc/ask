@@ -3,12 +3,14 @@ from pathlib import Path
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
 
-def show_models():
+# Commands
+
+def show_models() -> None:
     print("Available models:")
     for m in MODELS:
         print(f"- {m.name} ({', '.join(m.shortcuts)})")
 
-def switch_model(arg, model):
+def switch_model(arg: str, model: Model) -> Model:
     if not arg:
         print(f"Current model is {model.name}.")
     elif arg in MODEL_SHORTCUTS:
@@ -18,7 +20,7 @@ def switch_model(arg, model):
         print(f"Model {arg!r} not found.")
     return model
 
-def attach_file(arg, prompt, attached_files):
+def attach_file(arg: str, prompt: Prompt, attached_files: dict[Path, str]) -> Prompt:
     file_paths = arg.split()
     for file_path in file_paths:
         path = Path(file_path).expanduser()
@@ -30,8 +32,9 @@ def attach_file(arg, prompt, attached_files):
             print(f"File {path} added to context.")
         else:
             print(f"File {path} not found.")
+    return prompt
 
-def show_files(attached_files):
+def show_files(attached_files: dict[Path, str]) -> None:
     if attached_files:
         print("Attached files:")
         for path in attached_files:
@@ -39,7 +42,10 @@ def show_files(attached_files):
     else:
         print("No files attached.")
 
-def process_user_input(user_input, prompt, model, system_prompt, attached_files):
+
+# Query
+
+def get_chat_response(user_input: str, prompt: Prompt, model: Model, system_prompt: str, attached_files: dict[Path, str]) -> Prompt:
     context = []
     for path, original_content in {Path(p).expanduser(): c for p, c in attached_files.items()}.items():
         content = path.read_text().strip()
@@ -62,13 +68,14 @@ def process_user_input(user_input, prompt, model, system_prompt, attached_files)
         print(chunk, end='', flush=True)
     prompt.append({'role': 'user', 'content': user_input})
     prompt.append({'role': 'assistant', 'content': ''.join(chunks)})
+    return prompt
 
 
 # Main chat loop
 
-def chat(prompt: Prompt, model: Model, system_prompt: str):
+def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
     prompt = [msg for msg in prompt if msg['content']]
-    attached_files: dict[str, str] = {}
+    attached_files: dict[Path, str] = {}
     while True:
         try:
             user_input = input("> ")
@@ -85,11 +92,11 @@ def chat(prompt: Prompt, model: Model, system_prompt: str):
             elif cmd in ('.model', ':model', ':m'):
                 model = switch_model(arg, model)
             elif cmd in ('.file', ':file', ':f'):
-                attach_file(arg, prompt, attached_files)
+                prompt = attach_file(arg, prompt, attached_files)
             elif cmd in ('.files', ':files'):
                 show_files(attached_files)
             else:
-                process_user_input(user_input, prompt, model, system_prompt, attached_files)
+                prompt = get_chat_response(user_input, prompt, model, system_prompt, attached_files)
 
         except KeyboardInterrupt:
             print()
