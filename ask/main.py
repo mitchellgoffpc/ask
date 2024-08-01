@@ -61,7 +61,7 @@ def edit(prompt: Prompt, model: Model, system_prompt: str, file_path: Path, diff
 
 # Entry point
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
@@ -76,6 +76,9 @@ def main():
     args = parser.parse_args()
 
     # Sanity checks
+    if not args.chat and not args.question and sys.stdin.isatty():
+        print('usage: ask <question>', file=sys.stderr)
+        sys.exit(1)
     if args.model not in MODEL_SHORTCUTS:
         print(f"Invalid model {args.model!r}. Valid options are:", file=sys.stderr)
         max_name_length = max(len(model.name) for model in MODELS)
@@ -84,10 +87,6 @@ def main():
         for model in MODELS:
             print(format_string.format(model.name, ', '.join(model.shortcuts)), file=sys.stderr)
         print("\nUse any model name or shortcut from the list above.", file=sys.stderr)
-        sys.exit(1)
-
-    if not args.question and sys.stdin.isatty():
-        print('usage: ask <question>', file=sys.stderr)
         sys.exit(1)
 
     # Read from stdin
