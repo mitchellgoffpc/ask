@@ -28,6 +28,10 @@ UDIFF_SYSTEM_PROMPT = """
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()
 
+
+def is_junk(line):
+    return not line.strip()
+
 def get_diff_lines(expected: str, actual: str, file_path: str | Path) -> list[tuple[str, str]]:
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)
@@ -62,7 +66,11 @@ def add_trailing_newlines(original: str, edited: str) -> str:
     return edited.rstrip('\n') + '\n' * original_trailing_newlines
 
 def extract_code_blocks(response: str):
-    yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)\n```\n', response, re.DOTALL | re.MULTILINE)
+    yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)\n```', response, re.DOTALL | re.MULTILINE)
+
+def extract_first_code_block(response: str):
+    code_blocks = list(extract_code_blocks(response))
+    return code_blocks[0] if code_blocks else (None, response)
 
 
 # Section patch
@@ -75,7 +83,7 @@ def find_most_unique_match(original_lines, section_lines):
         return [*find_all_matches(alo, i), x, *find_all_matches(i + k, ahi)] if k else []
 
     # First we find all possible matches
-    matcher = difflib.SequenceMatcher(None, original_lines, section_lines)
+    matcher = difflib.SequenceMatcher(is_junk, original_lines, section_lines)
     matching_blocks = find_all_matches(0, len(original_lines))
 
     # Then we group the matching blocks by (block.b, block.size) and find the group with the fewest matches
@@ -102,10 +110,15 @@ def get_matching_blocks(original_lines, section_lines):
 
     # Then we expand outwards from that match to find all matching blocks.
     # We always want to find the closest matches to the starting block, so we use a reverse matcher to extend the match backwards.
-    forward_matcher = difflib.SequenceMatcher(None, original_lines, section_lines)
-    reverse_matcher = difflib.SequenceMatcher(None, original_lines[::-1], section_lines[::-1])
+    forward_matcher = difflib.SequenceMatcher(is_junk, original_lines, section_lines)
+    reverse_matcher = difflib.SequenceMatcher(is_junk, original_lines[::-1], section_lines[::-1])
     la, lb = len(original_lines), len(section_lines)
     return [*find_matching_blocks(0, i, 0, j, True), first_match, *find_matching_blocks(i + k, la, j + k, lb, False)]
+
+def starts_with_replacement(original_lines: list[str], section_lines: list[str], match: difflib.Match) -> bool:
+    a = '\n'.join(original_lines[match.a - match.b:match.a])
+    b = '\n'.join(section_lines[:match.b])
+    return difflib.SequenceMatcher(None, a, b).ratio() > 0.5
 
 def apply_section_edit(original: str, patch: str) -> str:
     original_lines = original.splitlines(keepends=True)
@@ -123,7 +136,8 @@ def apply_section_edit(original: str, patch: str) -> str:
         if len(matching_blocks) > 0:
             first_match = matching_blocks[0]
             last_match = matching_blocks[-1]
-            output_lines.extend(original_lines[start_idx:start_idx + first_match.a - first_match.b])  # TODO: This breaks if the patch starts with an insertion
+            replace = starts_with_replacement(original_lines[start_idx:], section_lines, first_match)
+            output_lines.extend(original_lines[start_idx:start_idx + first_match.a - (first_match.b if replace else 0)])
             output_lines.extend(section_lines)
             start_idx += last_match.a + last_match.size
         else:
@@ -154,7 +168,7 @@ def apply_patch(original: str, patch: str) -> str:
                     context_lines.append(change)
 
             # Use difflib to find the best match for the context
-            matcher = difflib.SequenceMatcher(None, lines, context_lines)
+            matcher = difflib.SequenceMatcher(is_junk, lines, context_lines)
             match = matcher.find_longest_match(0, len(lines), 0, len(context_lines))
             current_line = match.a - match.b
 
@@ -202,8 +216,7 @@ if __name__ == "__main__":
         original_content = f.read()
     with open(args.patch) as f:
         patch_content = f.read()
-    code_blocks = list(extract_code_blocks(patch_content))
-    patch_content = code_blocks[0][1] if code_blocks else patch_content
+    _, patch_content = extract_first_code_block(patch_content)
     edited_content = apply_udiff_edit(original_content, patch_content) if args.diff else apply_section_edit(original_content, patch_content)
 
     print("Diff between original and edited content:")
