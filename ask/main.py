@@ -25,14 +25,14 @@ def list_files(path: Path) -> list[Path]:
 # Ask / Output / Edit
 
 def ask(prompt: Prompt, model: Model, system_prompt: str):
+    chunks = []
     try:
-        chunks = []
         for chunk in query(prompt, model, system_prompt=system_prompt):
             print(chunk, end='', flush=True)
             chunks.append(chunk)
-        return ''.join(chunks)
     except KeyboardInterrupt:
-        return []
+        pass
+    return ''.join(chunks)
 
 def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool):
     default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
@@ -107,7 +107,7 @@ def main() -> None:
         file_paths = list(itertools.chain.from_iterable(glob.glob(fn) for fn in args.file))
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
         file_data = {path: path.read_text().strip() for path in file_paths}
-        context.extend(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
+        context.extend(f'{path}\n\n```\n{data}\n```' for path, data in file_data.items())
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"
