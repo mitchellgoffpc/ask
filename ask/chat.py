@@ -126,17 +126,24 @@ def edit(response: str) -> dict[Path, str]:
 # Main chat loop
 
 def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
+    history_file = Path.home() / '.ask_history'
+    history_file.touch(exist_ok=True)
+
     readline.set_completer_delims(' \t\n/;')
     readline.parse_and_bind("tab: complete")
     readline.set_completer(complete)
+    readline.read_history_file(str(history_file))
+    readline.set_history_length(1000)
 
     prompt = [msg for msg in prompt if msg['content']]
     attached_files: dict[Path, str] = {}
+
     while True:
         try:
             user_input = input("> ")
             if not user_input.strip():
                 continue
+            readline.write_history_file(str(history_file))
 
             cmd = user_input.lower().strip().split()[0] if user_input.strip() else ''
             arg = user_input[len(cmd):].strip()
