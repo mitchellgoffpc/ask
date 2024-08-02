@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import re
 import sys
 import glob
 import json
@@ -9,7 +8,7 @@ from pathlib import Path
 from ask.chat import chat
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
-from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit
+from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit, extract_code_blocks
 
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
@@ -38,7 +37,7 @@ def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool):
     default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
     response = ask(prompt, model, system_prompt or default_system_prompt)
 
-    for file_path_str, code_block in re.findall(r'^(\S+)\n+```[\w]*\n(.*?)```', response, re.DOTALL | re.MULTILINE):
+    for file_path_str, code_block in extract_code_blocks(response):
         file_path = Path(file_path_str).expanduser()
         file_exists = file_path.exists()
         if file_exists:

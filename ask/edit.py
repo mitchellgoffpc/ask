@@ -1,3 +1,4 @@
+import re
 import difflib
 from pathlib import Path
 from collections import defaultdict
@@ -51,6 +52,9 @@ def add_trailing_newlines(original: str, edited: str) -> str:
     original_trailing_newlines = len(original) - len(original.rstrip('\n'))
     return edited.rstrip('\n') + '\n' * original_trailing_newlines
 
+def extract_code_blocks(response: str):
+    yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)```', response, re.DOTALL | re.MULTILINE)
+
 
 # Section patch
 
@@ -96,7 +100,7 @@ def get_matching_blocks(original_lines, section_lines):
 
 def apply_section_edit(original: str, patch: str) -> str:
     original_lines = original.splitlines(keepends=True)
-    patch_sections = patch.split('[UNCHANGED]')
+    patch_sections = re.split(r'.*\[UNCHANGED\].*', patch)
     output_lines = []
     start_idx = 0
 
@@ -116,7 +120,7 @@ def apply_section_edit(original: str, patch: str) -> str:
         else:
             output_lines.extend(section_lines)  # If no match found, append the entire section
 
-    if patch_sections and not patch_sections[-1].strip():  # it patch ends with [UNCHANGED], append the rest of the file
+    if patch_sections and not patch_sections[-1].strip():  # if patch ends with [UNCHANGED], append the rest of the file
         output_lines.extend(original_lines[start_idx:])
 
     return add_trailing_newlines(original, ''.join(output_lines))
@@ -189,6 +193,8 @@ if __name__ == "__main__":
         original_content = f.read()
     with open(args.patch) as f:
         patch_content = f.read()
+    code_blocks = list(extract_code_blocks(patch_content))
+    patch_content = code_blocks[0][1] if code_blocks else patch_content
     edited_content = apply_udiff_edit(original_content, patch_content) if args.diff else apply_section_edit(original_content, patch_content)
 
     print("Diff between original and edited content:")
