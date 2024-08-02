@@ -9,7 +9,7 @@ from pathlib import Path
 from ask.chat import chat
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
-from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit, extract_code_block
+from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit
 
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
@@ -38,31 +38,25 @@ def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool):
     default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
     response = ask(prompt, model, system_prompt or default_system_prompt)
 
-    if (file_path_match := re.search(r'(\S+)\n+```', response, re.MULTILINE)):
-        file_path = Path(file_path_match.group(1)).expanduser()
-    else:
-        raise RuntimeError("Could not find file path in the response.")
+    for file_path_str, code_block in re.findall(r'^(\S+)\n+```[\w]*\n(.*?)```', response, re.DOTALL | re.MULTILINE):
+        file_path = Path(file_path_str).expanduser()
+        file_exists = file_path.exists()
+        if file_exists:
+            file_data = file_path.read_text()
+            modified = apply_udiff_edit(file_data, code_block) if diff else apply_section_edit(file_data, code_block)
+            user_prompt = f"Do you want to apply this edit to {file_path}? (y/n): "
+        else:
+            file_data = ""
+            modified = code_block
+            user_prompt = f"File {file_path} does not exist. Do you want to create it? (y/n): "
 
-    create = file_path.exists()
-    if create:
-        file_data = file_path.read_text()
-        modified = apply_udiff_edit(file_data, response) if diff else apply_section_edit(file_data, response)
         print_diff(file_data, modified, file_path)
-        user_input = input(f"Do you want to apply this edit to {file_path}? (y/n): ").strip().lower()
+        user_input = input(user_prompt).strip().lower()
         if user_input == 'y':
             file_path.parent.mkdir(parents=True, exist_ok=True)
             with open(file_path, 'w') as f:
                 f.write(modified)
-    else:
-        modified = extract_code_block(response)
-        print_diff("", modified, file_path)
-        user_input = input(f"File {file_path} does not exist. Do you want to create it? (y/n): ").strip().lower()
-
-    if user_input == 'y':
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file_path, 'w') as f:
-            f.write(modified)
-        print(f"Saved edits to {file_path}" if create else f"Created {file_path}")
+            print(f"Saved edits to {file_path}" if file_exists else f"Created {file_path}")
 
 
 # Entry point
@@ -107,7 +101,7 @@ def main() -> None:
         file_paths = list(itertools.chain.from_iterable(glob.glob(fn) for fn in args.file))
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
         file_data = {path: path.read_text().strip() for path in file_paths}
-        context.extend(f'{path}\n\n```\n{data}\n```' for path, data in file_data.items())
+        context.extend(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"

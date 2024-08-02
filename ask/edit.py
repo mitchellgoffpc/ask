@@ -1,4 +1,3 @@
-import re
 import difflib
 from pathlib import Path
 from collections import defaultdict
@@ -10,21 +9,21 @@ RESET = '\033[0m'
 
 EDIT_SYSTEM_PROMPT = """
     You are a world-class AI programming assistent.
-    When asked to modify a file, you should return the file with the requested changes.
-    If the file is very long and you want to leave some parts unchanged, add a line with [UNCHANGED] to denote that the code in between shouldn't be changed.
+    When asked to modify files, you should return the files with the requested changes.
+    If a file is very long and you want to leave some parts unchanged, add a line with [UNCHANGED] to denote that the code in between shouldn't be changed.
     Don't add comments like '... rest of the code remains unchanged', just get to a natural breaking point
     and then add an [UNCHANGED] and move onto the next section that you want to modify.
     Be sure to include some surrounding context in each section so I know where it's supposed to go.
-    Always add the file path at the start of the edit.
+    Always add the file path above each edit.
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()  # dedent and strip
 
 UDIFF_SYSTEM_PROMPT = """
     You are a world-class AI programming assistent.
-    When asked to modify a file, you should return edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
+    When asked to modify files, you should return edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
     Start each hunk of changes with a `@@ ... @@` line, and be sure to include some surrounding context in each hunk so I know where it's supposed to go.
     You don't need to include line numbers or timestamps, just the content of the patch.
-    Always add the file path at the start of the edit.
+    Always add the file path above each edit.
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()
 
@@ -47,13 +46,6 @@ def print_diff(expected: str, actual: str, file_path: str | Path) -> None:
         print(f"{color}{line}{RESET}", end='')
         if not line.endswith('\n'):
             print(f"\n{color}\\ No newline at end of file{RESET}")
-
-def extract_code_block(text: str) -> str:
-    pattern = r'```(?:\w+)?\n(.*?)\n```'
-    match = re.search(pattern, text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return text.strip()
 
 def add_trailing_newlines(original: str, edited: str) -> str:
     original_trailing_newlines = len(original) - len(original.rstrip('\n'))
@@ -103,7 +95,6 @@ def get_matching_blocks(original_lines, section_lines):
     return [*find_matching_blocks(0, i, 0, j, True), first_match, *find_matching_blocks(i + k, la, j + k, lb, False)]
 
 def apply_section_edit(original: str, patch: str) -> str:
-    patch = extract_code_block(patch)
     original_lines = original.splitlines(keepends=True)
     patch_sections = patch.split('[UNCHANGED]')
     output_lines = []
@@ -176,7 +167,6 @@ def apply_patch(original: str, patch: str) -> str:
 
 def apply_udiff_edit(original: str, patch: str) -> str:
     try:
-        patch = extract_code_block(patch)
         return apply_patch(original, patch)
     except Exception as e:
         print(f"Error: Unable to parse the patch as a unified diff. {str(e)}")

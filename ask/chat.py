@@ -73,7 +73,7 @@ def show_files(attached_files: dict[Path, str]) -> None:
 
 # Query
 
-def get_chat_response(user_input: str, prompt: Prompt, model: Model, system_prompt: str, attached_files: dict[Path, str]) -> Prompt:
+def get_model_response(user_input: str, prompt: Prompt, model: Model, system_prompt: str, attached_files: dict[Path, str]) -> Prompt:
     context = []
     for path, original_content in {Path(p).expanduser(): c for p, c in attached_files.items()}.items():
         content = path.read_text().strip()
@@ -128,7 +128,7 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
             elif cmd in ('.files', ':files'):
                 show_files(attached_files)
             else:
-                prompt = get_chat_response(user_input, prompt, model, system_prompt, attached_files)
+                prompt = get_model_response(user_input, prompt, model, system_prompt, attached_files)
 
         except KeyboardInterrupt:
             print()
