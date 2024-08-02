@@ -53,7 +53,7 @@ def add_trailing_newlines(original: str, edited: str) -> str:
     return edited.rstrip('\n') + '\n' * original_trailing_newlines
 
 def extract_code_blocks(response: str):
-    yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)```', response, re.DOTALL | re.MULTILINE)
+    yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)\n```\n', response, re.DOTALL | re.MULTILINE)
 
 
 # Section patch
