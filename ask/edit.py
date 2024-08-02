@@ -123,7 +123,7 @@ def apply_section_edit(original: str, patch: str) -> str:
         if len(matching_blocks) > 0:
             first_match = matching_blocks[0]
             last_match = matching_blocks[-1]
-            output_lines.extend(original_lines[start_idx:start_idx + first_match.a - first_match.b])
+            output_lines.extend(original_lines[start_idx:start_idx + first_match.a - first_match.b])  # TODO: This breaks if the patch starts with an insertion
             output_lines.extend(section_lines)
             start_idx += last_match.a + last_match.size
         else:
