@@ -28,12 +28,12 @@ UDIFF_SYSTEM_PROMPT = """
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()
 
-
-def print_diff(expected: str, actual: str, file_path: str | Path) -> None:
+def get_diff_lines(expected: str, actual: str, file_path: str | Path) -> list[tuple[str, str]]:
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)
     diff = difflib.unified_diff(expected_lines, actual_lines, fromfile=f'a/{file_path}', tofile=f'b/{file_path}')
 
+    diff_lines = []
     for line in diff:
         if line.startswith('+'):
             color = GREEN
@@ -44,9 +44,18 @@ def print_diff(expected: str, actual: str, file_path: str | Path) -> None:
         else:
             color = ''
 
-        print(f"{color}{line}{RESET}", end='')
+        diff_lines.append((line, color))
         if not line.endswith('\n'):
-            print(f"\n{color}\\ No newline at end of file{RESET}")
+            diff_lines.append(("\\ No newline at end of file\n", color))
+
+    return diff_lines
+
+def format_diff(expected: str, actual: str, file_path: str | Path) -> str:
+    return ''.join(line for line, _ in get_diff_lines(expected, actual, file_path))
+
+def print_diff(expected: str, actual: str, file_path: str | Path) -> None:
+    for line, color in get_diff_lines(expected, actual, file_path):
+        print(f"{color}{line}{RESET}", end='')
 
 def add_trailing_newlines(original: str, edited: str) -> str:
     original_trailing_newlines = len(original) - len(original.rstrip('\n'))

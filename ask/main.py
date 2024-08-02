@@ -21,7 +21,7 @@ def list_files(path: Path) -> list[Path]:
         raise RuntimeError("Unknown file type")
 
 
-# Ask / Output / Edit
+# Ask / Edit
 
 def ask(prompt: Prompt, model: Model, system_prompt: str):
     chunks = []

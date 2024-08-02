@@ -2,6 +2,7 @@ import readline
 from pathlib import Path
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
+from ask.edit import EDIT_SYSTEM_PROMPT, print_diff, apply_section_edit, extract_code_blocks
 
 # Tab completion
 
@@ -71,9 +72,9 @@ def show_files(attached_files: dict[Path, str]) -> None:
         print("No files attached.")
 
 
-# Query
+# Ask / Edit
 
-def get_model_response(user_input: str, prompt: Prompt, model: Model, system_prompt: str, attached_files: dict[Path, str]) -> Prompt:
+def ask(prompt: Prompt, model: Model, user_input: str, system_prompt: str, attached_files: dict[Path, str]) -> str:
     context = []
     for path, original_content in {Path(p).expanduser(): c for p, c in attached_files.items()}.items():
         content = path.read_text().strip()
@@ -91,12 +92,35 @@ def get_model_response(user_input: str, prompt: Prompt, model: Model, system_pro
         json.dump([*prompt, {'role': 'user', 'content': context_str + user_input}], f, indent=2)
 
     chunks = []
-    for chunk in query([*prompt, {'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt):
+    for chunk in query(prompt + [{'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
-    prompt.append({'role': 'user', 'content': user_input})
-    prompt.append({'role': 'assistant', 'content': ''.join(chunks)})
-    return prompt
+    return ''.join(chunks)
+
+def edit(response: str) -> dict[Path, str]:
+    modifications = {}
+    for file_path_str, code_block in extract_code_blocks(response):
+        file_path = Path(file_path_str).expanduser()
+        file_exists = file_path.exists()
+        if file_exists:
+            file_data = file_path.read_text()
+            modified = apply_section_edit(file_data, code_block)
+            user_prompt = f"Do you want to apply this edit to {file_path}? (y/n): "
+        else:
+            file_data = ""
+            modified = code_block
+            user_prompt = f"File {file_path} does not exist. Do you want to create it? (y/n): "
+
+        print_diff(file_data, modified, file_path)
+        user_input = input(user_prompt).strip().lower()
+        if user_input == 'y':
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, 'w') as f:
+                f.write(modified)
+            print(f"Saved edits to {file_path}" if file_exists else f"Created {file_path}")
+            modifications[file_path] = modified
+
+    return modifications
 
 
 # Main chat loop
@@ -127,8 +151,16 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 prompt = attach_file(arg, prompt, attached_files)
             elif cmd in ('.files', ':files'):
                 show_files(attached_files)
+            elif cmd in ('.edit', ':edit', ':e'):
+                response = ask(prompt, model, arg, EDIT_SYSTEM_PROMPT, attached_files)
+                modifications = edit(response)
+                if modifications:
+                    prompt.append({'role': 'user', 'content': arg})
+                    prompt.append({'role': 'assistant', 'content': response})
             else:
-                prompt = get_model_response(user_input, prompt, model, system_prompt, attached_files)
+                response = ask(prompt, model, user_input, system_prompt, attached_files)
+                prompt.append({'role': 'user', 'content': user_input})
+                prompt.append({'role': 'assistant', 'content': response})
 
         except KeyboardInterrupt:
             print()
