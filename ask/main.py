@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 import sys
 import glob
 import json
@@ -33,29 +34,35 @@ def ask(prompt: Prompt, model: Model, system_prompt: str):
     except KeyboardInterrupt:
         return []
 
-def output(prompt: Prompt, model: Model, system_prompt: str, file_path: Path):
-    response = ask(prompt, model, system_prompt)
-    response = extract_code_block(response)
-    print_diff('', response, file_path)
-
-    user_input = input(f"\nDo you want to save this to {file_path}? (y/n): ").strip().lower()
-    if user_input == 'y':
-        with open(file_path, 'w') as f:
-            f.write(response)
-        print(f"Saved output to {file_path}")
-
-def edit(prompt: Prompt, model: Model, system_prompt: str, file_path: Path, diff: bool):
-    file_data = file_path.read_text()
+def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool):
     default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
     response = ask(prompt, model, system_prompt or default_system_prompt)
-    modified = apply_udiff_edit(file_data, response) if diff else apply_section_edit(file_data, response)
-    print_diff(file_data, modified, file_path)
 
-    user_input = input(f"Do you want to apply this edit to {file_path}? (y/n): ").strip().lower()
+    if (file_path_match := re.search(r'(\S+)\n+```', response, re.MULTILINE)):
+        file_path = Path(file_path_match.group(1)).expanduser()
+    else:
+        raise RuntimeError("Could not find file path in the response.")
+
+    create = file_path.exists()
+    if create:
+        file_data = file_path.read_text()
+        modified = apply_udiff_edit(file_data, response) if diff else apply_section_edit(file_data, response)
+        print_diff(file_data, modified, file_path)
+        user_input = input(f"Do you want to apply this edit to {file_path}? (y/n): ").strip().lower()
+        if user_input == 'y':
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, 'w') as f:
+                f.write(modified)
+    else:
+        modified = extract_code_block(response)
+        print_diff("", modified, file_path)
+        user_input = input(f"File {file_path} does not exist. Do you want to create it? (y/n): ").strip().lower()
+
     if user_input == 'y':
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(file_path, 'w') as f:
             f.write(modified)
-        print(f"Saved edits to {file_path}")
+        print(f"Saved edits to {file_path}" if create else f"Created {file_path}")
 
 
 # Entry point
@@ -64,12 +71,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
-    parser.add_argument('-e', '--edit', type=str, help="File to edit")
-    parser.add_argument('-d', '--diff', type=str, help="File to edit using udiff patches")
+    parser.add_argument('-e', '--edit', action='store_true', help="Edit mode")
+    parser.add_argument('-d', '--diff', action='store_true', help="Diff mode using udiff patches")
     parser.add_argument('-s', '--system', type=str, default='', help="System prompt for the model")
     parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
     parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
-    parser.add_argument('-o', '--output', type=str, help="Output file path for generated code")
     parser.add_argument('question', nargs=argparse.REMAINDER)
     parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
     args = parser.parse_args()
@@ -102,16 +108,13 @@ def main() -> None:
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
         file_data = {path: path.read_text().strip() for path in file_paths}
         context.extend(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
-    if args.edit or args.diff:
-        file_path = Path(args.edit or args.diff)
-        context.append(f'{file_path}```\n{file_path.read_text().strip()}\n```')
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"
 
     # Parse json data
     if args.json:
-        assert not args.file and not args.edit, "files not supported in JSON mode"
+        assert not args.file, "files not supported in JSON mode"
         prompt = json.loads(question)
     else:
         prompt = [{'role': 'user', 'content': question}]
@@ -119,13 +122,10 @@ def main() -> None:
     # Run the query
     model = MODEL_SHORTCUTS[args.model]
     if args.chat:
-        assert not args.edit and not args.diff and not args.output, "editing, diff, and output not supported in chat mode"
+        assert not args.edit and not args.diff, "editing and diff not supported in chat mode"
         chat(prompt, model, args.system)
     elif args.edit or args.diff:
-        assert not args.output, "output not supported in edit mode"
-        edit(prompt, model, args.system, file_path, not bool(args.edit))  # edit takes priority
-    elif args.output:
-        output(prompt, model, args.system, Path(args.output))
+        edit(prompt, model, args.system, args.diff)
     else:
         ask(prompt, model, args.system)
 
