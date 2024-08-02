@@ -2,6 +2,7 @@ import re
 import difflib
 from pathlib import Path
 from collections import defaultdict
+from typing import Iterator
 
 RED = '\033[91m'
 GREEN = '\033[92m'
@@ -29,7 +30,7 @@ UDIFF_SYSTEM_PROMPT = """
 """.replace('\n    ', ' ').strip()
 
 
-def is_junk(line):
+def is_junk(line: str) -> bool:
     return not line.strip()
 
 def get_diff_lines(expected: str, actual: str, file_path: str | Path) -> list[tuple[str, str]]:
@@ -65,17 +66,17 @@ def add_trailing_newlines(original: str, edited: str) -> str:
     original_trailing_newlines = len(original) - len(original.rstrip('\n'))
     return edited.rstrip('\n') + '\n' * original_trailing_newlines
 
-def extract_code_blocks(response: str):
+def extract_code_blocks(response: str) -> Iterator[tuple[str, str]]:
     yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)\n```', response, re.DOTALL | re.MULTILINE)
 
-def extract_first_code_block(response: str):
+def extract_first_code_block(response: str) -> tuple[str | None, str]:
     code_blocks = list(extract_code_blocks(response))
     return code_blocks[0] if code_blocks else (None, response)
 
 
 # Section patch
 
-def find_most_unique_match(original_lines, section_lines):
+def find_most_unique_match(original_lines: list[str], section_lines: list[str]) -> difflib.Match:
     def find_all_matches(alo, ahi):
         if alo >= ahi:
             return []
@@ -93,7 +94,7 @@ def find_most_unique_match(original_lines, section_lines):
     j, k = min(candidates, key=lambda k: (len(candidates[k]), -k[1], k[0]))  # sort by (n_matches, -size, start_pos)
     return difflib.Match._make((candidates[j, k][0], j, k))  # return the first block from the winning group
 
-def get_matching_blocks(original_lines, section_lines):
+def get_matching_blocks(original_lines: list[str], section_lines: list[str]) -> list[difflib.Match]:
     def find_matching_blocks(alo, ahi, blo, bhi, reverse):
         if alo >= ahi or blo >= bhi:
             return []
