@@ -8,7 +8,7 @@ from pathlib import Path
 from ask.chat import chat
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
-from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, print_diff, apply_udiff_edit, apply_section_edit, extract_code_blocks
+from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, apply_edits
 
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
@@ -23,7 +23,7 @@ def list_files(path: Path) -> list[Path]:
 
 # Ask / Edit
 
-def ask(prompt: Prompt, model: Model, system_prompt: str):
+def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
     chunks = []
     try:
         for chunk in query(prompt, model, system_prompt=system_prompt):
@@ -33,29 +33,10 @@ def ask(prompt: Prompt, model: Model, system_prompt: str):
         pass
     return ''.join(chunks)
 
-def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool):
+def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool) -> None:
     default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
     response = ask(prompt, model, system_prompt or default_system_prompt)
-
-    for file_path_str, code_block in extract_code_blocks(response):
-        file_path = Path(file_path_str).expanduser()
-        file_exists = file_path.exists()
-        if file_exists:
-            file_data = file_path.read_text()
-            modified = apply_udiff_edit(file_data, code_block) if diff else apply_section_edit(file_data, code_block)
-            user_prompt = f"Do you want to apply this edit to {file_path}? (y/n): "
-        else:
-            file_data = ""
-            modified = code_block
-            user_prompt = f"File {file_path} does not exist. Do you want to create it? (y/n): "
-
-        print_diff(file_data, modified, file_path)
-        user_input = input(user_prompt).strip().lower()
-        if user_input == 'y':
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, 'w') as f:
-                f.write(modified)
-            print(f"Saved edits to {file_path}" if file_exists else f"Created {file_path}")
+    apply_edits(response, diff)
 
 
 # Entry point

@@ -203,6 +203,34 @@ def apply_udiff_edit(original: str, patch: str) -> str:
         return original
 
 
+# Main edit function
+
+def apply_edits(response: str, diff: bool) -> dict[Path, tuple[str, str]]:
+    modifications = {}
+    for file_path_str, code_block in extract_code_blocks(response):
+        file_path = Path(file_path_str).expanduser()
+        file_exists = file_path.exists()
+        if file_exists:
+            file_data = file_path.read_text()
+            modified = apply_udiff_edit(file_data, code_block) if diff else apply_section_edit(file_data, code_block)
+            user_prompt = f"Do you want to apply this edit to {file_path}? (y/n): "
+        else:
+            file_data = ""
+            modified = code_block
+            user_prompt = f"File {file_path} does not exist. Do you want to create it? (y/n): "
+
+        print_diff(file_data, modified, file_path)
+        user_input = input(user_prompt).strip().lower()
+        if user_input == 'y':
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, 'w') as f:
+                f.write(modified)
+            print(f"Saved edits to {file_path}" if file_exists else f"Created {file_path}")
+            modifications[file_path] = (file_data, modified)
+
+    return modifications
+
+
 # Entry point for testing
 
 if __name__ == "__main__":
