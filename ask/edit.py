@@ -141,9 +141,10 @@ def apply_section_edit(original: str, patch: str) -> str:
         else:
             output_lines.extend(section_lines)  # If no match found, append the entire section
 
-    has_trailing_unchanged = patch.rstrip().endswith('[UNCHANGED]')
-    accidental_deletion = len(patch_sections) == 1 and start_idx < len(original_lines) * 2 / 3  # If no [UNCHANGED] markers, deleting more than 1/3 of the file is likely accidental
-    if has_trailing_unchanged or accidental_deletion:
+    # If the patch ends with [UNCHANGED], keep the rest of the file.
+    # NOTE: If no [UNCHANGED] markers, deleting more than 1/3 of the file is likely accidental so we also keep the rest in that case.
+    accidental_deletion = len(patch_sections) == 1 and start_idx < len(original_lines) * 2 / 3
+    if patch.rstrip().endswith('[UNCHANGED]') or accidental_deletion:
         output_lines.extend(original_lines[start_idx:])
 
     return add_trailing_newlines(original, ''.join(output_lines))
