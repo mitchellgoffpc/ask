@@ -30,9 +30,6 @@ UDIFF_SYSTEM_PROMPT = """
 """.replace('\n    ', ' ').strip()
 
 
-def is_junk(line: str) -> bool:
-    return not line.strip()
-
 def get_diff_lines(expected: str, actual: str, file_path: str | Path) -> list[tuple[str, str]]:
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)
@@ -84,7 +81,7 @@ def find_most_unique_match(original_lines: list[str], section_lines: list[str]) 
         return [*find_all_matches(alo, i), x, *find_all_matches(i + k, ahi)] if k else []
 
     # First we find all possible matches
-    matcher = difflib.SequenceMatcher(is_junk, original_lines, section_lines)
+    matcher = difflib.SequenceMatcher(None, original_lines, section_lines)
     matching_blocks = find_all_matches(0, len(original_lines))
 
     # Then we group the matching blocks by (block.b, block.size) and find the group with the fewest matches
@@ -111,8 +108,8 @@ def get_matching_blocks(original_lines: list[str], section_lines: list[str]) -> 
 
     # Then we expand outwards from that match to find all matching blocks.
     # We always want to find the closest matches to the starting block, so we use a reverse matcher to extend the match backwards.
-    forward_matcher = difflib.SequenceMatcher(is_junk, original_lines, section_lines)
-    reverse_matcher = difflib.SequenceMatcher(is_junk, original_lines[::-1], section_lines[::-1])
+    forward_matcher = difflib.SequenceMatcher(None, original_lines, section_lines)
+    reverse_matcher = difflib.SequenceMatcher(None, original_lines[::-1], section_lines[::-1])
     la, lb = len(original_lines), len(section_lines)
     return [*find_matching_blocks(0, i, 0, j, True), first_match, *find_matching_blocks(i + k, la, j + k, lb, False)]
 
@@ -135,7 +132,7 @@ def apply_section_edit(original: str, patch: str) -> str:
         matching_blocks = get_matching_blocks(original_lines[start_idx:], section_lines)
 
         if len(matching_blocks) > 0:
-            first_match = matching_blocks[0]
+            first_match = next(match for match in matching_blocks if ''.join(section_lines[match.b:match.b + match.size]).strip())  # first non-empty match
             last_match = matching_blocks[-1]
             replace = starts_with_replacement(original_lines[start_idx:], section_lines, first_match)
             output_lines.extend(original_lines[start_idx:start_idx + first_match.a - (first_match.b if replace else 0)])
@@ -169,7 +166,7 @@ def apply_patch(original: str, patch: str) -> str:
                     context_lines.append(change)
 
             # Use difflib to find the best match for the context
-            matcher = difflib.SequenceMatcher(is_junk, lines, context_lines)
+            matcher = difflib.SequenceMatcher(None, lines, context_lines)
             match = matcher.find_longest_match(0, len(lines), 0, len(context_lines))
             current_line = match.a - match.b
 
