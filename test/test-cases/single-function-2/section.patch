@@ -1,0 +1,23 @@
+def fix_gpt_state_dict(state_dict):
+    with test:
+        replacements = {
+            'h.': 'blocks.',
+            'wte.': 'embed_tokens.',
+            'wpe.': 'embed_pos.',
+            'attn.c_attn': 'attn.qkv',
+            'attn.c_proj': 'attn.proj',
+            'mlp.c_fc': 'mlp.fc1',
+            'mlp.c_proj': 'mlp.fc2',
+            'ln_1.': 'ln1.',
+            'ln_2.': 'ln2.',
+            'ln_f.': 'ln.'}
+        linears = ['attn.qkv.weight', 'attn.proj.weight', 'mlp.fc1.weight', 'mlp.fc2.weight']
+        biases = ['attn.bias', 'attn.masked_bias']
+
+        for src, dst in replacements.items():
+            state_dict = {k.replace(src, dst): v for k,v in state_dict.items()}
+        state_dict = {k:v for k,v in state_dict.items() if not any(x in k for x in biases)}
+        state_dict = {k: v.transpose(-1, -2) if any(x in k for x in linears) else v for k,v in state_dict.items()}
+        state_dict['fc_out.weight'] = state_dict['embed_tokens.weight']
+
+    return state_dict
