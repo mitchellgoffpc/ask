@@ -1,5 +1,6 @@
 import readline
 from pathlib import Path
+import subprocess
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
 from ask.edit import EDIT_SYSTEM_PROMPT, apply_edits
@@ -14,10 +15,9 @@ def common_prefix(strings: list[str]) -> str:
     return prefix
 
 def complete(text: str, state: int) -> str | None:
-    file_commands = ('.file', ':file', ':f')
     buffer = readline.get_line_buffer()
     cmd, *args = buffer.lstrip().split()
-    if cmd.lower() in file_commands:
+    if cmd.lower() in ('/file', '/f'):
         path = Path(args[-1])
         if not text:
             matches = path.expanduser().glob('*')
@@ -33,6 +33,19 @@ def complete(text: str, state: int) -> str | None:
 
 
 # Commands
+
+def show_help() -> None:
+    print("Available commands:")
+    print("  /help - Show this help message")
+    print("  /models - Show available models")
+    print("  /model <name> - Switch to a different model")
+    print("  /files - Show attached files")
+    print("  /file <path> - Attach a file to the conversation")
+    print("  /edit <instruction> - Edit attached files")
+    print("  /ask <question> - Ask a question (same as just typing the question)")
+    print("  /exit or /quit - Exit the chat")
+    print("  !<command> - Execute a shell command")
+
 
 def show_models() -> None:
     print("Available models:")
@@ -120,29 +133,46 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 continue
             readline.write_history_file(str(history_file))
 
+            # Shell command
+            if user_input.startswith('!'):
+                try:
+                    result = subprocess.run(user_input[1:], shell=True, check=True, text=True, capture_output=True)
+                    print(result.stdout.rstrip('\n'))
+                    if result.stderr:
+                        print(result.stdout.rstrip('\n'))
+                except subprocess.CalledProcessError as e:
+                    print(f"Command failed with exit code {e.returncode}")
+                    print(e.stderr)
+                continue
+
             cmd = user_input.lower().strip().split()[0] if user_input.strip() else ''
             arg = user_input[len(cmd):].strip()
 
-            if cmd in ('exit', 'quit', '.exit', '.quit', ':exit', ':quit', ':q'):
+            # Commands
+            if cmd in ('/exit', '/quit', '/q'):
                 return
-            elif cmd in ('.models', ':models'):
+            elif cmd in ('/help', '/h'):
+                show_help()
+            elif cmd in ('/models',):
                 show_models()
-            elif cmd in ('.model', ':model', ':m'):
+            elif cmd in ('/model', '/m'):
                 model = switch_model(arg, model)
-            elif cmd in ('.file', ':file', ':f'):
-                prompt = attach_file(arg, prompt, attached_files)
-            elif cmd in ('.files', ':files'):
+            elif cmd in ('/files',):
                 show_files(attached_files)
-            elif cmd in ('.edit', ':edit', ':e'):
+            elif cmd in ('/file', '/f'):
+                prompt = attach_file(arg, prompt, attached_files)
+            elif cmd in ('/edit', '/e'):
                 response = ask(prompt, model, arg, EDIT_SYSTEM_PROMPT, attached_files)
                 modifications = apply_edits(response, diff=False)
                 if modifications:
                     prompt.append({'role': 'user', 'content': arg})
                     prompt.append({'role': 'assistant', 'content': response})
-            else:
+            elif cmd in ('/ask', '/a'):
                 response = ask(prompt, model, user_input, system_prompt, attached_files)
                 prompt.append({'role': 'user', 'content': user_input})
                 prompt.append({'role': 'assistant', 'content': response})
+            else:
+                print("Invalid command. Type /help for a list of commands.")
 
         except KeyboardInterrupt:
             print()
