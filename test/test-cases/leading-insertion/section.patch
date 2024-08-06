@@ -1,74 +1,10 @@
-Here's the modified chat.py file with added history functionality:
+# add new functions
+def fun():
+    print("I like to have fun")
 
-chat.py
-```python
-# History functionality
-def load_history(history_file: Path) -> None:
-    if history_file.exists():
-        readline.read_history_file(history_file)
+def pun():
+    print("I like making puns")
 
-def save_history(history_file: Path) -> None:
-    readline.write_history_file(history_file)
-
-# Main chat loop
-
-def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
-    history_file = Path.home() / '.ask_history'
-    history_file.touch(exist_ok=True)
-
-    readline.set_completer_delims(' \t\n/;')
-    readline.parse_and_bind("tab: complete")
-    readline.set_completer(complete)
-    readline.read_history_file(str(history_file))
-    readline.set_history_length(1000)
-
-    prompt = [msg for msg in prompt if msg['content']]
-    attached_files: dict[Path, str] = {}
-
-    while True:
-        try:
-            user_input = input("> ")
-            if not user_input.strip():
-                continue
-            readline.write_history_file(str(history_file))
-
-            cmd = user_input.lower().strip().split()[0] if user_input.strip() else ''
-            arg = user_input[len(cmd):].strip()
-
-            if cmd in ('exit', 'quit', '.exit', '.quit', ':exit', ':quit', ':q'):
-                return
-            elif cmd in ('.models', ':models'):
-                show_models()
-            elif cmd in ('.model', ':model', ':m'):
-                model = switch_model(arg, model)
-            elif cmd in ('.file', ':file', ':f'):
-                prompt = attach_file(arg, prompt, attached_files)
-            elif cmd in ('.files', ':files'):
-                show_files(attached_files)
-            elif cmd in ('.edit', ':edit', ':e'):
-                response = ask(prompt, model, arg, EDIT_SYSTEM_PROMPT, attached_files)
-                modifications = edit(response)
-                if modifications:
-                    prompt.append({'role': 'user', 'content': arg})
-                    prompt.append({'role': 'assistant', 'content': response})
-            else:
-                response = ask(prompt, model, user_input, system_prompt, attached_files)
-                prompt.append({'role': 'user', 'content': user_input})
-                prompt.append({'role': 'assistant', 'content': response})
-
-        except KeyboardInterrupt:
-            print()
-            return
-```
-
-This modification adds history functionality to the chat function. Here are the changes:
-
-1. We've added two new functions: `load_history` and `save_history`.
-
-2. In the `chat` function, we now load the history at the start of the function using `load_history(history_file)`.
-
-3. After each user input, we add it to the history using `readline.add_history(user_input)` and then save the updated history using `save_history(history_file)`.
-
-4. We've removed the part where we were manually appending to the history file, as the readline module now handles this for us.
-
-With these changes, the user can now use the up and down arrow keys to cycle through their input history. The history is persistent across sessions as it's saved to the `.ask_history` file.
+def bar():
+    print("Bar")
+    print("More bar")
