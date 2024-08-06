@@ -130,9 +130,10 @@ def apply_section_edit(original: str, patch: str) -> str:
             continue
         section_lines = section.splitlines(keepends=True)
         matching_blocks = get_matching_blocks(original_lines[start_idx:], section_lines)
+        matching_blocks = [match for match in matching_blocks if ''.join(section_lines[match.b:match.b + match.size]).strip()]  # ignore empty matches
 
         if len(matching_blocks) > 0:
-            first_match = next(match for match in matching_blocks if ''.join(section_lines[match.b:match.b + match.size]).strip())  # first non-empty match
+            first_match = matching_blocks[0]
             last_match = matching_blocks[-1]
             replace = starts_with_replacement(original_lines[start_idx:], section_lines, first_match)
             output_lines.extend(original_lines[start_idx:start_idx + first_match.a - (first_match.b if replace else 0)])

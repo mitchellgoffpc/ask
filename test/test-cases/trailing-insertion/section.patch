@@ -1,0 +1,12 @@
+Here's the modified version of pipeline/run.py with the requested changes:
+
+pipeline/run.py
+```python
+def foo():
+    print("foo)
+
+    # more foo
+    print("would you care for some foo")
+
+[UNCHANGED]
+```
