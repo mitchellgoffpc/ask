@@ -16,7 +16,7 @@ EDIT_SYSTEM_PROMPT = """
     Don't add comments like '... rest of the code remains unchanged', just get to a natural breaking point
     and then add an [UNCHANGED] and move onto the next section that you want to modify.
     Be sure to include some surrounding context in each section so I know where it's supposed to go.
-    Always add the file path above each edit.
+    Always add the file path on the line above each edit code block.
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()  # dedent and strip
 
@@ -25,7 +25,7 @@ UDIFF_SYSTEM_PROMPT = """
     When asked to modify files, you should return edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
     Start each hunk of changes with a `@@ ... @@` line, and be sure to include some surrounding context in each hunk so I know where it's supposed to go.
     You don't need to include line numbers or timestamps, just the content of the patch.
-    Always add the file path above each edit.
+    Always add the file path on the line above each edit code block.
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()
 
