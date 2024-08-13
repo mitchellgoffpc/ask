@@ -69,10 +69,10 @@ def main() -> None:
         sys.exit(1)
 
     # Read from stdin
+    question = ' '.join(args.question)
     if not sys.stdin.isatty():
-        question = parser.parse_args().stdin.read()
-    else:
-        question = ' '.join(args.question)
+        stdin = parser.parse_args().stdin.read()
+        question = f'{stdin}\n\n{question}' if question else stdin
 
     # Add file context
     question = question.strip()
