@@ -118,7 +118,7 @@ def act(prompt: Prompt, model: Model, system_prompt: str) -> Prompt:
         prompt.append({"role": "assistant", "content": response})
         command_type, command = extract_command(response)
         if command:
-            result = execute_command(command_type, command, tee=True)
+            result = execute_command(command_type, command)
             prompt.append({"role": "user", "content": f"Command output:\n{result}"})
         else:
             return prompt
