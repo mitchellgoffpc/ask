@@ -2,6 +2,7 @@ import readline
 from pathlib import Path
 import subprocess
 from ask.query import query
+from ask.command import COMMAND_SYSTEM_PROMPT, extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
 from ask.edit import EDIT_SYSTEM_PROMPT, apply_edits
 
@@ -110,6 +111,18 @@ def ask(prompt: Prompt, model: Model, user_input: str, system_prompt: str, attac
         print(chunk, end='', flush=True)
     return ''.join(chunks)
 
+def act(prompt: Prompt, model: Model, system_prompt: str) -> Prompt:
+    while True:
+        assert prompt and prompt[-1]['role'] == 'user'
+        response = ask(prompt[:-1], model, prompt[-1]['content'], system_prompt or COMMAND_SYSTEM_PROMPT, {})
+        prompt.append({"role": "assistant", "content": response})
+        command_type, command = extract_command(response)
+        if command:
+            result = execute_command(command_type, command, tee=True)
+            prompt.append({"role": "user", "content": f"Command output:\n{result}"})
+        else:
+            return prompt
+
 
 # Main chat loop
 
@@ -125,6 +138,9 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
 
     prompt = [msg for msg in prompt if msg['content']]
     attached_files: dict[Path, str] = {}
+
+    if prompt and prompt[-1]['role'] == 'user':
+        prompt = act(prompt, model, system_prompt)
 
     while True:
         try:
@@ -167,12 +183,11 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 if modifications:
                     prompt.append({'role': 'user', 'content': arg})
                     prompt.append({'role': 'assistant', 'content': response})
-            elif cmd in ('/ask', '/a'):
-                response = ask(prompt, model, user_input, system_prompt, attached_files)
-                prompt.append({'role': 'user', 'content': user_input})
-                prompt.append({'role': 'assistant', 'content': response})
-            else:
+            elif cmd.startswith('/'):
                 print("Invalid command. Type /help for a list of commands.")
+            else:
+                prompt.append({'role': 'user', 'content': user_input})
+                prompt = act(prompt, model, system_prompt)
 
         except KeyboardInterrupt:
             print()

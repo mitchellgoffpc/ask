@@ -50,6 +50,7 @@ def main() -> None:
     parser.add_argument('-s', '--system', type=str, default='', help="System prompt for the model")
     parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
     parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
+    parser.add_argument('-r', '--repl', action='store_true', help="Enable repl mode")
     parser.add_argument('question', nargs=argparse.REMAINDER)
     parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
     args = parser.parse_args()
