@@ -10,22 +10,20 @@ YELLOW = '\033[93m'
 RESET = '\033[0m'
 
 EDIT_SYSTEM_PROMPT = """
-    You are a world-class AI programming assistent.
-    When asked to modify files, you should return the files with the requested changes.
-    If a file is very long and you want to leave some parts unchanged, add a line with [UNCHANGED] to denote that the code in between shouldn't be changed.
-    Don't add comments like '... rest of the code remains unchanged', just get to a natural breaking point
-    and then add an [UNCHANGED] and move onto the next section that you want to modify.
+    You are being run in an interactive file editing scaffold.
+    The user will pass any files they're working on inside of <file name="file-name"> XML tags.
+    To edit files, you should reply with <edit name="file-name"> XML tags containing the file contents with the requested changes.
+    If a file is very long and you want to leave some parts unchanged, add an [UNCHANGED] line to the edit to denote a section of code that shouldn't be changed.
     Be sure to include some surrounding context in each section so I know where it's supposed to go.
-    Always add the file path on the line above each edit code block.
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()  # dedent and strip
 
 UDIFF_SYSTEM_PROMPT = """
-    You are a world-class AI programming assistent.
-    When asked to modify files, you should return edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
+    You are being run in an interactive file editing scaffold.
+    The user will pass any files they're working on inside of <file name="file-name"> XML tags.
+    To edit files, you should reply with <edit name="file-name"> XML tags containing edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
     Start each hunk of changes with a `@@ ... @@` line, and be sure to include some surrounding context in each hunk so I know where it's supposed to go.
     You don't need to include line numbers or timestamps, just the content of the patch.
-    Always add the file path on the line above each edit code block.
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()
 
@@ -64,7 +62,7 @@ def add_trailing_newlines(original: str, edited: str) -> str:
     return edited.rstrip('\n') + '\n' * original_trailing_newlines
 
 def extract_code_blocks(response: str) -> Iterator[tuple[str, str]]:
-    yield from re.findall(r'^(\S+)\n+```[\w]*\n(.*?)\n```', response, re.DOTALL | re.MULTILINE)
+    yield from re.findall(r'^<edit name="(\S+)">\n(.*?)\n</edit>', response, re.DOTALL | re.MULTILINE)
 
 def extract_first_code_block(response: str) -> tuple[str | None, str]:
     code_blocks = list(extract_code_blocks(response))

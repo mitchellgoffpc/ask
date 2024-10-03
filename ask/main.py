@@ -82,7 +82,7 @@ def main() -> None:
         file_paths = list(itertools.chain.from_iterable(glob.glob(fn) for fn in args.file))
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
         file_data = {path: path.read_text().strip() for path in file_paths}
-        context.extend(f'{path}\n```\n{data}\n```' for path, data in file_data.items())
+        context.extend(f'<file name="{path}">\n{data}\n</file>' for path, data in file_data.items())
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"
