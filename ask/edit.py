@@ -18,15 +18,6 @@ EDIT_SYSTEM_PROMPT = """
     Write clean code, don't use too many comments.
 """.replace('\n    ', ' ').strip()  # dedent and strip
 
-UDIFF_SYSTEM_PROMPT = """
-    You are being run in an interactive file editing scaffold.
-    The user will pass any files they're working on inside of <file name="file-name"> XML tags.
-    To edit files, you should reply with <edit name="file-name"> XML tags containing edits in the style of a unified diff patch, similar to what `diff -U0` would produce.
-    Start each hunk of changes with a `@@ ... @@` line, and be sure to include some surrounding context in each hunk so I know where it's supposed to go.
-    You don't need to include line numbers or timestamps, just the content of the patch.
-    Write clean code, don't use too many comments.
-""".replace('\n    ', ' ').strip()
-
 
 def get_diff_lines(expected: str, actual: str, file_path: str | Path) -> list[tuple[str, str]]:
     expected_lines = expected.splitlines(keepends=True)
@@ -149,69 +140,16 @@ def apply_section_edit(original: str, patch: str) -> str:
     return add_trailing_newlines(original, ''.join(output_lines))
 
 
-# Unified diff patch
-
-def apply_patch(original: str, patch: str) -> str:
-    lines = original.splitlines(keepends=True)
-    patch_lines = patch.splitlines(keepends=True)
-
-    for i, line in enumerate(patch_lines):
-        if line.startswith("@@"):
-            # Extract the context from the hunk
-            context_lines = []
-            for change in patch_lines[i + 1:]:
-                if change.startswith("@@"):
-                    break
-                elif change.startswith(('-', ' ')):
-                    context_lines.append(change[1:])
-                elif not change or change.startswith('\n'):
-                    context_lines.append(change)
-
-            # Use difflib to find the best match for the context
-            matcher = difflib.SequenceMatcher(None, lines, context_lines)
-            match = matcher.find_longest_match(0, len(lines), 0, len(context_lines))
-            current_line = match.a - match.b
-
-            # Apply the changes
-            removed = 0
-            added = 0
-            for change in patch_lines[i + 1:]:
-                if change.startswith('@@'):
-                    break
-                elif change.startswith('-'):
-                    lines.pop(current_line)
-                    removed += 1
-                elif change.startswith('+'):
-                    lines.insert(current_line, change[1:])
-                    current_line += 1
-                    added += 1
-                elif not change or change.startswith((' ', '\n')):
-                    current_line += 1
-                else:
-                    raise ValueError(f"Invalid change line: {change!r}")
-
-    return add_trailing_newlines(original, ''.join(lines))
-
-def apply_udiff_edit(original: str, patch: str) -> str:
-    try:
-        return apply_patch(original, patch)
-    except Exception as e:
-        print(f"Error: Unable to parse the patch as a unified diff. {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return original
-
-
 # Main edit function
 
-def apply_edits(response: str, diff: bool) -> dict[Path, tuple[str, str]]:
+def apply_edits(response: str) -> dict[Path, tuple[str, str]]:
     modifications = {}
     for file_path_str, code_block in extract_code_blocks(response):
         file_path = Path(file_path_str).expanduser()
         file_exists = file_path.exists()
         if file_exists:
             file_data = file_path.read_text()
-            modified = apply_udiff_edit(file_data, code_block) if diff else apply_section_edit(file_data, code_block)
+            modified = apply_section_edit(file_data, code_block)
             user_prompt = f"Do you want to apply this edit to {file_path}? (y/n): "
         else:
             file_data = ""
@@ -237,7 +175,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Apply edits to a file and show the diff.")
     parser.add_argument("original", help="Path to the original file")
     parser.add_argument("patch", help="Path to the patch file")
-    parser.add_argument("-d", "--diff", action="store_true", help="Interpret the patch as a unified diff")
     args = parser.parse_args()
 
     with open(args.original) as f:
@@ -245,7 +182,7 @@ if __name__ == "__main__":
     with open(args.patch) as f:
         patch_content = f.read()
     _, patch_content = extract_first_code_block(patch_content)
-    edited_content = apply_udiff_edit(original_content, patch_content) if args.diff else apply_section_edit(original_content, patch_content)
+    edited_content = apply_section_edit(original_content, patch_content)
 
     print("Diff between original and edited content:")
     print_diff(original_content, edited_content, args.original)

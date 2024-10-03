@@ -179,7 +179,7 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 prompt = attach_file(arg, prompt, attached_files)
             elif cmd in ('/edit', '/e'):
                 response = ask(prompt, model, arg, EDIT_SYSTEM_PROMPT, attached_files)
-                modifications = apply_edits(response, diff=False)
+                modifications = apply_edits(response)
                 if modifications:
                     prompt.append({'role': 'user', 'content': arg})
                     prompt.append({'role': 'assistant', 'content': response})

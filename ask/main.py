@@ -8,7 +8,7 @@ from pathlib import Path
 from ask.chat import chat
 from ask.query import query
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
-from ask.edit import EDIT_SYSTEM_PROMPT, UDIFF_SYSTEM_PROMPT, apply_edits
+from ask.edit import EDIT_SYSTEM_PROMPT, apply_edits
 
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
@@ -33,10 +33,9 @@ def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
         print('\n')
     return ''.join(chunks)
 
-def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool) -> None:
-    default_system_prompt = UDIFF_SYSTEM_PROMPT if diff else EDIT_SYSTEM_PROMPT
-    response = ask(prompt, model, system_prompt or default_system_prompt)
-    apply_edits(response, diff)
+def edit(prompt: Prompt, model: Model, system_prompt: str) -> None:
+    response = ask(prompt, model, system_prompt or EDIT_SYSTEM_PROMPT)
+    apply_edits(response)
 
 
 # Entry point
@@ -46,7 +45,6 @@ def main() -> None:
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-e', '--edit', action='store_true', help="Edit mode")
-    parser.add_argument('-d', '--diff', action='store_true', help="Diff mode using udiff patches")
     parser.add_argument('-s', '--system', type=str, default='', help="System prompt for the model")
     parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
     parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
@@ -97,10 +95,10 @@ def main() -> None:
     # Run the query
     model = MODEL_SHORTCUTS[args.model]
     if args.chat:
-        assert not args.edit and not args.diff, "editing and diff not supported in chat mode"
+        assert not args.edit, "editing not supported in chat mode"
         chat(prompt, model, args.system)
-    elif args.edit or args.diff:
-        edit(prompt, model, args.system, args.diff)
+    elif args.edit:
+        edit(prompt, model, args.system)
     else:
         ask(prompt, model, args.system)
 
