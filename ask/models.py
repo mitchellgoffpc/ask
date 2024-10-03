@@ -9,7 +9,7 @@ class API:
     key: str
     url: str
 
-    def headers(self, api_key: str) -> dict[str, str]:
+    def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
@@ -29,8 +29,8 @@ class API:
             return ''
 
 class AnthropicAPI(API):
-    def headers(self, api_key: str) -> dict[str, str]:
-        return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
+    def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
+        return {"x-api-key": api_key, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'prompt-caching-2024-07-31' if prompt_caching else ''}
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         system = {'system': system_prompt} if system_prompt else {}
