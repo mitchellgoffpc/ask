@@ -30,17 +30,15 @@ def extract_command(response: str) -> tuple[str, str]:
 def execute_command(command_type: str, command: str) -> str:
     try:
         if command_type == 'bash':
-            args = [command]
-            shell = True
+            args = ['bash', '--login', '-c', command]
         elif command_type == 'python':
             args = ['python', '-c', command]
-            shell = False
         else:
             raise Exception(f"Unrecognized command type: {command_type!r}")
 
         stdout_master_fd, stdout_slave_fd = pty.openpty()
         stderr_master_fd, stderr_slave_fd = pty.openpty()
-        process = subprocess.Popen(args, shell=shell, stdout=stdout_slave_fd, stderr=stderr_slave_fd, close_fds=True)
+        process = subprocess.Popen(args, stdout=stdout_slave_fd, stderr=stderr_slave_fd, close_fds=True)
 
         output_parts = []
         while process.poll() is None:
