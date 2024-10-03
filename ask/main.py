@@ -30,7 +30,7 @@ def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
             print(chunk, end='', flush=True)
             chunks.append(chunk)
     except KeyboardInterrupt:
-        pass
+        print('\n')
     return ''.join(chunks)
 
 def edit(prompt: Prompt, model: Model, system_prompt: str, diff: bool) -> None:
