@@ -32,7 +32,10 @@ class API:
         else:
             return b''
 
-@dataclass
+class StrawberryAPI(API):
+    def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        return {"model": model_name, "messages": messages}
+
 class AnthropicAPI(API):
     def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'prompt-caching-2024-07-31' if prompt_caching else ''}
@@ -108,6 +111,7 @@ APIS = {
     'openai': API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
     'mistral': API(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY', stream=True),
     'groq': API(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY', stream=True),
+    'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=False),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY', stream=True),
     'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY', stream=False),
 }
@@ -118,6 +122,8 @@ MODELS = [
     TextModel(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
     TextModel(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4o-mini', 'gpt4om', 'gpt4m', '4m']),
     TextModel(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o', 'o']),
+    TextModel(name='o1-mini', api=APIS['strawberry'], shortcuts=['o1m', 'om']),
+    TextModel(name='o1-preview', api=APIS['strawberry'], shortcuts=['o1p', 'o1']),
     TextModel(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'mx']),
     TextModel(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'md']),
     TextModel(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'ml', 'i']),

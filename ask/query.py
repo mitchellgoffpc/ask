@@ -24,6 +24,5 @@ def query_bytes(prompt: Prompt, model: Model, system_prompt: str = '', prompt_ca
         if api.stream:
             for line in r.iter_lines():
                 yield api.decode(line.decode('utf-8'))
-            yield b"\n"
         else:
             yield api.result(r.json())

@@ -49,6 +49,7 @@ def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
     for chunk in query_text(prompt, model, system_prompt=system_prompt):
         print(chunk, end='', flush=True)
         chunks.append(chunk)
+    print()
     return ''.join(chunks)
 
 def act(prompt: Prompt, model: Model, system_prompt: str) -> None:

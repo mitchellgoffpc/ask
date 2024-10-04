@@ -107,6 +107,7 @@ def ask(prompt: Prompt, model: Model, user_input: str, system_prompt: str, attac
     for chunk in query_text(prompt + [{'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt, prompt_caching=True):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
+    print()
     return ''.join(chunks)
 
 def act(prompt: Prompt, model: Model, system_prompt: str, attached_files: dict[Path, str]) -> Prompt:
