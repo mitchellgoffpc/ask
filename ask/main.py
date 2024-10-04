@@ -6,9 +6,15 @@ import argparse
 import itertools
 from pathlib import Path
 from ask.chat import chat
-from ask.query import query
-from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
+from ask.query import query_text, query_bytes
+from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model, TextModel, ImageModel
 from ask.edit import EDIT_SYSTEM_PROMPT, apply_edits
+
+def safe_glob(fn: str) -> list[str]:
+    result = glob.glob(fn)
+    if not result:
+        raise FileNotFoundError(fn)
+    return result
 
 def list_files(path: Path) -> list[Path]:
     if path.name.startswith('.'):
@@ -26,12 +32,21 @@ def list_files(path: Path) -> list[Path]:
 def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
     chunks = []
     try:
-        for chunk in query(prompt, model, system_prompt=system_prompt):
+        for chunk in query_text(prompt, model, system_prompt=system_prompt):
             print(chunk, end='', flush=True)
             chunks.append(chunk)
     except KeyboardInterrupt:
         print('\n')
     return ''.join(chunks)
+
+def generate(prompt: Prompt, model: Model, system_prompt: str) -> None:
+    try:
+        data = b''.join(query_bytes(prompt, model, system_prompt=system_prompt))
+        with open('/tmp/image.jpg', 'wb') as f:
+            f.write(data)
+        print("Image saved to /tmp/image.jpg")
+    except KeyboardInterrupt:
+        pass
 
 def edit(prompt: Prompt, model: Model, system_prompt: str) -> None:
     response = ask(prompt, model, system_prompt or EDIT_SYSTEM_PROMPT)
@@ -77,8 +92,8 @@ def main() -> None:
     question = question.strip()
     context: list[str] = []
     if args.file:
-        file_paths = list(itertools.chain.from_iterable(glob.glob(fn) for fn in args.file))
-        file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_paths))
+        file_names = list(itertools.chain.from_iterable(safe_glob(fn) for fn in args.file))
+        file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_names))
         file_data = {path: path.read_text().strip() for path in file_paths}
         context.extend(f'<file name="{path}">\n{data}\n</file>' for path, data in file_data.items())
     if context:
@@ -99,7 +114,9 @@ def main() -> None:
         chat(prompt, model, args.system)
     elif args.edit:
         edit(prompt, model, args.system)
-    else:
+    elif isinstance(model, ImageModel):
+        generate(prompt, model, args.system)
+    elif isinstance(model, TextModel):
         ask(prompt, model, args.system)
 
 

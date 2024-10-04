@@ -1,7 +1,7 @@
 import readline
 from pathlib import Path
 import subprocess
-from ask.query import query
+from ask.query import query_text
 from ask.command import COMMAND_SYSTEM_PROMPT, extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
 from ask.edit import EDIT_SYSTEM_PROMPT, apply_edits
@@ -106,7 +106,7 @@ def ask(prompt: Prompt, model: Model, user_input: str, system_prompt: str, attac
         json.dump([*prompt, {'role': 'user', 'content': context_str + user_input}], f, indent=2)
 
     chunks = []
-    for chunk in query(prompt + [{'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt, prompt_caching=True):
+    for chunk in query_text(prompt + [{'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt, prompt_caching=True):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
     return ''.join(chunks)

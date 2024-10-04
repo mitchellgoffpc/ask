@@ -1,4 +1,7 @@
+import os
 import json
+import time
+import requests
 from typing import Any
 from dataclasses import dataclass
 
@@ -8,6 +11,7 @@ Prompt = list[dict[str, str]]
 class API:
     key: str
     url: str
+    stream: bool
 
     def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
@@ -17,17 +21,18 @@ class API:
             messages = [{"role": "system", "content": system_prompt}, *messages]
         return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True}
 
-    def result(self, response: dict[str, Any]) -> str:
+    def result(self, response: dict[str, Any]) -> bytes:
         assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
-        return response['choices'][0]['message']['content']
+        return response['choices'][0]['message']['content'].encode()
 
-    def decode(self, chunk: str) -> str:
+    def decode(self, chunk: str) -> bytes:
         if chunk.startswith("data: ") and chunk != 'data: [DONE]':
             line = json.loads(chunk[6:])
-            return line['choices'][0]['delta'].get('content', '')
+            return line['choices'][0]['delta'].get('content', '').encode()
         else:
-            return ''
+            return b''
 
+@dataclass
 class AnthropicAPI(API):
     def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'prompt-caching-2024-07-31' if prompt_caching else ''}
@@ -36,16 +41,58 @@ class AnthropicAPI(API):
         system = {'system': system_prompt} if system_prompt else {}
         return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True} | system
 
-    def result(self, response: dict[str, Any]) -> str:
+    def result(self, response: dict[str, Any]) -> bytes:
         assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(response['content'])}!"
-        return response['content'][0]['text']
+        return response['content'][0]['text'].encode()
 
-    def decode(self, chunk: str) -> str:
+    def decode(self, chunk: str) -> bytes:
         if chunk.startswith("data: ") and chunk != 'data: [DONE]':
             line = json.loads(chunk[6:])
             if line['type'] == 'content_block_delta':
-                return line['delta']['text']
-        return ''
+                return line['delta']['text'].encode()
+        return b''
+
+@dataclass
+class BlackForestLabsAPI(API):
+    job_url: str
+    stream: bool
+
+    def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
+        return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
+
+    def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        assert len(messages) > 0, 'You must specify a prompt for image generation'
+        return {"prompt": messages[-1]['content'], "width": 1024, "height": 1024}
+
+    def result(self, response: dict[str, Any]) -> bytes:
+        # Black Forest Labs API is a bit different, the initial request returns a job ID and you poll that job to get the final result url
+        result_url = self.query_job_status(response['id'])
+        result = self.query_result(result_url)
+        return result
+
+    def query_job_status(self, job_id: str) -> str:
+        api_key = os.getenv(self.key, '')
+        headers = self.headers(api_key)
+        while True:  # Poll for the result
+            time.sleep(0.5)
+            r = requests.get(self.job_url, headers=headers, params={'id': job_id})
+            r.raise_for_status()
+
+            result = r.json()
+            if result["status"] == "Pending":
+                pass
+            elif result["status"] == "Ready":
+                return result['result']['sample']
+            elif result["status"] == "Failed":
+                raise RuntimeError(f"Image generation failed: {result.get('error', 'Unknown error')}")
+            else:
+                raise RuntimeError(f"Image generation returned unknown status: {result['status']}")
+
+    def query_result(self, url: str) -> bytes:
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
+        return b''.join(r)
+
 
 @dataclass
 class Model:
@@ -53,29 +100,34 @@ class Model:
     api: API
     shortcuts: list[str]
 
+class TextModel(Model): pass
+class ImageModel(Model): pass
+
 
 APIS = {
-    'openai': API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
-    'mistral': API(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY'),
-    'groq': API(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY'),
-    'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY'),
+    'openai': API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
+    'mistral': API(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY', stream=True),
+    'groq': API(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY', stream=True),
+    'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY', stream=True),
+    'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY', stream=False),
 }
 
 MODELS = [
-    Model(name='gpt-3.5-turbo', api=APIS['openai'], shortcuts=['gpt3', '3']),
-    Model(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4']),
-    Model(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
-    Model(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4o-mini', 'gpt4om', 'gpt4m', '4m']),
-    Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o', 'o']),
-    Model(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'mx']),
-    Model(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'md']),
-    Model(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'ml', 'i']),
-    Model(name='llama-3.1-8b-instant', api=APIS['groq'], shortcuts=['llama-small', 'llama-8b', 'ls', 'l8']),
-    Model(name='llama-3.1-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70']),
-    Model(name='llama-3.1-405b-reasoning', api=APIS['groq'], shortcuts=['llama-large', 'llama-405b', 'll', 'l405', 'l']),
-    Model(name='claude-3-haiku-20240307', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
-    Model(name='claude-3-5-sonnet-20240620', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
-    Model(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c']),
+    TextModel(name='gpt-3.5-turbo', api=APIS['openai'], shortcuts=['gpt3', '3']),
+    TextModel(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4']),
+    TextModel(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
+    TextModel(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4o-mini', 'gpt4om', 'gpt4m', '4m']),
+    TextModel(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o', 'o']),
+    TextModel(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'mx']),
+    TextModel(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'md']),
+    TextModel(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'ml', 'i']),
+    TextModel(name='llama-3.1-8b-instant', api=APIS['groq'], shortcuts=['llama-small', 'llama-8b', 'ls', 'l8']),
+    TextModel(name='llama-3.1-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70']),
+    TextModel(name='llama-3.1-405b-reasoning', api=APIS['groq'], shortcuts=['llama-large', 'llama-405b', 'll', 'l405', 'l']),
+    TextModel(name='claude-3-haiku-20240307', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
+    TextModel(name='claude-3-5-sonnet-20240620', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
+    TextModel(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c']),
+    ImageModel(name='flux-pro-1.1', api=APIS['bfl'], shortcuts=['flux', 'f']),
 ]
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
