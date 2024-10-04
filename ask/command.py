@@ -5,10 +5,6 @@ import pty
 import select
 import subprocess
 
-COMMAND_SYSTEM_PROMPT = """
-You are being run in an interactive scaffold with access to the system's bash shell and python interpreter. Whenever you want to access these tools, you should reply with a message containing a single shell command, written in a <bash> XML tag, or a python code snippet, written in a <python> XML tag. Remember to use the XML rather than backticks. You will be shown the result of the command or code execution and be able to run more commands or code. Other things you say will be sent to the user. In cases where you know how to do something, don't explain how to do it, just start doing it by emitting bash commands or python code one at a time. Remember that you can't interact with stdin directly, so if you want to e.g. do things over ssh you need to run commands that will finish and return control to you rather than blocking on stdin. Don't wait for the user to say okay before suggesting a command or code to run. If possible, don't include explanation, just provide the command or code. Note that all commands will be run in a fresh bash instance, so you need to e.g. cd between commands if you want to run them in the same directory.
-"""
-
 def read_all(*fds):
     parts = []
     rlist, _, _ = select.select(fds, [], [], 0.01)
@@ -20,10 +16,9 @@ def read_all(*fds):
     return ''.join(parts)
 
 def extract_command(response: str) -> tuple[str, str]:
-    if (bash_match := re.search(r'<bash>(.*?)</bash>', response, re.DOTALL)):
-        return 'bash', bash_match.group(1).strip()
-    elif (python_match := re.search(r'<python>(.*?)</python>', response, re.DOTALL)):
-        return 'python', python_match.group(1).strip()
+    if (match := re.search(r'<execute language="(.*?)" shell="(.*?)">(.*?)</execute>', response, re.DOTALL)):
+        language, shell, command = match.groups()
+        return "bash" if shell == "true" else language, command.strip()
     else:
         return '', ''
 
@@ -48,6 +43,7 @@ def execute_command(command_type: str, command: str) -> str:
         return_code = process.wait()
         if return_code != 0:
             raise subprocess.CalledProcessError(return_code, command)
+        print()
         return ''.join(output_parts).strip()
 
     except subprocess.CalledProcessError as e:

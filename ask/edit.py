@@ -9,16 +9,6 @@ GREEN = '\033[92m'
 YELLOW = '\033[93m'
 RESET = '\033[0m'
 
-EDIT_SYSTEM_PROMPT = """
-    You are being run in an interactive file editing scaffold.
-    The user will pass any files they're working on inside of <file name="file-name"> XML tags.
-    To edit files, you should reply with <edit name="file-name"> XML tags containing the file contents with the requested changes.
-    If a file is very long and you want to leave some parts unchanged, add an [UNCHANGED] line to the edit to denote a section of code that shouldn't be changed.
-    Be sure to include some surrounding context in each section so I know where it's supposed to go.
-    Write clean code, don't use too many comments.
-""".replace('\n    ', ' ').strip()  # dedent and strip
-
-
 def get_diff_lines(expected: str, actual: str, file_path: str | Path) -> list[tuple[str, str]]:
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)

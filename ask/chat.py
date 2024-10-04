@@ -2,9 +2,9 @@ import readline
 from pathlib import Path
 import subprocess
 from ask.query import query_text
-from ask.command import COMMAND_SYSTEM_PROMPT, extract_command, execute_command
+from ask.edit import apply_edits
+from ask.command import extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model
-from ask.edit import EDIT_SYSTEM_PROMPT, apply_edits
 
 # Tab completion
 
@@ -42,8 +42,6 @@ def show_help() -> None:
     print("  /model <name> - Switch to a different model")
     print("  /files - Show attached files")
     print("  /file <path> - Attach a file to the conversation")
-    print("  /edit <instruction> - Edit attached files")
-    print("  /ask <question> - Ask a question (same as just typing the question)")
     print("  /exit or /quit - Exit the chat")
     print("  !<command> - Execute a shell command")
 
@@ -111,11 +109,13 @@ def ask(prompt: Prompt, model: Model, user_input: str, system_prompt: str, attac
         print(chunk, end='', flush=True)
     return ''.join(chunks)
 
-def act(prompt: Prompt, model: Model, system_prompt: str) -> Prompt:
+def act(prompt: Prompt, model: Model, system_prompt: str, attached_files: dict[Path, str]) -> Prompt:
     while True:
         assert prompt and prompt[-1]['role'] == 'user'
-        response = ask(prompt[:-1], model, prompt[-1]['content'], system_prompt or COMMAND_SYSTEM_PROMPT, {})
-        prompt.append({"role": "assistant", "content": response})
+        response = ask(prompt[:-1], model, prompt[-1]['content'], system_prompt, attached_files)
+        prompt.append({'role': 'assistant', 'content': response})
+
+        apply_edits(response)
         command_type, command = extract_command(response)
         if command:
             result = execute_command(command_type, command)
@@ -140,7 +140,7 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
     attached_files: dict[Path, str] = {}
 
     if prompt and prompt[-1]['role'] == 'user':
-        prompt = act(prompt, model, system_prompt)
+        prompt = act(prompt, model, system_prompt, attached_files)
 
     while True:
         try:
@@ -177,17 +177,11 @@ def chat(prompt: Prompt, model: Model, system_prompt: str) -> None:
                 show_files(attached_files)
             elif cmd in ('/file', '/f'):
                 prompt = attach_file(arg, prompt, attached_files)
-            elif cmd in ('/edit', '/e'):
-                response = ask(prompt, model, arg, EDIT_SYSTEM_PROMPT, attached_files)
-                modifications = apply_edits(response)
-                if modifications:
-                    prompt.append({'role': 'user', 'content': arg})
-                    prompt.append({'role': 'assistant', 'content': response})
             elif cmd.startswith('/'):
                 print("Invalid command. Type /help for a list of commands.")
             else:
                 prompt.append({'role': 'user', 'content': user_input})
-                prompt = act(prompt, model, system_prompt)
+                prompt = act(prompt, model, system_prompt, attached_files)
 
         except KeyboardInterrupt:
             print()
