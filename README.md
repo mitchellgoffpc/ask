@@ -14,14 +14,11 @@ python3 -m pip install git+https://github.com/mitchellgoffpc/ask.git
 # Select a model
 $ ask -m opus "What is the capital of france?"
 
-# Attach a file
-$ ask -f ~/shakespeare.txt "No yapping: What are the first three stories in this collection?"
+# Write code
+$ ask "Create a new file astronauts.py that queries the astronauts API and prints the astronauts"
 
-# Make a new file
-$ ask -o ~/astronauts.py "No yapping: Write a python script that queries the astronauts API and prints the astronauts"
-
-# Edit a file
-$ ask -e ~/astronauts.py "Make this into a tkinter window"
+# Attach and/or edit a file
+$ ask -f astronauts.py "Make this into a tkinter window"
 
 # Fix bugs
 ask "I'm getting ImportError: dlopen(/Users/mitchell/.pyenv/versions/3.12.2/lib/python3.12/lib-dynload/_tkinter.cpython-312-darwin.so, 0x0002): Library not loaded: /opt/homebrew/opt/tcl-tk/lib/libtk8.6.dylib when I try to import tkinter in python, what can I do?"
