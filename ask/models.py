@@ -38,7 +38,7 @@ class StrawberryAPI(API):
 
 class AnthropicAPI(API):
     def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
-        return {"x-api-key": api_key, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'prompt-caching-2024-07-31' if prompt_caching else ''}
+        return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'} | ({'anthropic-beta': 'prompt-caching-2024-07-31'} if prompt_caching else {})
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         system = {'system': system_prompt} if system_prompt else {}
