@@ -9,7 +9,7 @@ from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query_text, query_bytes
 from ask.command import extract_command, execute_command
-from ask.models import MODELS, MODEL_SHORTCUTS, Message, Model, TextModel, ImageModel
+from ask.models import MODELS, MODEL_SHORTCUTS, Text, Image, Message, Model, TextModel, ImageModel
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
 DEFAULT_SYSTEM_PROMPT = """
@@ -58,8 +58,8 @@ def act(prompt: list[Message], model: Model, system_prompt: str) -> None:
             command_type, command = extract_command(response)
             if command:
                 result = execute_command(command_type, command)
-                prompt.append(Message(role="assistant", content=[{'type': 'text', 'text': response}]))
-                prompt.append(Message(role="user", content=[{'type': 'text', 'text': f"Command output:\n{result}"}]))
+                prompt.append(Message(role="assistant", content=[Text(response)]))
+                prompt.append(Message(role="user", content=[Text(f"Command output:\n{result}")]))
             else:
                 break
     except KeyboardInterrupt:
@@ -132,8 +132,8 @@ def main() -> None:
         assert not args.file, "files not supported in JSON mode"
         prompt = [Message(role=msg['role'], content=msg['content']) for msg in json.loads(question)]
     else:
-        media_data = [model.api.render_image(mimetype, data) for mimetype, data in media]
-        text_data = [model.api.render_text(question)]
+        media_data = [Image(mimetype, data) for mimetype, data in media]
+        text_data = [Text(question)]
         prompt = [Message(role='user', content=media_data + text_data)]  # type: ignore
 
     # Run the query
