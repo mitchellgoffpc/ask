@@ -43,11 +43,8 @@ def add_trailing_newlines(original: str, edited: str) -> str:
     return edited.rstrip('\n') + '\n' * original_trailing_newlines
 
 def extract_code_blocks(response: str) -> Iterator[tuple[str, str]]:
-    yield from re.findall(r'^<edit name="(\S+)">\n(.*?)\n</edit>', response, re.DOTALL | re.MULTILINE)
-
-def extract_first_code_block(response: str) -> tuple[str | None, str]:
-    code_blocks = list(extract_code_blocks(response))
-    return code_blocks[0] if code_blocks else (None, response)
+    pattern = r'^###\s+`([^`]+)`\n+```+\w*\n(.*?)\n```+'
+    yield from re.findall(pattern, response, re.DOTALL | re.MULTILINE)
 
 
 # Section patch
@@ -171,7 +168,8 @@ if __name__ == "__main__":
         original_content = f.read()
     with open(args.patch) as f:
         patch_content = f.read()
-    _, patch_content = extract_first_code_block(patch_content)
+    code_blocks = list(extract_code_blocks(patch_content))
+    _, patch_content = code_blocks[0] if code_blocks else (None, patch_content)
     edited_content = apply_section_edit(original_content, patch_content)
 
     print("Diff between original and edited content:")

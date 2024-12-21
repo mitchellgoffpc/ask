@@ -104,7 +104,7 @@ def ask(prompt: Prompt, model: Model, user_input: str, system_prompt: str, attac
         json.dump([*prompt, {'role': 'user', 'content': context_str + user_input}], f, indent=2)
 
     chunks = []
-    for chunk in query_text(prompt + [{'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt, prompt_caching=True):
+    for chunk in query_text(prompt + [{'role': 'user', 'content': context_str + user_input}], model, system_prompt=system_prompt):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
     print()

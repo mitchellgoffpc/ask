@@ -13,13 +13,13 @@ class API:
     url: str
     stream: bool
 
-    def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
+    def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         if system_prompt:
             messages = [{"role": "system", "content": system_prompt}, *messages]
-        return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True}
+        return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream}
 
     def result(self, response: dict[str, Any]) -> bytes:
         assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
@@ -34,15 +34,17 @@ class API:
 
 class StrawberryAPI(API):
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        return {"model": model_name, "messages": messages}
+        if system_prompt:  # o1 models don't support a system message
+            messages = [{"role": "user", "content": system_prompt}, {"role": "assistant", "content": "Understood."}, *messages]
+        return {"model": model_name, "messages": messages, 'stream': self.stream}
 
 class AnthropicAPI(API):
-    def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
-        return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'} | ({'anthropic-beta': 'prompt-caching-2024-07-31'} if prompt_caching else {})
+    def headers(self, api_key: str) -> dict[str, str]:
+        return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         system = {'system': system_prompt} if system_prompt else {}
-        return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': True} | system
+        return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream} | system
 
     def result(self, response: dict[str, Any]) -> bytes:
         assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(response['content'])}!"
@@ -60,7 +62,7 @@ class BlackForestLabsAPI(API):
     job_url: str
     stream: bool
 
-    def headers(self, api_key: str, prompt_caching: bool = False) -> dict[str, str]:
+    def headers(self, api_key: str) -> dict[str, str]:
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
@@ -111,7 +113,7 @@ APIS = {
     'openai': API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
     'mistral': API(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY', stream=True),
     'groq': API(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY', stream=True),
-    'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=False),
+    'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY', stream=True),
     'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY', stream=False),
 }

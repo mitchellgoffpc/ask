@@ -13,17 +13,14 @@ from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model, TextModel, ImageM
 
 DEFAULT_SYSTEM_PROMPT = """
     Your task is to assist the user with whatever they ask of you.
-    You have a few tools available to you that may be useful for some requests.
-    You can respond with a <code language="language"> XML tag containing code snippets. Your code should always be clean and not use too many comments.
-    You can make edits to files by responding with an <edit name="file-name"> XML tags containing the file contents with the requested changes.
+    When asked to write or modifiy files, you should denote the file names in this format:\n\n### `path/to/file`\n\n```\nfile contents here\n```\n\n
     If a file is long and you want to leave some parts unchanged, add an [UNCHANGED] line to the edit to denote a section of code that shouldn't be changed.
-    Include some surrounding context in each section so I know where it's supposed to go.
-    You can also run commands by responding with a single <execute language="language" shell="true|false"> XML tag
-    containing the command you want to run. The command will be executed and you will be shown the result.
-    This tag is high-risk because it can affect the user's machine, so you should normally use the <code> tag instead,aeae
-    and only use this tag when you really need to execute a command.
-    These tools are strictly optional, you don't have to use any of them if you don't want to.
-""".replace('\n    ', ' ').strip()  # dedent and strip
+    Be sure to include some surrounding context in each section so I know where it's supposed to go.
+    Write clean code, and avoid leaving comments explaining what you did.\n\n
+    If you want to execute code on the user's system, respond with a command in the following format:\n\n### EXECUTE\n\n```bash\ncommand here\n```\n\n
+    For platform-specific commands, use ### EXECUTE (linux/mac/windows). For example, a command that only works on Linux and macOS should be written as ### EXECUTE (linux/mac).\n\n
+    For anonymous code snippets, use the following format:\n\n### CODE\n\n```language\nyour code here\n```
+""".replace('\n    ', ' ').replace('\n ', '\n').strip()  # dedent and strip
 
 def safe_glob(fn: str) -> list[str]:
     result = glob.glob(fn)
@@ -118,7 +115,7 @@ def main() -> None:
         file_names = list(itertools.chain.from_iterable(safe_glob(fn) for fn in args.file))
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_names))
         file_data = {path: path.read_text().strip() for path in file_paths}
-        context.extend(f'<file name="{path}">\n{data}\n</file>' for path, data in file_data.items())
+        context.extend(f'### `{path}`\n\n```\n{data}\n```' for path, data in file_data.items())
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"
