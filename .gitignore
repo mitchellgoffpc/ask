@@ -9,6 +9,7 @@ build/
 
 # System
 .DS_Store
+.ropeproject
 
 # Cache
 .mypy_cache/

@@ -9,7 +9,7 @@ from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query_text, query_bytes
 from ask.command import extract_command, execute_command
-from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model, TextModel, ImageModel
+from ask.models import MODELS, MODEL_SHORTCUTS, Message, Model, TextModel, ImageModel
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
 DEFAULT_SYSTEM_PROMPT = """
@@ -42,7 +42,7 @@ def list_files(path: Path) -> list[Path]:
 
 # Act / Generate
 
-def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
+def ask(prompt: list[Message], model: Model, system_prompt: str) -> str:
     chunks = []
     for chunk in query_text(prompt, model, system_prompt=system_prompt):
         print(chunk, end='', flush=True)
@@ -50,7 +50,7 @@ def ask(prompt: Prompt, model: Model, system_prompt: str) -> str:
     print()
     return ''.join(chunks)
 
-def act(prompt: Prompt, model: Model, system_prompt: str) -> None:
+def act(prompt: list[Message], model: Model, system_prompt: str) -> None:
     try:
         while True:
             response = ask(prompt, model, system_prompt)
@@ -58,14 +58,14 @@ def act(prompt: Prompt, model: Model, system_prompt: str) -> None:
             command_type, command = extract_command(response)
             if command:
                 result = execute_command(command_type, command)
-                prompt.append({"role": "assistant", "content": response})
-                prompt.append({"role": "user", "content": f"Command output:\n{result}"})
+                prompt.append(Message(role="assistant", content=[{'type': 'text', 'text': response}]))
+                prompt.append(Message(role="user", content=[{'type': 'text', 'text': f"Command output:\n{result}"}]))
             else:
                 break
     except KeyboardInterrupt:
         print('\n')
 
-def generate(prompt: Prompt, model: Model, system_prompt: str) -> None:
+def generate(prompt: list[Message], model: Model, system_prompt: str) -> None:
     try:
         data = b''.join(query_bytes(prompt, model, system_prompt=system_prompt))
         with open('/tmp/image.jpg', 'wb') as f:
@@ -130,11 +130,11 @@ def main() -> None:
     model = MODEL_SHORTCUTS[args.model]
     if args.json:
         assert not args.file, "files not supported in JSON mode"
-        prompt = json.loads(question)
+        prompt = [Message(role=msg['role'], content=msg['content']) for msg in json.loads(question)]
     else:
         media_data = [model.api.render_image(mimetype, data) for mimetype, data in media]
         text_data = [model.api.render_text(question)]
-        prompt = [{'role': 'user', 'content': media_data + text_data}]
+        prompt = [Message(role='user', content=media_data + text_data)]  # type: ignore
 
     # Run the query
     if args.chat:
