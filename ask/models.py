@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import base64
 import requests
 from typing import Any
 from dataclasses import dataclass
@@ -12,6 +13,12 @@ class API:
     key: str
     url: str
     stream: bool
+
+    def render_text(self, text: str) -> dict[str, str]:
+        return {'type': 'text', 'text': text}
+
+    def render_image(self, mimetype: str, data: bytes) -> dict[str, dict[str, str]]:
+        return {'type': 'image_url', 'image_url': {'url': f'data:{mimetype};base64,{base64.b64encode(data).decode()}'}}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
@@ -33,12 +40,18 @@ class API:
             return b''
 
 class StrawberryAPI(API):
+    def render_image(self, mimetype: str, data: bytes) -> dict[str, dict[str, str]]:
+        raise NotImplementedError("O1 API does not currently support image prompts")
+
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         if system_prompt:  # o1 models don't support a system message
             messages = [{"role": "user", "content": system_prompt}, {"role": "assistant", "content": "Understood."}, *messages]
         return {"model": model_name, "messages": messages, 'stream': self.stream}
 
 class AnthropicAPI(API):
+    def render_image(self, mimetype: str, data: bytes) -> dict[str, dict[str, str]]:
+        return {'type': 'image', 'source': {'type': 'base64', 'media_type': mimetype, 'data': base64.b64encode(data).decode()}}
+
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
@@ -62,12 +75,15 @@ class BlackForestLabsAPI(API):
     job_url: str
     stream: bool
 
+    def render_image(self, mimetype: str, data: bytes) -> dict[str, dict[str, str]]:
+        raise NotImplementedError("Black Forest Labs API does not currently support image prompts")
+
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
     def params(self, model_name: str, messages: Prompt, system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         assert len(messages) > 0, 'You must specify a prompt for image generation'
-        return {"prompt": messages[-1]['content'], "width": 1024, "height": 1024}
+        return {"prompt": messages[-1]['content'][-1]['text'], "width": 1024, "height": 1024}
 
     def result(self, response: dict[str, Any]) -> bytes:
         # Black Forest Labs API is a bit different, the initial request returns a job ID and you poll that job to get the final result url

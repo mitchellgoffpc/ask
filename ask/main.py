@@ -11,6 +11,7 @@ from ask.query import query_text, query_bytes
 from ask.command import extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Prompt, Model, TextModel, ImageModel
 
+IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
 DEFAULT_SYSTEM_PROMPT = """
     Your task is to assist the user with whatever they ask of you.
     When asked to write or modifiy files, you should denote the file names in this format:\n\n### `path/to/file`\n\n```\nfile contents here\n```\n\n
@@ -111,24 +112,31 @@ def main() -> None:
     # Add file context
     question = question.strip()
     context: list[str] = []
+    media: list[tuple[str, bytes]] = []
     if args.file:
         file_names = list(itertools.chain.from_iterable(safe_glob(fn) for fn in args.file))
         file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_names))
-        file_data = {path: path.read_text().strip() for path in file_paths}
-        context.extend(f'### `{path}`\n\n```\n{data}\n```' for path, data in file_data.items())
+        for path in file_paths:
+            if path.suffix in IMAGE_TYPES:
+                media.append((IMAGE_TYPES[path.suffix], path.read_bytes()))
+            else:
+                context.append(f'### `{path}`\n\n```\n{path.read_text().strip()}\n```')
+
     if context:
         context_str = '\n\n'.join(context)
         question = f"{context_str}\n\n{question}"
 
-    # Parse json data
+    # Render the request
+    model = MODEL_SHORTCUTS[args.model]
     if args.json:
         assert not args.file, "files not supported in JSON mode"
         prompt = json.loads(question)
     else:
-        prompt = [{'role': 'user', 'content': question}]
+        media_data = [model.api.render_image(mimetype, data) for mimetype, data in media]
+        text_data = [model.api.render_text(question)]
+        prompt = [{'role': 'user', 'content': media_data + text_data}]
 
     # Run the query
-    model = MODEL_SHORTCUTS[args.model]
     if args.chat:
         chat(prompt, model, args.system)
     elif isinstance(model, ImageModel):
