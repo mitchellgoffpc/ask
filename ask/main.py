@@ -5,6 +5,7 @@ import json
 import argparse
 import itertools
 from pathlib import Path
+import requests
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query_text, query_bytes
@@ -111,30 +112,49 @@ def main() -> None:
 
     # Add file context
     question = question.strip()
-    context: list[str] = []
-    media: list[tuple[str, bytes]] = []
+    media_files: list[tuple[str, bytes]] = []
+    text_files: list[tuple[str, str]] = []
     if args.file:
-        file_names = list(itertools.chain.from_iterable(safe_glob(fn) for fn in args.file))
-        file_paths = list(itertools.chain.from_iterable(list_files(Path(fn)) for fn in file_names))
-        for path in file_paths:
-            if path.suffix in IMAGE_TYPES:
-                media.append((IMAGE_TYPES[path.suffix], path.read_bytes()))
+        for fn in args.file:
+            if fn.startswith(('http://', 'https://')):
+                try:
+                    response = requests.get(fn)
+                    response.raise_for_status()
+                    mimetype = response.headers.get('Content-Type', ';').split(';')[0]
+                    if mimetype.startswith('image/'):
+                        media_files.append((mimetype, response.content))
+                    elif mimetype.startswith('text/') or mimetype == 'application/json':
+                        text_files.append((fn, response.text.strip()))
+                    else:
+                        print(f"Unsupported content type {response.headers.get('Content-Type', '')} for URL {fn}", file=sys.stderr)
+                        sys.exit(1)
+                except Exception as e:
+                    print(f"Error downloading {fn}: {e}", file=sys.stderr)
+                    sys.exit(1)
             else:
-                context.append(f'### `{path}`\n\n```\n{path.read_text().strip()}\n```')
-
-    if context:
-        context_str = '\n\n'.join(context)
-        question = f"{context_str}\n\n{question}"
+                try:
+                    file_names = safe_glob(fn)
+                    file_paths = list(itertools.chain.from_iterable(list_files(Path(name)) for name in file_names))
+                    for path in file_paths:
+                        if path.suffix in IMAGE_TYPES:
+                            media_files.append((IMAGE_TYPES[path.suffix], path.read_bytes()))
+                        else:
+                            text_files.append((str(path), path.read_text().strip()))
+                except Exception as e:
+                    print(f"Error processing file {fn}: {e}", file=sys.stderr)
+                    sys.exit(1)
 
     # Render the request
+    if text_files:
+        context = '\n\n'.join(f'### `{fn}`\n\n```\n{text_content}\n```' for fn, text_content in text_files)
+        question = f"{context}\n\n{question}"
+
     model = MODEL_SHORTCUTS[args.model]
     if args.json:
         assert not args.file, "files not supported in JSON mode"
         prompt = [Message(role=msg['role'], content=msg['content']) for msg in json.loads(question)]
     else:
-        media_data = [Image(mimetype, data) for mimetype, data in media]
-        text_data = [Text(question)]
-        prompt = [Message(role='user', content=media_data + text_data)]  # type: ignore
+        prompt = [Message(role='user', content=[Image(mimetype, data) for mimetype, data in media_files] + [Text(question)])]
 
     # Run the query
     if args.chat:
