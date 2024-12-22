@@ -11,6 +11,7 @@ from ask.edit import apply_edits
 from ask.query import query_text, query_bytes
 from ask.command import extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Text, Image, Message, Model, TextModel, ImageModel
+from ask.extract import extract_body, html_to_markdown
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
 DEFAULT_SYSTEM_PROMPT = """
@@ -40,6 +41,21 @@ def list_files(path: Path) -> list[Path]:
     else:
         raise RuntimeError("Unknown file type")
 
+def process_url(url: str) -> tuple[str, str | bytes]:
+    response = requests.get(url)
+    response.raise_for_status()
+    mimetype = response.headers.get('Content-Type', ';').split(';')[0]
+
+    if mimetype.startswith('text/html'):
+        body = extract_body(response.text)
+        content = html_to_markdown(body)
+        return 'text/markdown', content
+    elif mimetype.startswith('image/'):
+        return mimetype, response.content
+    elif mimetype.startswith('text/') or mimetype == 'application/json':
+        return mimetype, response.text.strip()
+    else:
+        raise ValueError(f"Unsupported content type {mimetype} for URL {url}")
 
 # Act / Generate
 
@@ -118,18 +134,13 @@ def main() -> None:
         for fn in args.file:
             if fn.startswith(('http://', 'https://')):
                 try:
-                    response = requests.get(fn)
-                    response.raise_for_status()
-                    mimetype = response.headers.get('Content-Type', ';').split(';')[0]
+                    mimetype, content = process_url(fn)
                     if mimetype.startswith('image/'):
-                        media_files.append((mimetype, response.content))
-                    elif mimetype.startswith('text/') or mimetype == 'application/json':
-                        text_files.append((fn, response.text.strip()))
+                        media_files.append((mimetype, content))  # type: ignore
                     else:
-                        print(f"Unsupported content type {response.headers.get('Content-Type', '')} for URL {fn}", file=sys.stderr)
-                        sys.exit(1)
+                        text_files.append((fn, content))  # type: ignore
                 except Exception as e:
-                    print(f"Error downloading {fn}: {e}", file=sys.stderr)
+                    print(f"Error processing URL {fn}: {e}", file=sys.stderr)
                     sys.exit(1)
             else:
                 try:

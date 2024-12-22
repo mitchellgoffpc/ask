@@ -19,6 +19,8 @@ classifiers = [
 dependencies = [
     "requests",
     "tqdm",
+    "beautifulsoup4",
+    "types-beautifulsoup4",
 ]
 
 [project.scripts]
