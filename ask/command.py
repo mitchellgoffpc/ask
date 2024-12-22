@@ -5,6 +5,16 @@ import pty
 import select
 import subprocess
 
+def detect_user_platform() -> str:
+    if sys.platform.startswith('linux'):
+        return 'linux'
+    elif sys.platform == 'darwin':
+        return 'mac'
+    elif sys.platform.startswith('win'):
+        return 'windows'
+    else:
+        return sys.platform
+
 def read_all(*fds):
     parts = []
     rlist, _, _ = select.select(fds, [], [], 0.01)
@@ -16,11 +26,17 @@ def read_all(*fds):
     return ''.join(parts)
 
 def extract_command(response: str) -> tuple[str, str]:
-    if (match := re.search(r'<execute language="(.*?)" shell="(.*?)">(.*?)</execute>', response, re.DOTALL)):
-        language, shell, command = match.groups()
-        return "bash" if shell == "true" else language, command.strip()
-    else:
-        return '', ''
+    pattern = r'### EXECUTE(?: \((.*?)\))?\s+```(.*?)\n(.*?)\n```'
+    matches = re.finditer(pattern, response, re.DOTALL)
+    user_platform = detect_user_platform()
+
+    for match in matches:
+        platforms_str, language, command = match.groups()
+        platforms = [p.strip().lower() for p in platforms_str.split('/')] if platforms_str else None
+        if platforms is None or user_platform in platforms:
+            return language.strip(), command.strip()
+
+    return '', ''
 
 def execute_command(command_type: str, command: str) -> str:
     try:
