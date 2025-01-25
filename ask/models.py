@@ -3,7 +3,7 @@ import json
 import time
 import base64
 import requests
-from typing import Any
+from typing import Any, Iterator
 from dataclasses import dataclass
 
 @dataclass
@@ -55,7 +55,11 @@ class API:
         assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
         return response['choices'][0]['message']['content'].encode()
 
-    def decode(self, chunk: str) -> bytes:
+    def decode(self, chunks: Iterator[str]) -> Iterator[bytes]:
+        for chunk in chunks:
+            yield self.decode_chunk(chunk)
+
+    def decode_chunk(self, chunk: str) -> bytes:
         if chunk.startswith("data: ") and chunk != 'data: [DONE]':
             line = json.loads(chunk[6:])
             return line['choices'][0]['delta'].get('content', '').encode()
@@ -88,12 +92,36 @@ class AnthropicAPI(API):
         assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(response['content'])}!"
         return response['content'][0]['text'].encode()
 
-    def decode(self, chunk: str) -> bytes:
+    def decode_chunk(self, chunk: str) -> bytes:
         if chunk.startswith("data: ") and chunk != 'data: [DONE]':
             line = json.loads(chunk[6:])
             if line['type'] == 'content_block_delta':
                 return line['delta']['text'].encode()
         return b''
+
+class DeepseekAPI(API):
+    def result(self, response: dict[str, Any]) -> bytes:
+        assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
+        message = response['choices'][0]['message']
+        content = message['content']
+        if message.get('reasoning_content'):
+            content = f"<think>\n{message['reasoning_content']}\n</think>\n\n{content}"
+        return content.encode()
+
+    def decode(self, chunks: Iterator[str]) -> Iterator[bytes]:
+        reasoning = False
+        for chunk in chunks:
+            if chunk.startswith("data: ") and chunk != 'data: [DONE]':
+                line = json.loads(chunk[6:])
+                delta = line['choices'][0]['delta']
+                next_reasoning = bool(delta.get('reasoning_content'))
+                if not reasoning and next_reasoning:
+                    yield b'<think>\n'
+                if reasoning and not next_reasoning:
+                    yield b'\n</think>\n\n'
+                reasoning = next_reasoning
+                content = delta.get('content') or delta.get('reasoning_content') or ''
+                yield content.encode()
 
 @dataclass
 class BlackForestLabsAPI(API):
@@ -156,6 +184,7 @@ APIS = {
     'openai': API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
     'mistral': API(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY', stream=True),
     'groq': API(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY', stream=True),
+    'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY', stream=True),
     'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY', stream=True),
     'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY', stream=False),
@@ -173,8 +202,8 @@ MODELS = [
     TextModel(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'md']),
     TextModel(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'ml', 'i']),
     TextModel(name='llama-3.1-8b-instant', api=APIS['groq'], shortcuts=['llama-small', 'llama-8b', 'ls', 'l8']),
-    TextModel(name='llama-3.1-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70']),
-    TextModel(name='llama-3.1-405b-reasoning', api=APIS['groq'], shortcuts=['llama-large', 'llama-405b', 'll', 'l405', 'l']),
+    TextModel(name='llama-3.3-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70']),
+    TextModel(name='deepseek-reasoner', api=APIS['deepseek'], shortcuts=['r1']),
     TextModel(name='claude-3-haiku-20240307', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
     TextModel(name='claude-3-5-sonnet-20240620', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
     TextModel(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c']),

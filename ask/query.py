@@ -22,7 +22,6 @@ def query_bytes(prompt: list[Message], model: Model, system_prompt: str = '') ->
             print(json.dumps(result, indent=2))
             raise RuntimeError("Invalid response from API")
         if api.stream:
-            for line in r.iter_lines():
-                yield api.decode(line.decode('utf-8'))
+            yield from api.decode(line.decode('utf-8') for line in r.iter_lines())
         else:
             yield api.result(r.json())
