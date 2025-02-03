@@ -126,7 +126,6 @@ class DeepseekAPI(API):
 @dataclass
 class BlackForestLabsAPI(API):
     job_url: str
-    stream: bool
 
     def render_image(self, mimetype: str, data: bytes) -> dict[str, str | dict[str, str]]:
         raise NotImplementedError("Black Forest Labs API does not currently support image prompts")
@@ -186,6 +185,7 @@ APIS = {
     'groq': API(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY', stream=True),
     'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY', stream=True),
     'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
+    'strawberry-ns': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=False),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY', stream=True),
     'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY', stream=False),
 }
@@ -195,9 +195,11 @@ MODELS = [
     TextModel(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4']),
     TextModel(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
     TextModel(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4o-mini', 'gpt4om', 'gpt4m', '4m']),
-    TextModel(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o', 'o']),
-    TextModel(name='o1-mini', api=APIS['strawberry'], shortcuts=['o1m', 'om']),
-    TextModel(name='o1-preview', api=APIS['strawberry'], shortcuts=['o1p', 'o1']),
+    TextModel(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o']),
+    TextModel(name='o1-mini', api=APIS['strawberry'], shortcuts=['o1m']),
+    TextModel(name='o1-preview', api=APIS['strawberry'], shortcuts=['o1p', 'op']),
+    TextModel(name='o1', api=APIS['strawberry-ns'], shortcuts=['o1', 'o']),
+    TextModel(name='o3-mini', api=APIS['strawberry'], shortcuts=['o3m', 'om']),
     TextModel(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'mx']),
     TextModel(name='mistral-medium-latest', api=APIS['mistral'], shortcuts=['mistral-med', 'md']),
     TextModel(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'ml', 'i']),
