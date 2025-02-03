@@ -78,7 +78,7 @@ def act(prompt: list[Message], model: Model, system_prompt: str) -> None:
             if command:
                 result = execute_command(command_type, command)
                 prompt.append(Message(role="assistant", content=[Text(response)]))
-                prompt.append(Message(role="user", content=[Text(f"Command output:\n{result}")]))
+                prompt.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
             else:
                 break
     except KeyboardInterrupt:

@@ -109,14 +109,14 @@ def ask(prompt: list[Message], model: Model, user_input: str, system_prompt: str
 def act(prompt: list[Message], model: Model, system_prompt: str, attached_files: dict[Path, str]) -> list[Message]:
     while True:
         assert prompt and prompt[-1].role == 'user'
-        response = ask(prompt[:-1], model, prompt[-1].content[-1]['text'], system_prompt, attached_files)  # type: ignore
+        response = ask(prompt[:-1], model, prompt[-1].content[-1].text, system_prompt, attached_files)  # type: ignore
         prompt.append(Message(role='assistant', content=[Text(response)]))
 
         apply_edits(response)
         command_type, command = extract_command(response)
         if command:
             result = execute_command(command_type, command)
-            prompt.append(Message(role='assistant', content=[Text(f"Command output:\n{result}")]))
+            prompt.append(Message(role='user', content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
         else:
             return prompt
 
