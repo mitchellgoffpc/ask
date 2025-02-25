@@ -206,9 +206,8 @@ MODELS = [
     TextModel(name='llama-3.1-8b-instant', api=APIS['groq'], shortcuts=['llama-small', 'llama-8b', 'ls', 'l8']),
     TextModel(name='llama-3.3-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70']),
     TextModel(name='deepseek-reasoner', api=APIS['deepseek'], shortcuts=['r1']),
-    TextModel(name='claude-3-haiku-20240307', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
-    TextModel(name='claude-3-5-sonnet-20240620', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
-    TextModel(name='claude-3-opus-20240229', api=APIS['anthropic'], shortcuts=['claude', 'opus', 'c']),
+    TextModel(name='claude-3-5-haiku-latest', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
+    TextModel(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], shortcuts=['sonnet', 's']),
     ImageModel(name='flux-pro-1.1', api=APIS['bfl'], shortcuts=['flux', 'f']),
 ]
 
