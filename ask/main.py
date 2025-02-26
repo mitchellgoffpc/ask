@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import glob
-import json
 import argparse
 import itertools
 from pathlib import Path
@@ -61,32 +60,32 @@ def process_url(url: str) -> tuple[str, str | bytes]:
 
 # Act / Generate
 
-def ask(prompt: list[Message], model: Model, system_prompt: str) -> str:
+def ask(messages: list[Message], model: Model, system_prompt: str) -> str:
     chunks = []
-    for chunk in query_text(prompt, model, system_prompt=system_prompt):
+    for chunk in query_text(messages, model, system_prompt=system_prompt):
         print(chunk, end='', flush=True)
         chunks.append(chunk)
     print()
     return ''.join(chunks)
 
-def act(prompt: list[Message], model: Model, system_prompt: str) -> None:
+def act(messages: list[Message], model: Model, system_prompt: str) -> None:
     try:
         while True:
-            response = ask(prompt, model, system_prompt)
+            response = ask(messages, model, system_prompt)
             apply_edits(response)
             command_type, command = extract_command(response)
             if command:
                 result = execute_command(command_type, command)
-                prompt.append(Message(role="assistant", content=[Text(response)]))
-                prompt.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
+                messages.append(Message(role="assistant", content=[Text(response)]))
+                messages.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
             else:
                 break
     except KeyboardInterrupt:
         print('\n')
 
-def generate(prompt: list[Message], model: Model, system_prompt: str) -> None:
+def generate(messages: list[Message], model: Model, system_prompt: str) -> None:
     try:
-        data = b''.join(query_bytes(prompt, model, system_prompt=system_prompt))
+        data = b''.join(query_bytes(messages, model, system_prompt=system_prompt))
         with open('/tmp/image.jpg', 'wb') as f:
             f.write(data)
         print("Image saved to /tmp/image.jpg")
@@ -101,9 +100,7 @@ def main() -> None:
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-s', '--system', type=str, default=DEFAULT_SYSTEM_PROMPT, help="System prompt for the model")
-    parser.add_argument('-j', '--json', action='store_true', help="Parse the input as json")
     parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
-    parser.add_argument('-r', '--repl', action='store_true', help="Enable repl mode")
     parser.add_argument('question', nargs=argparse.REMAINDER)
     parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
     args = parser.parse_args()
@@ -163,19 +160,15 @@ def main() -> None:
         question = f"{context}\n\n{question}"
 
     model = MODEL_SHORTCUTS[args.model]
-    if args.json:
-        assert not args.file, "files not supported in JSON mode"
-        prompt = [Message(role=msg['role'], content=msg['content']) for msg in json.loads(question)]
-    else:
-        prompt = [Message(role='user', content=[Image(mimetype, data) for mimetype, data in media_files] + [Text(question)])]
+    messages = [Message(role='user', content=[Image(mimetype, data) for mimetype, data in media_files] + [Text(question)])]
 
     # Run the query
     if args.chat:
-        chat(prompt, model, args.system)
+        chat(messages, model, args.system)
     elif isinstance(model, ImageModel):
-        generate(prompt, model, args.system)
+        generate(messages, model, args.system)
     elif isinstance(model, TextModel):
-        act(prompt, model, args.system)
+        act(messages, model, args.system)
 
 
 if __name__ == '__main__':

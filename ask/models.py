@@ -45,11 +45,11 @@ class API:
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model_name: str, prompt: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        messages = [self.render_message(msg) for msg in prompt]
+    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        rendered_msgs = [self.render_message(msg) for msg in messages]
         if system_prompt:
-            messages = [{"role": "system", "content": system_prompt}, *messages]
-        return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream}
+            rendered_msgs = [{"role": "system", "content": system_prompt}, *rendered_msgs]
+        return {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream}
 
     def result(self, response: dict[str, Any]) -> bytes:
         assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
@@ -70,11 +70,11 @@ class StrawberryAPI(API):
     def render_image(self, mimetype: str, data: bytes) -> dict[str, str | dict[str, str]]:
         raise NotImplementedError("O1 API does not currently support image prompts")
 
-    def params(self, model_name: str, prompt: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        messages = [self.render_message(msg) for msg in prompt]
+    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        rendered_msgs = [self.render_message(msg) for msg in messages]
         if system_prompt:  # o1 models don't support a system message
-            messages = [{"role": "user", "content": system_prompt}, {"role": "assistant", "content": "Understood."}, *messages]
-        return {"model": model_name, "messages": messages, 'stream': self.stream}
+            rendered_msgs = [{"role": "user", "content": system_prompt}, {"role": "assistant", "content": "Understood."}, *rendered_msgs]
+        return {"model": model_name, "messages": rendered_msgs, 'stream': self.stream}
 
 class AnthropicAPI(API):
     def render_image(self, mimetype: str, data: bytes) -> dict[str, str | dict[str, str]]:
@@ -83,10 +83,10 @@ class AnthropicAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
-    def params(self, model_name: str, prompt: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        messages = [self.render_message(msg) for msg in prompt]
+    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        rendered_msgs = [self.render_message(msg) for msg in messages]
         system = {'system': system_prompt} if system_prompt else {}
-        return {"model": model_name, "messages": messages, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream} | system
+        return {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream} | system
 
     def result(self, response: dict[str, Any]) -> bytes:
         assert len(response['content']) == 1, f"Expected exactly one choice, but got {len(response['content'])}!"
@@ -133,9 +133,9 @@ class BlackForestLabsAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
-    def params(self, model_name: str, prompt: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        assert len(prompt) > 0, 'You must specify a prompt for image generation'
-        text_prompt = [msg for msg in prompt[-1].content if isinstance(msg, Text)]
+    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        assert len(messages) > 0, 'You must specify a prompt for image generation'
+        text_prompt = [msg for msg in messages[-1].content if isinstance(msg, Text)]
         assert len(text_prompt) > 0, 'You must specify a prompt for image generation'
         return {"prompt": text_prompt[-1].text, "width": 1024, "height": 1024}
 
