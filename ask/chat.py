@@ -1,7 +1,7 @@
 import readline
 from pathlib import Path
 import subprocess
-from ask.query import query_text
+from ask.query import query
 from ask.edit import apply_edits
 from ask.command import extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Text, Message, Model
@@ -100,7 +100,7 @@ def ask(prompt: list[Message], model: Model, user_input: str, system_prompt: str
 
     chunks = []
     user_message = Message(role='user', content=[Text(context_str + user_input)])
-    for chunk in query_text(model, [*prompt, user_message], tools=[], system_prompt=system_prompt):
+    for chunk, _ in query(model, [*prompt, user_message], tools=[], system_prompt=system_prompt):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
     print()

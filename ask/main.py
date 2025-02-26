@@ -8,9 +8,9 @@ import requests
 from ask.tools import Tool
 from ask.chat import chat
 from ask.edit import apply_edits
-from ask.query import query_text, query_bytes
+from ask.query import query
 from ask.command import extract_command, execute_command
-from ask.models import MODELS, MODEL_SHORTCUTS, Text, Image, Message, Model, TextModel, ImageModel
+from ask.models import MODELS, MODEL_SHORTCUTS, Text, Image, ToolRequest, Message, Model
 from ask.extract import extract_body, html_to_markdown
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
@@ -61,37 +61,35 @@ def process_url(url: str) -> tuple[str, str | bytes]:
 
 # Act / Generate
 
-def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> str:
-    chunks = []
-    for chunk in query_text(model, messages, tools, system_prompt):
+def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> list[Text | Image | ToolRequest]:
+    extras = []
+    for chunk, extra in query(model, messages, tools, system_prompt):
         print(chunk, end='', flush=True)
-        chunks.append(chunk)
-    print()
-    return ''.join(chunks)
+        if extra:
+            extras.append(extra)
+    if model.api.stream:
+        print()  # trailing newline
+    else:
+        for extra in extras:
+            if isinstance(extra, Text):
+                print(extra.text)
+    return extras
 
 def act(model: Model, messages: list[Message], tools: list, system_prompt: str) -> None:
     try:
         while True:
             response = ask(model, messages, tools, system_prompt)
-            apply_edits(response)
-            command_type, command = extract_command(response)
+            response_text = '\n\n'.join(item.text for item in response if isinstance(item, Text))
+            apply_edits(response_text)
+            command_type, command = extract_command(response_text)
             if command:
                 result = execute_command(command_type, command)
-                messages.append(Message(role="assistant", content=[Text(response)]))
+                messages.append(Message(role="assistant", content=[Text(response_text)]))
                 messages.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
             else:
                 break
     except KeyboardInterrupt:
         print('\n')
-
-def generate(model: Model, messages: list[Message], tools: list, system_prompt: str) -> None:
-    try:
-        data = b''.join(query_bytes(model, messages, tools, system_prompt))
-        with open('/tmp/image.jpg', 'wb') as f:
-            f.write(data)
-        print("Image saved to /tmp/image.jpg")
-    except KeyboardInterrupt:
-        pass
 
 
 # Entry point
@@ -167,9 +165,7 @@ def main() -> None:
     # Run the query
     if args.chat:
         chat(messages, model, args.system)
-    elif isinstance(model, ImageModel):
-        generate(model, messages, tools, args.system)
-    elif isinstance(model, TextModel):
+    else:
         act(model, messages, tools, args.system)
 
 
