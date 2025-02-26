@@ -5,6 +5,7 @@ import argparse
 import itertools
 from pathlib import Path
 import requests
+from ask.tools import Tool
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query_text, query_bytes
@@ -60,18 +61,18 @@ def process_url(url: str) -> tuple[str, str | bytes]:
 
 # Act / Generate
 
-def ask(messages: list[Message], model: Model, system_prompt: str) -> str:
+def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> str:
     chunks = []
-    for chunk in query_text(messages, model, system_prompt=system_prompt):
+    for chunk in query_text(model, messages, tools, system_prompt):
         print(chunk, end='', flush=True)
         chunks.append(chunk)
     print()
     return ''.join(chunks)
 
-def act(messages: list[Message], model: Model, system_prompt: str) -> None:
+def act(model: Model, messages: list[Message], tools: list, system_prompt: str) -> None:
     try:
         while True:
-            response = ask(messages, model, system_prompt)
+            response = ask(model, messages, tools, system_prompt)
             apply_edits(response)
             command_type, command = extract_command(response)
             if command:
@@ -83,9 +84,9 @@ def act(messages: list[Message], model: Model, system_prompt: str) -> None:
     except KeyboardInterrupt:
         print('\n')
 
-def generate(messages: list[Message], model: Model, system_prompt: str) -> None:
+def generate(model: Model, messages: list[Message], tools: list, system_prompt: str) -> None:
     try:
-        data = b''.join(query_bytes(messages, model, system_prompt=system_prompt))
+        data = b''.join(query_bytes(model, messages, tools, system_prompt))
         with open('/tmp/image.jpg', 'wb') as f:
             f.write(data)
         print("Image saved to /tmp/image.jpg")
@@ -161,14 +162,15 @@ def main() -> None:
 
     model = MODEL_SHORTCUTS[args.model]
     messages = [Message(role='user', content=[Image(mimetype, data) for mimetype, data in media_files] + [Text(question)])]
+    tools: list[Tool] = []
 
     # Run the query
     if args.chat:
         chat(messages, model, args.system)
     elif isinstance(model, ImageModel):
-        generate(messages, model, args.system)
+        generate(model, messages, tools, args.system)
     elif isinstance(model, TextModel):
-        act(messages, model, args.system)
+        act(model, messages, tools, args.system)
 
 
 if __name__ == '__main__':

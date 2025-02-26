@@ -5,6 +5,7 @@ import base64
 import requests
 from typing import Any, Iterator
 from dataclasses import dataclass
+from ask.tools import Tool
 
 @dataclass
 class Text:
@@ -14,6 +15,11 @@ class Text:
 class Image:
     mimetype: str
     data: bytes
+
+@dataclass
+class ToolResponse:
+    tool: str
+    response: str
 
 @dataclass
 class Message:
@@ -45,7 +51,7 @@ class API:
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         rendered_msgs = [self.render_message(msg) for msg in messages]
         if system_prompt:
             rendered_msgs = [{"role": "system", "content": system_prompt}, *rendered_msgs]
@@ -70,7 +76,7 @@ class StrawberryAPI(API):
     def render_image(self, mimetype: str, data: bytes) -> dict[str, str | dict[str, str]]:
         raise NotImplementedError("O1 API does not currently support image prompts")
 
-    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         rendered_msgs = [self.render_message(msg) for msg in messages]
         if system_prompt:  # o1 models don't support a system message
             rendered_msgs = [{"role": "user", "content": system_prompt}, {"role": "assistant", "content": "Understood."}, *rendered_msgs]
@@ -83,7 +89,7 @@ class AnthropicAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
-    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         rendered_msgs = [self.render_message(msg) for msg in messages]
         system = {'system': system_prompt} if system_prompt else {}
         return {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream} | system
@@ -133,7 +139,7 @@ class BlackForestLabsAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
-    def params(self, model_name: str, messages: list[Message], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         assert len(messages) > 0, 'You must specify a prompt for image generation'
         text_prompt = [msg for msg in messages[-1].content if isinstance(msg, Text)]
         assert len(text_prompt) > 0, 'You must specify a prompt for image generation'

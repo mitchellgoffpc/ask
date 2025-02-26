@@ -100,7 +100,7 @@ def ask(prompt: list[Message], model: Model, user_input: str, system_prompt: str
 
     chunks = []
     user_message = Message(role='user', content=[Text(context_str + user_input)])
-    for chunk in query_text([*prompt, user_message], model, system_prompt=system_prompt):
+    for chunk in query_text(model, [*prompt, user_message], tools=[], system_prompt=system_prompt):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
     print()

@@ -3,17 +3,18 @@ import json
 import requests
 from typing import Iterator
 from ask.models import Message, Model, TextModel
+from ask.tools import Tool
 
-def query_text(messages: list[Message], model: Model, system_prompt: str = '') -> Iterator[str]:
+def query_text(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> Iterator[str]:
     if not isinstance(model, TextModel):
         raise RuntimeError(f"This operation requires a model that can generate text, but the model you selected is {model}.")
-    for chunk in query_bytes(messages, model, system_prompt=system_prompt):
+    for chunk in query_bytes(model, messages, tools, system_prompt=system_prompt):
         yield chunk.decode('utf-8')
 
-def query_bytes(messages: list[Message], model: Model, system_prompt: str = '') -> Iterator[bytes]:
+def query_bytes(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> Iterator[bytes]:
     api = model.api
     api_key = os.getenv(api.key, '')
-    params = api.params(model.name, messages, system_prompt)
+    params = api.params(model.name, messages, tools, system_prompt)
     headers = api.headers(api_key)
     assert api_key, f"{api.key!r} environment variable isn't set!"
     with requests.post(api.url, timeout=None, headers=headers, json=params, stream=api.stream) as r:
