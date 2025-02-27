@@ -1,0 +1,57 @@
+import os
+import time
+import requests
+from typing import Any, Tuple
+from dataclasses import dataclass
+from ask.models.base import API, Message, Tool, Text, Image, ToolRequest
+
+@dataclass
+class BlackForestLabsAPI(API):
+    job_url: str
+
+    def render_image(self, mimetype: str, data: bytes) -> dict[str, Any]:
+        raise NotImplementedError("Black Forest Labs API does not currently support image prompts")
+
+    def render_tool(self, tool: Tool) -> dict[str, Any]:
+        raise NotImplementedError("Black Forest Labs API does not currently support tools")
+
+    def decode_chunk(self, chunk: str) -> Tuple[int | None, str, str]:
+        raise NotImplementedError("Black Forest Labs API does not currently support streaming")
+
+    def headers(self, api_key: str) -> dict[str, str]:
+        return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
+
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        assert len(messages) > 0, 'You must specify a prompt for image generation'
+        text_prompt = [msg for msg in messages[-1].content if isinstance(msg, Text)]
+        assert len(text_prompt) > 0, 'You must specify a prompt for image generation'
+        return {"prompt": text_prompt[-1].text, "width": 1024, "height": 1024}
+
+    def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
+        # Black Forest Labs API is a bit different, the initial request returns a job ID and you poll that job to get the final result url
+        result_url = self.query_job_status(response['id'])
+        result = self.query_result(result_url)
+        return [Image(mimetype='image/jpeg', data=result)]
+
+    def query_job_status(self, job_id: str) -> str:
+        api_key = os.getenv(self.key, '')
+        headers = self.headers(api_key)
+        while True:  # Poll for the result
+            time.sleep(0.5)
+            r = requests.get(self.job_url, headers=headers, params={'id': job_id})
+            r.raise_for_status()
+
+            result = r.json()
+            if result["status"] == "Pending":
+                pass
+            elif result["status"] == "Ready":
+                return result['result']['sample']
+            elif result["status"] == "Failed":
+                raise RuntimeError(f"Image generation failed: {result.get('error', 'Unknown error')}")
+            else:
+                raise RuntimeError(f"Image generation returned unknown status: {result['status']}")
+
+    def query_result(self, url: str) -> bytes:
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
+        return b''.join(r)
