@@ -3,7 +3,6 @@ from pathlib import Path
 import subprocess
 from ask.query import query
 from ask.edit import apply_edits
-from ask.command import extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Text, Message, Model
 
 # Tab completion
@@ -113,12 +112,13 @@ def act(prompt: list[Message], model: Model, system_prompt: str, attached_files:
         prompt.append(Message(role='assistant', content=[Text(response)]))
 
         apply_edits(response)
-        command_type, command = extract_command(response)
-        if command:
-            result = execute_command(command_type, command)
-            prompt.append(Message(role='user', content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
-        else:
-            return prompt
+        return prompt
+        # command_type, command = extract_command(response)
+        # if command:
+        #     result = execute_command(command_type, command)
+        #     prompt.append(Message(role='user', content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
+        # else:
+        #     return prompt
 
 
 # Main chat loop

@@ -1,5 +1,6 @@
 import json
-from typing import Any, Iterator, abstractmethod
+from abc import abstractmethod
+from typing import Any, Iterator
 from dataclasses import dataclass
 from ask.tools import Tool, Parameter
 

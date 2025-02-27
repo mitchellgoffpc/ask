@@ -9,7 +9,6 @@ from ask.tools import Tool
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query
-from ask.command import extract_command, execute_command
 from ask.models import MODELS, MODEL_SHORTCUTS, Text, Image, ToolRequest, Message, Model
 from ask.extract import extract_body, html_to_markdown
 
@@ -81,13 +80,14 @@ def act(model: Model, messages: list[Message], tools: list, system_prompt: str) 
             response = ask(model, messages, tools, system_prompt)
             response_text = '\n\n'.join(item.text for item in response if isinstance(item, Text))
             apply_edits(response_text)
-            command_type, command = extract_command(response_text)
-            if command:
-                result = execute_command(command_type, command)
-                messages.append(Message(role="assistant", content=[Text(response_text)]))
-                messages.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
-            else:
-                break
+            break
+            # command_type, command = extract_command(response_text)
+            # if command:
+            #     result = execute_command(command_type, command)
+            #     messages.append(Message(role="assistant", content=[Text(response_text)]))
+            #     messages.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
+            # else:
+            #     break
     except KeyboardInterrupt:
         print('\n')
 

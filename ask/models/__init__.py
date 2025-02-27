@@ -12,6 +12,7 @@ class Model:
     api: API
     shortcuts: list[str]
 
+
 APIS = {
     'openai': OpenAIAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
     'mistral': OpenAIAPI(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY', stream=True),
@@ -46,3 +47,5 @@ MODELS = [
 ]
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
+
+__all__ = ['API', 'Message', 'Text', 'Image', 'ToolRequest', 'ToolResponse', 'Model', 'MODELS', 'MODEL_SHORTCUTS']
