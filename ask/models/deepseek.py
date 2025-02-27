@@ -5,12 +5,16 @@ from ask.models.base import Text, Image, ToolRequest
 
 class DeepseekAPI(OpenAIAPI):
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
-        assert len(response['choices']) == 1, f"Expected exactly one choice, but got {len(response['choices'])}!"
-        message = response['choices'][0]['message']
-        content = message['content']
-        if message.get('reasoning_content'):
-            content = f"<think>\n{message['reasoning_content']}\n</think>\n\n{content}"
-        return [Text(text=content)]
+        result: list[Text | Image | ToolRequest] = []
+        for item in response['choices']:
+            if item['message'].get('content'):
+                content = item['message']['content']
+                if item['message'].get('reasoning_content'):
+                    content = f"<think>\n{item['message']['reasoning_content']}\n</think>\n\n{content}"
+                result.append(Text(text=content))
+            for call in item['message'].get('tool_calls') or []:
+                result.append(ToolRequest(tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
+        return result
 
     def decode(self, chunks: Iterator[str]) -> Iterator[tuple[str, Text | Image | ToolRequest | None]]:
         reasoning = False

@@ -1,7 +1,7 @@
 import json
 import base64
 from typing import Any
-from ask.models.base import API, Message, Tool, Text, Image, ToolRequest
+from ask.models.base import API, Model, Message, Tool, Text, Image, ToolRequest
 
 class AnthropicAPI(API):
     def render_image(self, mimetype: str, data: bytes) -> dict[str, Any]:
@@ -15,12 +15,12 @@ class AnthropicAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
-               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]:
-        rendered_msgs = [self.render_message(msg) for msg in messages]
+    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        assert model.supports_system_prompt and model.supports_tools, "Wtf? All anthropic models support system prompts and tools."
+        rendered_msgs = [self.render_message(msg, model) for msg in messages]
         system_dict = {'system': system_prompt} if system_prompt else {}
         tools_dict = {'tools': [self.render_tool(tool) for tool in tools]} if tools else {}
-        msg_dict = {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': stream}
+        msg_dict = {"model": model.name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': model.stream}
         return system_dict | tools_dict | msg_dict
 
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:

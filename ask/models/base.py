@@ -28,6 +28,16 @@ class Message:
     role: str
     content: list[Text | Image]
 
+@dataclass
+class Model:
+    name: str
+    api: 'API'
+    shortcuts: list[str]
+    stream: bool = True
+    supports_tools: bool = True
+    supports_images: bool = True
+    supports_system_prompt: bool = True
+
 
 @dataclass
 class API(metaclass=ABCMeta):
@@ -37,14 +47,16 @@ class API(metaclass=ABCMeta):
     def render_text(self, text: str) -> dict[str, Any]:
         return {'type': 'text', 'text': text}
 
-    def render_item(self, item: Text | Image) -> dict[str, Any]:
+    def render_item(self, item: Text | Image, model: Model) -> dict[str, Any]:
         if isinstance(item, Text):
             return self.render_text(item.text)
         else:
+            if not model.supports_images:
+                raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
             return self.render_image(item.mimetype, item.data)
 
-    def render_message(self, message: Message) -> dict[str, Any]:
-        return {'role': message.role, 'content': [self.render_item(item) for item in message.content]}
+    def render_message(self, message: Message, model: Model) -> dict[str, Any]:
+        return {'role': message.role, 'content': [self.render_item(item, model) for item in message.content]}
 
     def render_tool_param(self, param: Parameter) -> dict[str, Any]:
         rendered: dict[str, Any] = {'type': param.type}
@@ -86,8 +98,7 @@ class API(metaclass=ABCMeta):
     def headers(self, api_key: str) -> dict[str, str]: ...
 
     @abstractmethod
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
-               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]: ...
+    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]: ...
 
     @abstractmethod
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]: ...

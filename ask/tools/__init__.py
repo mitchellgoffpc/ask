@@ -5,11 +5,12 @@ from ask.tools.globb import GlobTool
 from ask.tools.view import ViewTool
 from ask.tools.replace import ReplaceTool
 from ask.tools.ls import LSTool
+from ask.tools.render import render_tools_prompt
 
 TOOL_LIST = [BashTool(), GlobTool(), GrepTool(), LSTool(), ViewTool(), ReplaceTool()]
 TOOLS = {tool.name: tool for tool in TOOL_LIST}
 
-__all__ = ["Tool", "Parameter", "TOOLS"]
+__all__ = ["TOOLS", "Tool", "Parameter", "render_tools_prompt"]
 
 
 if __name__ == "__main__":

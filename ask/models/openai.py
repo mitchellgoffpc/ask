@@ -1,7 +1,8 @@
 import json
 import base64
 from typing import Any
-from ask.models.base import API, Text, Image, ToolRequest, Message, Tool
+from ask.tools import render_tools_prompt
+from ask.models.base import API, Model, Text, Image, ToolRequest, Message, Tool
 
 class OpenAIAPI(API):
     def render_image(self, mimetype: str, data: bytes) -> dict[str, Any]:
@@ -17,15 +18,23 @@ class OpenAIAPI(API):
                 'description': tool.description,
                 'parameters': {'type': 'object', 'properties': params, 'required': required}}}
 
+    def render_system_prompt(self, system_prompt: str, model: Model) -> list[dict[str, str]]:
+        if not system_prompt:
+            return []
+        elif not model.supports_system_prompt:
+            return [{'role': 'user', 'content': system_prompt}, {'role': 'assistant', 'content': 'Understood.'}]
+        else:
+            return [{'role': 'system', 'content': system_prompt}]
+
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
-               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]:
-        system_msgs = [{"role": "system", "content": system_prompt}] if system_prompt else []
-        rendered_msgs = system_msgs + [self.render_message(msg) for msg in messages]
-        tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools else {}
-        return {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': stream} | tools_dict
+    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        if not model.supports_tools:
+            system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
+        rendered_msgs = self.render_system_prompt(system_prompt, model) + [self.render_message(msg, model) for msg in messages]
+        tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
+        return {"model": model.name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': model.stream} | tools_dict
 
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
         result: list[Text | Image | ToolRequest] = []
@@ -52,3 +61,12 @@ class OpenAIAPI(API):
             return line['choices'][0]['index'], '', delta['content']
         else:
             return None, '', ''
+
+
+class O1API(OpenAIAPI):
+    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+        if not model.supports_tools:
+            system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
+        rendered_msgs = self.render_system_prompt(system_prompt, model) + [self.render_message(msg, model) for msg in messages]
+        tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
+        return {"model": model.name, "messages": rendered_msgs, 'stream': model.stream} | tools_dict
