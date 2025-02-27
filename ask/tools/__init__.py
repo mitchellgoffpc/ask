@@ -1,26 +1,28 @@
-from dataclasses import dataclass
+from ask.tools.base import Tool, Parameter
+from ask.tools.bash import BashTool
+from ask.tools.grep import GrepTool
+from ask.tools.globb import GlobTool
+from ask.tools.view import ViewTool
+from ask.tools.replace import ReplaceTool
+from ask.tools.ls import LSTool
 
-@dataclass
-class Parameter:
-    name: str
-    type: str
-    description: str = ''
-    required: bool = True
-    enum: list[str] | None = None
-
-class Tool:
-    name: str
-    description: str
-    parameters: list[Parameter]
-
-    @classmethod
-    def execute(cls, *args, **kwargs):
-        raise NotImplementedError("Subclasses should implement this method.")
+TOOL_LIST = [BashTool(), GlobTool(), GrepTool(), LSTool(), ViewTool(), ReplaceTool()]
+TOOLS = {tool.name: tool for tool in TOOL_LIST}
 
 
-class StockPriceTool(Tool):
-    name = "get_stock_price"
-    description = "Retrieves the current stock price for a given company"
-    parameters = [
-        Parameter(name="company", type="string", description="The company name to fetch stock data for")
-    ]
+if __name__ == "__main__":
+    import sys
+    import json
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run a specified tool with given arguments.")
+    parser.add_argument("tool_name", type=str, choices=TOOLS.keys(), help="The name of the tool to run")
+    parser.add_argument("json_args", type=str, help="The JSON string of arguments for the tool")
+    args = parser.parse_args()
+
+    try:
+        tool = TOOLS[args.tool_name]
+        print(tool.call(json.loads(args.json_args)))
+    except json.JSONDecodeError:
+        print(f"Error: Arguments must be valid JSON: {args.json_args}")
+        sys.exit(1)

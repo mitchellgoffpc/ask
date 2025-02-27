@@ -5,7 +5,7 @@ import argparse
 import itertools
 from pathlib import Path
 import requests
-from ask.tools import Tool
+from ask.tools import TOOLS, Tool
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query
@@ -160,7 +160,7 @@ def main() -> None:
 
     model = MODEL_SHORTCUTS[args.model]
     messages = [Message(role='user', content=[Image(mimetype, data) for mimetype, data in media_files] + [Text(question)])]
-    tools: list[Tool] = []
+    tools = list(TOOLS.values())
 
     # Run the query
     if args.chat:
