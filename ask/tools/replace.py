@@ -35,5 +35,5 @@ class ReplaceTool(Tool):
             return f"Successfully wrote to {file_path}"
         except PermissionError:
             return f"Error: Permission denied for writing to '{file_path}'."
-        except OSError as e:
+        except OSError:
             return f"Error: Failed to write to '{file_path}'."

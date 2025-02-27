@@ -5,7 +5,7 @@ import argparse
 import itertools
 from pathlib import Path
 import requests
-from ask.tools import TOOLS, Tool
+from ask.tools import TOOLS
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query
@@ -66,7 +66,7 @@ def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) 
         print(chunk, end='', flush=True)
         if extra:
             extras.append(extra)
-    if model.api.stream:
+    if model.stream:
         print()  # trailing newline
     else:
         for extra in extras:

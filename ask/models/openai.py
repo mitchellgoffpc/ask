@@ -20,11 +20,12 @@ class OpenAIAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
+               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]:
         system_msgs = [{"role": "system", "content": system_prompt}] if system_prompt else []
         rendered_msgs = system_msgs + [self.render_message(msg) for msg in messages]
         tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools else {}
-        return {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream} | tools_dict
+        return {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': stream} | tools_dict
 
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
         result: list[Text | Image | ToolRequest] = []

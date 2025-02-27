@@ -15,11 +15,12 @@ class AnthropicAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
+               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]:
         rendered_msgs = [self.render_message(msg) for msg in messages]
         system_dict = {'system': system_prompt} if system_prompt else {}
         tools_dict = {'tools': [self.render_tool(tool) for tool in tools]} if tools else {}
-        msg_dict = {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': self.stream}
+        msg_dict = {"model": model_name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': stream}
         return system_dict | tools_dict | msg_dict
 
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:

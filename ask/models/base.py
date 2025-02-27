@@ -33,7 +33,6 @@ class Message:
 class API(metaclass=ABCMeta):
     key: str
     url: str
-    stream: bool
 
     def render_text(self, text: str) -> dict[str, Any]:
         return {'type': 'text', 'text': text}
@@ -87,7 +86,8 @@ class API(metaclass=ABCMeta):
     def headers(self, api_key: str) -> dict[str, str]: ...
 
     @abstractmethod
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]: ...
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
+               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]: ...
 
     @abstractmethod
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]: ...

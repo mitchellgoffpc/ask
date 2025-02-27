@@ -9,7 +9,7 @@ from ask.tools.base import Tool, Parameter
 GREP_TOOL_DESCRIPTION = """
 - Fast content search tool that works with any codebase size
 - Searches file contents using regular expressions
-- Supports full regex syntax (eg. "log.*Error", "function\s+\w+", etc.)
+- Supports full regex syntax (eg. "log.*Error", "function\\s+\\w+", etc.)
 - Filter files by pattern with the include parameter (eg. "*.js", "*.{ts,tsx}")
 - Returns matching file paths sorted by modification time
 - Use this tool when you need to find files containing specific patterns

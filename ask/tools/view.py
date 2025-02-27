@@ -31,9 +31,9 @@ class ViewTool(Tool):
 
         image_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']
         if file_path.suffix.lower() in image_extensions:
-            return f"Error: Image files not supported yet"
+            return "Error: Image files not supported yet"
         if file_path.suffix.lower() == '.ipynb':
-            return f"Error: For Jupyter notebooks (.ipynb files), please use the ReadNotebook tool instead."
+            return "Error: For Jupyter notebooks (.ipynb files), please use the ReadNotebook tool instead."
 
         offset = int(args.get("offset", 0))
         limit = int(args.get("limit", 2000))
@@ -55,7 +55,7 @@ class ViewTool(Tool):
                     lines.append(line)
 
                 if not lines:
-                    return f"File is empty."
+                    return "File is empty."
                 return ''.join(lines)
 
         except UnicodeDecodeError:

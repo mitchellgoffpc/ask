@@ -21,7 +21,8 @@ class BlackForestLabsAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
-    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model_name: str, messages: list[Message], tools: list[Tool], system_prompt: str = '',
+               stream: bool = True, temperature: float = 0.7) -> dict[str, Any]:
         assert len(messages) > 0, 'You must specify a prompt for image generation'
         text_prompt = [msg for msg in messages[-1].content if isinstance(msg, Text)]
         assert len(text_prompt) > 0, 'You must specify a prompt for image generation'

@@ -9,6 +9,8 @@ from ask.tools.ls import LSTool
 TOOL_LIST = [BashTool(), GlobTool(), GrepTool(), LSTool(), ViewTool(), ReplaceTool()]
 TOOLS = {tool.name: tool for tool in TOOL_LIST}
 
+__all__ = ["Tool", "Parameter", "TOOLS"]
+
 
 if __name__ == "__main__":
     import sys

@@ -11,17 +11,17 @@ class Model:
     name: str
     api: API
     shortcuts: list[str]
+    stream: bool = True
 
 
 APIS = {
-    'openai': OpenAIAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
-    'mistral': OpenAIAPI(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY', stream=True),
-    'groq': OpenAIAPI(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY', stream=True),
-    'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY', stream=True),
-    'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=True),
-    'strawberry-ns': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY', stream=False),
-    'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY', stream=True),
-    'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY', stream=False),
+    'openai': OpenAIAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
+    'mistral': OpenAIAPI(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY'),
+    'groq': OpenAIAPI(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY'),
+    'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY'),
+    'strawberry': StrawberryAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
+    'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY'),
+    'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY'),
 }
 
 MODELS = [
@@ -32,7 +32,7 @@ MODELS = [
     Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o']),
     Model(name='o1-mini', api=APIS['strawberry'], shortcuts=['o1m']),
     Model(name='o1-preview', api=APIS['strawberry'], shortcuts=['o1p', 'op']),
-    Model(name='o1', api=APIS['strawberry-ns'], shortcuts=['o1', 'o']),
+    Model(name='o1', api=APIS['strawberry'], shortcuts=['o1', 'o']),
     Model(name='o3-mini', api=APIS['strawberry'], shortcuts=['o3m', 'om']),
     Model(name='open-mixtral-8x7b', api=APIS['mistral'], shortcuts=['mixtral', 'mx']),
     Model(name='mistral-small-latest', api=APIS['mistral'], shortcuts=['mistral-small', 'ms']),
