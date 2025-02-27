@@ -1,5 +1,5 @@
 import json
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import Any, Iterator
 from dataclasses import dataclass
 from ask.tools import Tool, Parameter
@@ -30,7 +30,7 @@ class Message:
 
 
 @dataclass
-class API:
+class API(metaclass=ABCMeta):
     key: str
     url: str
     stream: bool
