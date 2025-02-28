@@ -1,5 +1,7 @@
+import re
 import json
 from ask.tools.base import Tool, Parameter
+from ask.models.base import Text, ToolRequest
 
 # Since not all models support tool use directly, we also need to be able render the tools as a normal user message.
 TOOL_PREFIX = "You have access to the following tools, which you can use if they seem helpful for accomplishing the user's request:"
@@ -40,3 +42,22 @@ def render_tools_prompt(tools: list[Tool]) -> str:
         return ''
     tool_defs = '\n\n'.join(TOOL_DEFINITION.format(name=tool.name, description=tool.description, schema=get_tool_schema(tool.parameters)) for tool in tools)
     return f"{TOOL_PREFIX}\n\n{tool_defs}\n\n{TOOL_USE}"
+
+def parse_tool_block(text: Text) -> list[Text | ToolRequest]:
+    result: list[Text | ToolRequest] = []
+    content = text.text
+    tool_pattern = r"```tool\s+(.*?)\s+```"
+    tool_blocks = re.finditer(tool_pattern, content, re.DOTALL)
+
+    # Extract tool blocks and create ToolRequest objects
+    for match in tool_blocks:
+        try:
+            tool_json = json.loads(match.group(1))
+            result.append(ToolRequest(tool=tool_json["name"], arguments=tool_json["arguments"]))
+        except (json.JSONDecodeError, KeyError):
+            continue
+
+    cleaned_text = re.sub(tool_pattern, "", content)
+    if cleaned_text.strip():
+        result = [Text(text=cleaned_text), *result]
+    return result
