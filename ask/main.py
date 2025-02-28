@@ -5,11 +5,11 @@ import argparse
 import itertools
 import requests
 from pathlib import Path
-from ask.tools import TOOLS
+from ask.tools import TOOLS, Tool
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query
-from ask.models import MODELS, MODEL_SHORTCUTS, Text, Image, ToolRequest, Message, Model
+from ask.models import MODELS, MODEL_SHORTCUTS, Model, Message, Content, Text, Image
 from ask.extract import extract_body, html_to_markdown
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
@@ -57,7 +57,7 @@ def process_url(url: str) -> tuple[str, str | bytes]:
 
 # Act / Generate
 
-def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> list[Text | Image | ToolRequest]:
+def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> list[Content]:
     extras = []
     for chunk, extra in query(model, messages, tools, system_prompt):
         print(chunk, end='', flush=True)
@@ -69,9 +69,10 @@ def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) 
         for extra in extras:
             if isinstance(extra, Text):
                 print(extra.text)
+    print(extras)
     return extras
 
-def act(model: Model, messages: list[Message], tools: list, system_prompt: str) -> None:
+def act(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> None:
     try:
         while True:
             response = ask(model, messages, tools, system_prompt)
@@ -156,7 +157,8 @@ def main() -> None:
         question = f"{context}\n\n{question}"
 
     model = MODEL_SHORTCUTS[args.model]
-    messages = [Message(role='user', content=[Image(mimetype, data) for mimetype, data in media_files] + [Text(question)])]
+    images = [Image(mimetype, data) for mimetype, data in media_files]
+    messages = [Message(role='user', content=[*images, Text(question)])]
     tools = list(TOOLS.values())
 
     # Run the query

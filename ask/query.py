@@ -3,9 +3,9 @@ import json
 import requests
 from typing import Iterator
 from ask.tools import Tool
-from ask.models import Message, Model, Text, Image, ToolRequest
+from ask.models import Message, Model, Content
 
-def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> Iterator[tuple[str, Text | Image | ToolRequest | None]]:
+def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> Iterator[tuple[str, Content | None]]:
     api = model.api
     api_key = os.getenv(api.key, '')
     params = api.params(model, messages, tools, system_prompt)

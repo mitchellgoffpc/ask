@@ -1,5 +1,6 @@
 import re
 import json
+import uuid
 from ask.tools.base import Tool, Parameter
 from ask.models.base import Text, ToolRequest
 
@@ -53,7 +54,7 @@ def parse_tool_block(text: Text) -> list[Text | ToolRequest]:
     for match in tool_blocks:
         try:
             tool_json = json.loads(match.group(1))
-            result.append(ToolRequest(tool=tool_json["name"], arguments=tool_json["arguments"]))
+            result.append(ToolRequest(call_id=f'tooluse-{uuid.uuid4()}', tool=tool_json["name"], arguments=tool_json["arguments"]))
         except (json.JSONDecodeError, KeyError):
             continue
 

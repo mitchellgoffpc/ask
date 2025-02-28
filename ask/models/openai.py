@@ -2,11 +2,24 @@ import json
 import base64
 from typing import Any
 from ask.tools.render import render_tools_prompt
-from ask.models.base import API, Model, Text, Image, ToolRequest, Message, Tool
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
 
 class OpenAIAPI(API):
-    def render_image(self, mimetype: str, data: bytes) -> dict[str, Any]:
-        return {'type': 'image_url', 'image_url': {'url': f'data:{mimetype};base64,{base64.b64encode(data).decode()}'}}
+    def render_image(self, image: Image) -> dict[str, Any]:
+        return {'type': 'image_url', 'image_url': {'url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}}
+
+    def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
+        return {'type': 'tool', 'tool': request.tool, 'arguments': request.arguments}
+
+    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
+        return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
+
+    def render_multi_message(self, message: Message, model: Model) -> list[dict[str, str]]:
+        # OpenAI's API has tools as a separate role, so we need to split them out into a separate message for each tool call
+        tool_msgs = [self.render_tool_response(x) for x in message.content if isinstance(x, ToolResponse)]
+        other_content: list[Content] = [x for x in message.content if not isinstance(x, ToolResponse)]
+        other_msgs = [self.render_message(Message(role=message.role, content=other_content), model)] if other_content else []
+        return tool_msgs + other_msgs
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         params = {p.name: self.render_tool_param(p) for p in tool.parameters}
@@ -32,17 +45,19 @@ class OpenAIAPI(API):
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         if not model.supports_tools:
             system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
-        rendered_msgs = self.render_system_prompt(system_prompt, model) + [self.render_message(msg, model) for msg in messages]
+        system_msgs = self.render_system_prompt(system_prompt, model)
+        chat_msgs = [m for msg in messages for m in self.render_multi_message(msg, model)]
+        msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": temperature, 'stream': model.stream}
         tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
-        return {"model": model.name, "messages": rendered_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': model.stream} | tools_dict
+        return msg_dict | tools_dict
 
-    def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
-        result: list[Text | Image | ToolRequest] = []
+    def result(self, response: dict[str, Any]) -> list[Content]:
+        result: list[Content] = []
         for item in response['choices']:
             if item['message'].get('content'):
                 result.append(Text(text=item['message']['content']))
             for call in item['message'].get('tool_calls') or []:
-                result.append(ToolRequest(tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
+                result.append(ToolRequest(call_id=call['id'], tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
         return result
 
     def decode_chunk(self, chunk: str) -> tuple[str, str, str]:
@@ -62,8 +77,9 @@ class OpenAIAPI(API):
 
     def decode_tool_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
         tool = delta['tool_calls'][0]['function']
+        tool_name = f"{tool['name']}:{delta['tool_calls'][0]['id']}" if 'name' in tool else ''
         subindex = f"{index}.{delta['tool_calls'][0]['index']}"
-        return subindex, tool.get('name', ''), tool['arguments']
+        return subindex, tool_name, tool['arguments']
 
     def decode_text_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
         if delta.get('content'):
@@ -74,8 +90,5 @@ class OpenAIAPI(API):
 
 class O1API(OpenAIAPI):
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        if not model.supports_tools:
-            system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
-        rendered_msgs = self.render_system_prompt(system_prompt, model) + [self.render_message(msg, model) for msg in messages]
-        tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
-        return {"model": model.name, "messages": rendered_msgs, 'stream': model.stream} | tools_dict
+        params = super().params(model, messages, tools, system_prompt, temperature)
+        return {k: v for k, v in params.items() if k != 'temperature'}

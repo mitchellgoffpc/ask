@@ -3,14 +3,20 @@ import time
 import requests
 from typing import Any, Tuple
 from dataclasses import dataclass
-from ask.models.base import API, Model, Message, Tool, Text, Image, ToolRequest
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
 
 @dataclass
 class BlackForestLabsAPI(API):
     job_url: str
 
-    def render_image(self, mimetype: str, data: bytes) -> dict[str, Any]:
+    def render_image(self, image: Image) -> dict[str, Any]:
         raise NotImplementedError("Black Forest Labs API does not currently support image prompts")
+
+    def render_tool_request(self, tool_request: ToolRequest) -> dict[str, Any]:
+        raise NotImplementedError("Black Forest Labs API does not currently support tools")
+
+    def render_tool_response(self, tool_response: ToolResponse) -> dict[str, Any]:
+        raise NotImplementedError("Black Forest Labs API does not currently support tools")
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         raise NotImplementedError("Black Forest Labs API does not currently support tools")
@@ -22,12 +28,12 @@ class BlackForestLabsAPI(API):
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        assert len(messages) > 0, 'You must specify a prompt for image generation'
+        assert len(messages) > 0, "You must specify a prompt for image generation"
         text_prompt = [msg for msg in messages[-1].content if isinstance(msg, Text)]
-        assert len(text_prompt) > 0, 'You must specify a prompt for image generation'
+        assert len(text_prompt) > 0, "You must specify a prompt for image generation"
         return {"prompt": text_prompt[-1].text, "width": 1024, "height": 1024}
 
-    def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
+    def result(self, response: dict[str, Any]) -> list[Content]:
         # Black Forest Labs API is a bit different, the initial request returns a job ID and you poll that job to get the final result url
         result_url = self.query_job_status(response['id'])
         result = self.query_result(result_url)

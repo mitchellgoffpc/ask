@@ -1,18 +1,18 @@
 import json
 from typing import Any
 from ask.models.openai import OpenAIAPI
-from ask.models.base import Text, Image, ToolRequest
+from ask.models.base import Content, Text, ToolRequest
 
 class DeepseekAPI(OpenAIAPI):
-    def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]:
-        result: list[Text | Image | ToolRequest] = []
+    def result(self, response: dict[str, Any]) -> list[Content]:
+        result: list[Content] = []
         for item in response['choices']:
             if item['message'].get('reasoning_content'):
                 result.append(Text(text=f"<think>\n{item['message']['reasoning_content']}\n</think>"))
             if item['message'].get('content'):
                 result.append(Text(text=item['message']['content']))
             for call in item['message'].get('tool_calls') or []:
-                result.append(ToolRequest(tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
+                result.append(ToolRequest(call_id=call['id'], tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
         return result
 
     def decode_text_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
@@ -24,7 +24,7 @@ class DeepseekAPI(OpenAIAPI):
         else:
             return '', '', ''
 
-    def flush_content(self, current_idx: str, next_idx: str, tool: str, data: str) -> tuple[str, Text | Image | ToolRequest | None]:
+    def flush_content(self, current_idx: str, next_idx: str, tool: str, data: str) -> tuple[str, Content | None]:
         _, content = super().flush_content(current_idx, next_idx, tool, data)
         if current_idx.endswith(':reasoning'):
             assert not next_idx.endswith(':reasoning'), "Expected reasoning content to be followed by non-reasoning content"
