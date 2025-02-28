@@ -3,8 +3,8 @@ import sys
 import glob
 import argparse
 import itertools
-from pathlib import Path
 import requests
+from pathlib import Path
 from ask.tools import TOOLS
 from ask.chat import chat
 from ask.edit import apply_edits
@@ -20,10 +20,7 @@ DEFAULT_SYSTEM_PROMPT = """
     The line should just say '[UNCHANGED]', with no comment markers or additional text.
     You should never write 'previous code goes here' or 'original code unchanged', always use the [UNCHANGED] marker instead.\n
     Be sure to include some surrounding context in each section so I know where it's supposed to go.
-    Write clean code, and avoid leaving comments explaining what you did.\n\n
-    If you want to execute code on the user's system, respond with a command in the following format:\n\n### EXECUTE\n\n```bash\ncommand here\n```\n\n
-    For platform-specific commands, use ### EXECUTE (linux/mac/windows). For example, a command that only works on Linux and macOS should be written as ### EXECUTE (linux/mac).\n\n
-    For anonymous code snippets, use the following format:\n\n### CODE\n\n```language\nyour code here\n```
+    Write clean code, and avoid leaving comments explaining what you did.
 """.replace('\n    ', ' ').replace('\n ', '\n').strip()  # dedent and strip
 
 def safe_glob(fn: str) -> list[str]:

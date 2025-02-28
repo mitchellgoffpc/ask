@@ -32,16 +32,16 @@ class AnthropicAPI(API):
                 result.append(ToolRequest(tool=item['name'], arguments=item['input']))
         return result
 
-    def decode_chunk(self, chunk: str) -> tuple[int | None, str, str]:
+    def decode_chunk(self, chunk: str) -> tuple[str, str, str]:
         if not chunk.startswith("data: ") or chunk == 'data: [DONE]':
-            return None, '', ''
+            return '', '', ''
         line = json.loads(chunk[6:])
         if line['type'] == 'content_block_start' and line['content_block']['type'] == 'tool_use':
             assert not line['content_block']['input'], "Expected no input for content_block_start"
-            return line['index'], line['content_block']['name'], ''
+            return str(line['index']), line['content_block']['name'], ''
         elif line['type'] == 'content_block_delta':
             if line['delta']['type'] == 'input_json_delta':
-                return line['index'], '', line['delta']['partial_json']
+                return str(line['index']), '', line['delta']['partial_json']
             elif line['delta']['type'] == 'text_delta':
-                return line['index'], '', line['delta']['text']
-        return None, '', ''
+                return str(line['index']), '', line['delta']['text']
+        return '', '', ''

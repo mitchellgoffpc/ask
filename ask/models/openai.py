@@ -45,22 +45,31 @@ class OpenAIAPI(API):
                 result.append(ToolRequest(tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
         return result
 
-    def decode_chunk(self, chunk: str) -> tuple[int | None, str, str]:
+    def decode_chunk(self, chunk: str) -> tuple[str, str, str]:
         if not chunk.startswith("data: ") or chunk == 'data: [DONE]':
-            return None, '', ''
+            return '', '', ''
         line = json.loads(chunk[6:])
         assert len(line['choices']) <= 1, f"Expected exactly one choice, but got {len(line['choices'])}!"
         if not line['choices'] or 'delta' not in line['choices'][0]:
-            return None, '', ''
+            return '', '', ''
+        index = line['choices'][0]['index']
         delta = line['choices'][0]['delta']
         if 'tool_calls' in delta:
             assert len(delta['tool_calls']) == 1, f"Expected exactly one tool call, but got {len(delta['tool_calls'])}!"
-            tool = delta['tool_calls'][0]['function']
-            return line['choices'][0]['index'], tool.get('name', ''), tool['arguments']
-        elif delta.get('content'):
-            return line['choices'][0]['index'], '', delta['content']
+            return self.decode_tool_chunk(index, delta)
         else:
-            return None, '', ''
+            return self.decode_text_chunk(index, delta)
+
+    def decode_tool_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
+        tool = delta['tool_calls'][0]['function']
+        subindex = f"{index}.{delta['tool_calls'][0]['index']}"
+        return subindex, tool.get('name', ''), tool['arguments']
+
+    def decode_text_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
+        if delta.get('content'):
+            return str(index), '', delta['content']
+        else:
+            return '', '', ''
 
 
 class O1API(OpenAIAPI):

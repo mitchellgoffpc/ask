@@ -67,26 +67,26 @@ class API(metaclass=ABCMeta):
         return rendered
 
     def decode(self, chunks: Iterator[str]) -> Iterator[tuple[str, Text | Image | ToolRequest | None]]:
-        current_idx, current_tool = -1, ''
+        current_idx, current_tool = '', ''
         current_data: list[str] = []
         for chunk in chunks:
             idx, tool, data = self.decode_chunk(chunk)
-            if idx is not None and idx != current_idx:
-                yield '', self.flush_chunk(current_tool, ''.join(current_data))
+            if idx and idx != current_idx:
+                yield self.flush_content(current_idx, idx, current_tool, ''.join(current_data))
                 current_idx, current_tool, current_data = idx, '', []
             current_tool = current_tool or tool
             current_data.append(data)
             if not current_tool:
                 yield data, None
-        yield '', self.flush_chunk(current_tool, ''.join(current_data))
+        yield self.flush_content(current_idx, '', current_tool, ''.join(current_data))
 
-    def flush_chunk(self, tool: str, data: str) -> Text | Image | ToolRequest | None:
+    def flush_content(self, current_idx: str, next_idx: str, tool: str, data: str) -> tuple[str, Text | Image | ToolRequest | None]:
         if tool:
-            return ToolRequest(tool=tool, arguments=json.loads(data))
+            return '', ToolRequest(tool=tool, arguments=json.loads(data))
         elif data:
-            return Text(text=data)
+            return '', Text(text=data)
         else:
-            return None
+            return '', None
 
     @abstractmethod
     def render_image(self, mimetype: str, data: bytes) -> dict[str, Any]: ...
@@ -104,4 +104,4 @@ class API(metaclass=ABCMeta):
     def result(self, response: dict[str, Any]) -> list[Text | Image | ToolRequest]: ...
 
     @abstractmethod
-    def decode_chunk(self, chunk: str) -> tuple[int | None, str, str]: ...
+    def decode_chunk(self, chunk: str) -> tuple[str, str, str]: ...

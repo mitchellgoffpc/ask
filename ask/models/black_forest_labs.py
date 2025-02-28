@@ -15,7 +15,7 @@ class BlackForestLabsAPI(API):
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         raise NotImplementedError("Black Forest Labs API does not currently support tools")
 
-    def decode_chunk(self, chunk: str) -> Tuple[int | None, str, str]:
+    def decode_chunk(self, chunk: str) -> Tuple[str, str, str]:
         raise NotImplementedError("Black Forest Labs API does not currently support streaming")
 
     def headers(self, api_key: str) -> dict[str, str]:
