@@ -20,8 +20,7 @@ class ReplaceTool(Tool):
         Parameter("file_path", "string", "The absolute path to the file to write (must be absolute, not relative)"),
         Parameter("content", "string", "The content to write to the file")]
 
-    @classmethod
-    def run(cls, args: dict[str, Any]) -> str:
+    def run(self, args: dict[str, Any]) -> str:
         file_path = Path(args["file_path"])
         content = args["content"]
         if not file_path.is_absolute():

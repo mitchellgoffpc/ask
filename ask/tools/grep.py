@@ -25,8 +25,7 @@ class GrepTool(Tool):
         Parameter("path", "string", PATH_ARG_DESCRIPTION, required=False),
         Parameter("include", "string", "File pattern to include in the search (e.g. \"*.js\", \"*.{ts,tsx}\")", required=False)]
 
-    @classmethod
-    def run(cls, args: dict[str, Any]) -> str:
+    def run(self, args: dict[str, Any]) -> str:
         path = Path(args.get("path", Path.cwd()))
         if not path.is_absolute():
             return f"Error: Path '{path}' is not an absolute path. Please provide an absolute path."

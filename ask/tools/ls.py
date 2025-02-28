@@ -7,8 +7,7 @@ class LSTool(Tool):
     description = "Lists files and directories in a given path."
     parameters = [Parameter("path", "string", "The absolute path to the directory to list (must be absolute, not relative)")]
 
-    @classmethod
-    def run(cls, args: dict[str, Any]) -> str:
+    def run(self, args: dict[str, Any]) -> str:
         path = Path(args["path"])
         if not path.is_absolute():
             return f"Error: Path '{path}' is not an absolute path. Please provide an absolute path."

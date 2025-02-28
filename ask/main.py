@@ -9,7 +9,7 @@ from ask.tools import TOOLS, Tool
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query
-from ask.models import MODELS, MODEL_SHORTCUTS, Model, Message, Content, Text, Image
+from ask.models import MODELS, MODEL_SHORTCUTS, Model, Message, Content, Text, Image, ToolRequest, ToolResponse
 from ask.extract import extract_body, html_to_markdown
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
@@ -69,7 +69,6 @@ def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) 
         for extra in extras:
             if isinstance(extra, Text):
                 print(extra.text)
-    print(extras)
     return extras
 
 def act(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> None:
@@ -78,14 +77,22 @@ def act(model: Model, messages: list[Message], tools: list[Tool], system_prompt:
             response = ask(model, messages, tools, system_prompt)
             response_text = '\n\n'.join(item.text for item in response if isinstance(item, Text))
             apply_edits(response_text)
-            break
-            # command_type, command = extract_command(response_text)
-            # if command:
-            #     result = execute_command(command_type, command)
-            #     messages.append(Message(role="assistant", content=[Text(response_text)]))
-            #     messages.append(Message(role="user", content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
-            # else:
-            #     break
+
+            tool_results: list[Content] = []
+            for item in response:
+                if isinstance(item, ToolRequest):
+                    if item.tool in TOOLS:
+                        result = TOOLS[item.tool](item.arguments)
+                    else:
+                        result = f"Tool {item.tool} not found"
+                    tool_results.append(ToolResponse(call_id=item.call_id, tool=item.tool, response=result))
+
+            if tool_results:
+                messages.append(Message(role="assistant", content=response))
+                messages.append(Message(role="user", content=tool_results))
+            else:
+                break
+
     except KeyboardInterrupt:
         print('\n')
 

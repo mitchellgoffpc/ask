@@ -19,8 +19,7 @@ class ViewTool(Tool):
         Parameter("offset", "number", "The line number to start reading from. Only provide if the file is too large to read at once.", required=False),
         Parameter("limit", "number", "The number of lines to read. Only provide if the file is too large to read at once.", required=False)]
 
-    @classmethod
-    def run(cls, args: dict[str, Any]) -> str:
+    def run(self, args: dict[str, Any]) -> str:
         file_path = Path(args["file_path"])
         if not file_path.is_absolute():
             return f"Error: Path '{file_path}' is not an absolute path. Please provide an absolute path."
