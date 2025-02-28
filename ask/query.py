@@ -3,9 +3,19 @@ import json
 import requests
 from typing import Iterator
 from ask.tools import Tool
-from ask.models import Message, Model, Content
+from ask.models import Message, Model, Content, Text
+from ask.models.tool_helpers import parse_tool_block
 
 def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> Iterator[tuple[str, Content | None]]:
+    for chunk, content in _query(model, messages, tools, system_prompt):
+        if isinstance(content, Text) and not model.supports_tools:
+            yield chunk, None
+            for item in parse_tool_block(content):
+                yield '', item
+        else:
+            yield chunk, content
+
+def _query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> Iterator[tuple[str, Content | None]]:
     api = model.api
     api_key = os.getenv(api.key, '')
     params = api.params(model, messages, tools, system_prompt)

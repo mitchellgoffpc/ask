@@ -58,7 +58,7 @@ def parse_tool_block(text: Text) -> list[Text | ToolRequest]:
         except (json.JSONDecodeError, KeyError):
             continue
 
-    cleaned_text = re.sub(tool_pattern, "", content)
-    if cleaned_text.strip():
+    cleaned_text = re.sub(tool_pattern, "", content, flags=re.DOTALL).strip()
+    if cleaned_text:
         result = [Text(text=cleaned_text), *result]
     return result

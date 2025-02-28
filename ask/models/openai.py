@@ -1,7 +1,7 @@
 import json
 import base64
 from typing import Any
-from ask.tools.render import render_tools_prompt
+from ask.models.tool_helpers import render_tools_prompt
 from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
 
 class OpenAIAPI(API):
