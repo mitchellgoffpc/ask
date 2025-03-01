@@ -2,7 +2,7 @@ import re
 import json
 import uuid
 from ask.tools.base import Tool, Parameter
-from ask.models.base import Text, ToolRequest
+from ask.models.base import Text, ToolRequest, ToolResponse
 
 # Since not all models support tool use directly, we also need to be able render the tools as a normal user message.
 TOOL_PREFIX = "You have access to the following tools, which you can use if they seem helpful for accomplishing the user's request:"
@@ -26,6 +26,31 @@ To use a tool, respond with a tool block in the following format. Your response 
     ...
   }
 }
+
+The tool output will be displayed in a separate tool block, like this:
+
+```tool
+tool: <tool-name>
+response: <response>
+```
+""".strip()
+
+TOOL_REQUEST = """
+```tool
+{{
+  "call_id": {call_id}
+  "name": {name}
+  "arguments": {arguments}
+}}
+```
+""".strip()
+
+TOOL_RESPONSE = """
+```tool
+call_id: {call_id}
+tool: {name}
+response:
+{response}
 ```
 """.strip()
 
@@ -43,6 +68,12 @@ def render_tools_prompt(tools: list[Tool]) -> str:
         return ''
     tool_defs = '\n\n'.join(TOOL_DEFINITION.format(name=tool.name, description=tool.description, schema=get_tool_schema(tool.parameters)) for tool in tools)
     return f"{TOOL_PREFIX}\n\n{tool_defs}\n\n{TOOL_USE}"
+
+def render_tool_request(request: ToolRequest) -> str:
+    return TOOL_REQUEST.format(call_id=request.call_id, name=request.tool, arguments=json.dumps(request.arguments))
+
+def render_tool_response(response: ToolResponse) -> str:
+    return TOOL_RESPONSE.format(call_id=response.call_id, name=response.tool, response=response.response)
 
 def parse_tool_block(text: Text) -> list[Text | ToolRequest]:
     result: list[Text | ToolRequest] = []

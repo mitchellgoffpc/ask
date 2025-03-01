@@ -57,10 +57,10 @@ class API(metaclass=ABCMeta):
     def render_image(self, image: Image) -> dict[str, Any]: ...
 
     @abstractmethod
-    def render_tool_request(self, request: ToolRequest) -> dict[str, Any]: ...
+    def render_tool_request(self, request: ToolRequest, model: Model) -> dict[str, Any]: ...
 
     @abstractmethod
-    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]: ...
+    def render_tool_response(self, response: ToolResponse, model: Model) -> dict[str, Any]: ...
 
     def render_content(self, content: Content, model: Model) -> dict[str, Any]:
         if isinstance(content, Text):
@@ -70,9 +70,9 @@ class API(metaclass=ABCMeta):
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
             return self.render_image(content)
         elif isinstance(content, ToolRequest):
-            return self.render_tool_request(content)
+            return self.render_tool_request(content, model)
         elif isinstance(content, ToolResponse):
-            return self.render_tool_response(content)
+            return self.render_tool_response(content, model)
         else:
             raise TypeError(f"Unsupported message content: {type(content)}")
 

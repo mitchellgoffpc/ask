@@ -1,25 +1,34 @@
 import json
 import base64
 from typing import Any
-from ask.models.tool_helpers import render_tools_prompt
+from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
 from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
 
 class OpenAIAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image_url', 'image_url': {'url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}}
 
-    def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
-        return {'type': 'tool', 'tool': request.tool, 'arguments': request.arguments}
+    def render_tool_request(self, request: ToolRequest, model: Model) -> dict[str, Any]:
+        if model.supports_tools:
+            return {'type': 'tool', 'tool': request.tool, 'arguments': request.arguments}
+        else:
+            return {'type': 'text', 'text': render_tool_request(request)}
 
-    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
+    def render_tool_response(self, response: ToolResponse, model: Model) -> dict[str, Any]:
+        if model.supports_tools:
+            return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
+        else:
+            return {'type': 'text', 'text': render_tool_response(response)}
 
     def render_multi_message(self, message: Message, model: Model) -> list[dict[str, str]]:
         # OpenAI's API has tools as a separate role, so we need to split them out into a separate message for each tool call
-        tool_msgs = [self.render_tool_response(x) for x in message.content if isinstance(x, ToolResponse)]
-        other_content: list[Content] = [x for x in message.content if not isinstance(x, ToolResponse)]
-        other_msgs = [self.render_message(Message(role=message.role, content=other_content), model)] if other_content else []
-        return tool_msgs + other_msgs
+        if model.supports_tools:
+            tool_msgs = [self.render_tool_response(x, model) for x in message.content if isinstance(x, ToolResponse)]
+            other_content: list[Content] = [x for x in message.content if not isinstance(x, ToolResponse)]
+            other_msgs = [self.render_message(Message(role=message.role, content=other_content), model)] if other_content else []
+            return tool_msgs + other_msgs
+        else:
+            return [self.render_message(message, model)]
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         params = {p.name: self.render_tool_param(p) for p in tool.parameters}
