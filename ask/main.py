@@ -9,7 +9,7 @@ from ask.tools import TOOLS, Tool
 from ask.chat import chat
 from ask.edit import apply_edits
 from ask.query import query
-from ask.models import MODELS, MODEL_SHORTCUTS, Model, Message, Content, Text, Image, ToolRequest, ToolResponse
+from ask.models import MODELS, MODEL_SHORTCUTS, Model, Message, Content, Text, Reasoning, Image, ToolRequest, ToolResponse
 from ask.extract import extract_body, html_to_markdown
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
@@ -69,6 +69,9 @@ def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) 
         for extra in extras:
             if isinstance(extra, Text):
                 print(extra.text)
+            elif isinstance(extra, Reasoning):
+                print(f'<think>\n{extra.text}\n</think>')
+    print(extras)
     return extras
 
 def act(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> None:

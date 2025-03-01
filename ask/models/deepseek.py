@@ -1,14 +1,20 @@
 import json
 from typing import Any
 from ask.models.openai import OpenAIAPI
-from ask.models.base import Content, Text, ToolRequest
+from ask.models.base import Model, Content, Text, Reasoning, ToolRequest
 
 class DeepseekAPI(OpenAIAPI):
+    def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
+        message = super().render_message(role, content, tool_calls, model)
+        if role == 'assistant':  # Deepseek's API requires the assistant's message content to be a single text block
+            message['content'] = '\n\n'.join(x['text'] for x in message['content'] if x['type'] == 'text')
+        return message
+
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
         for item in response['choices']:
             if item['message'].get('reasoning_content'):
-                result.append(Text(text=f"<think>\n{item['message']['reasoning_content']}\n</think>"))
+                result.append(Reasoning(text=item['message']['reasoning_content']))
             if item['message'].get('content'):
                 result.append(Text(text=item['message']['content']))
             for call in item['message'].get('tool_calls') or []:
@@ -28,7 +34,7 @@ class DeepseekAPI(OpenAIAPI):
         _, content = super().flush_content(current_idx, next_idx, tool, data)
         if current_idx.endswith(':reasoning'):
             assert not next_idx.endswith(':reasoning'), "Expected reasoning content to be followed by non-reasoning content"
-            return '\n</think>\n\n', Text(text=f"<think>\n{data}\n</think>")
+            return '\n</think>\n\n', Reasoning(text=data)
         elif next_idx.endswith(':reasoning'):
             return '<think>\n', content
         else:

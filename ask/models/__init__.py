@@ -1,4 +1,4 @@
-from ask.models.base import API, Model, Message, Content, Text, Image, ToolRequest, ToolResponse
+from ask.models.base import API, Model, Message, Content, Text, Reasoning, Image, ToolRequest, ToolResponse
 from ask.models.openai import OpenAIAPI, O1API
 from ask.models.anthropic import AnthropicAPI
 from ask.models.deepseek import DeepseekAPI
@@ -30,7 +30,8 @@ MODELS = [
     Model(name='pixtral-large-latest', api=APIS['mistral'], shortcuts=['pixtral-large', 'pl', 'p']),
     Model(name='llama-3.1-8b-instant', api=APIS['groq'], shortcuts=['llama-small', 'llama-8b', 'ls', 'l8'], supports_images=False),
     Model(name='llama-3.3-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70'], supports_images=False),
-    Model(name='deepseek-chat', api=APIS['deepseek'], shortcuts=['deepseek', 'ds'], supports_images=False),
+    # NOTE: Deepseek V3 should support tools directly, but it seems to get stuck in a loop when using them.
+    Model(name='deepseek-chat', api=APIS['deepseek'], shortcuts=['deepseek', 'ds'], supports_images=False, supports_tools=False),
     Model(name='deepseek-reasoner', api=APIS['deepseek'], shortcuts=['r1'], supports_images=False, supports_tools=False),
     Model(name='claude-3-5-haiku-latest', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
     Model(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], shortcuts=['sonnet', 's', 'claude', 'c']),
@@ -39,4 +40,4 @@ MODELS = [
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 
-__all__ = ['MODELS', 'MODEL_SHORTCUTS', 'API', 'Model', 'Message', 'Content', 'Text', 'Image', 'ToolRequest', 'ToolResponse']
+__all__ = ['MODELS', 'MODEL_SHORTCUTS', 'API', 'Model', 'Message', 'Content', 'Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse']

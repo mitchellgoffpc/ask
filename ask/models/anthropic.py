@@ -7,16 +7,19 @@ class AnthropicAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image', 'source': {'type': 'base64', 'media_type': image.mimetype, 'data': base64.b64encode(image.data).decode()}}
 
-    def render_tool_request(self, request: ToolRequest, model: Model) -> dict[str, Any]:
+    def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'type': 'tool_use', 'id': request.call_id, 'name': request.tool, 'input': request.arguments}
 
-    def render_tool_response(self, response: ToolResponse, model: Model) -> dict[str, Any]:
+    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
         return {'type': 'tool_result', 'tool_use_id': response.call_id, 'content': response.response}
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         params = {p.name: self.render_tool_param(p) for p in tool.parameters}
         required = [p.name for p in tool.parameters if p.required]
         return {"name": tool.name, "description": tool.description, "input_schema": {'type': 'object', 'properties': params, 'required': required}}
+
+    def render_message(self, message: Message, model: Model) -> dict[str, Any]:
+        return {'role': message.role, 'content': [self.render_content(x, model) for x in message.content]}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}

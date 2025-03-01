@@ -12,10 +12,10 @@ class BlackForestLabsAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         raise NotImplementedError("Black Forest Labs API does not currently support image prompts")
 
-    def render_tool_request(self, tool_request: ToolRequest, model: Model) -> dict[str, Any]:
+    def render_tool_request(self, tool_request: ToolRequest) -> dict[str, Any]:
         raise NotImplementedError("Black Forest Labs API does not currently support tools")
 
-    def render_tool_response(self, tool_response: ToolResponse, model: Model) -> dict[str, Any]:
+    def render_tool_response(self, tool_response: ToolResponse) -> dict[str, Any]:
         raise NotImplementedError("Black Forest Labs API does not currently support tools")
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:

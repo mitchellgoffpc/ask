@@ -4,10 +4,14 @@ from typing import Any, Iterator, Union
 from dataclasses import dataclass
 from ask.tools import Tool, Parameter
 
-Content = Union['Text', 'Image', 'ToolRequest', 'ToolResponse']
+Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse']
 
 @dataclass
 class Text:
+    text: str
+
+@dataclass
+class Reasoning:
     text: str
 
 @dataclass
@@ -57,27 +61,26 @@ class API(metaclass=ABCMeta):
     def render_image(self, image: Image) -> dict[str, Any]: ...
 
     @abstractmethod
-    def render_tool_request(self, request: ToolRequest, model: Model) -> dict[str, Any]: ...
+    def render_tool_request(self, request: ToolRequest) -> dict[str, Any]: ...
 
     @abstractmethod
-    def render_tool_response(self, response: ToolResponse, model: Model) -> dict[str, Any]: ...
+    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]: ...
 
     def render_content(self, content: Content, model: Model) -> dict[str, Any]:
         if isinstance(content, Text):
             return self.render_text(content)
+        elif isinstance(content, Reasoning):
+            return {}  # Don't render reasoning for now
         elif isinstance(content, Image):
             if not model.supports_images:
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
             return self.render_image(content)
         elif isinstance(content, ToolRequest):
-            return self.render_tool_request(content, model)
+            return self.render_tool_request(content)
         elif isinstance(content, ToolResponse):
-            return self.render_tool_response(content, model)
+            return self.render_tool_response(content)
         else:
             raise TypeError(f"Unsupported message content: {type(content)}")
-
-    def render_message(self, message: Message, model: Model) -> dict[str, Any]:
-        return {'role': message.role, 'content': [self.render_content(x, model) for x in message.content]}
 
     @abstractmethod
     def render_tool(self, tool: Tool) -> dict[str, Any]: ...

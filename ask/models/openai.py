@@ -8,27 +8,35 @@ class OpenAIAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image_url', 'image_url': {'url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}}
 
-    def render_tool_request(self, request: ToolRequest, model: Model) -> dict[str, Any]:
-        if model.supports_tools:
-            return {'type': 'tool', 'tool': request.tool, 'arguments': request.arguments}
-        else:
-            return {'type': 'text', 'text': render_tool_request(request)}
+    # render_tool_request / render_tool_response are only used as fallbacks for models that don't support tool calls
+    def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
+        return {'type': 'text', 'text': render_tool_request(request)}
 
-    def render_tool_response(self, response: ToolResponse, model: Model) -> dict[str, Any]:
-        if model.supports_tools:
-            return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
-        else:
-            return {'type': 'text', 'text': render_tool_response(response)}
+    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
+        return {'type': 'text', 'text': render_tool_response(response)}
+
+    # render_tool_call / render_tool_message are the primary methods for rendering tool calls for the OpenAI schema
+    def render_tool_call(self, request: ToolRequest) -> dict[str, Any]:
+        return {'id': request.call_id, 'type': 'function', 'function': {'name': request.tool, 'arguments': json.dumps(request.arguments)}}
+
+    def render_tool_message(self, response: ToolResponse) -> dict[str, Any]:
+        return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
+
+    def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
+        rendered_content = [self.render_content(x, model) for x in content]
+        tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
+        return {'role': role, 'content': [x for x in rendered_content if x]} | tool_call_dict
 
     def render_multi_message(self, message: Message, model: Model) -> list[dict[str, str]]:
         # OpenAI's API has tools as a separate role, so we need to split them out into a separate message for each tool call
         if model.supports_tools:
-            tool_msgs = [self.render_tool_response(x, model) for x in message.content if isinstance(x, ToolResponse)]
-            other_content: list[Content] = [x for x in message.content if not isinstance(x, ToolResponse)]
-            other_msgs = [self.render_message(Message(role=message.role, content=other_content), model)] if other_content else []
-            return tool_msgs + other_msgs
+            tool_response_msgs = [self.render_tool_message(x) for x in message.content if isinstance(x, ToolResponse)]
+            tool_requests = [x for x in message.content if isinstance(x, ToolRequest)]
+            other_content: list[Content] = [x for x in message.content if not isinstance(x, (ToolRequest, ToolResponse))]
+            other_msgs = [self.render_message(message.role, other_content, tool_requests, model)] if other_content or tool_requests else []
+            return tool_response_msgs + other_msgs
         else:
-            return [self.render_message(message, model)]
+            return [self.render_message(message.role, message.content, [], model)]
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         params = {p.name: self.render_tool_param(p) for p in tool.parameters}
