@@ -9,6 +9,7 @@ APIS = {
     'openai-o1': O1API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
     'mistral': OpenAIAPI(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY'),
     'groq': OpenAIAPI(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY'),
+    'xai': OpenAIAPI(url='https://api.x.ai/v1/chat/completions', key='XAI_API_KEY'),
     'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY'),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY'),
     'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY'),
@@ -35,6 +36,8 @@ MODELS = [
     Model(name='deepseek-reasoner', api=APIS['deepseek'], shortcuts=['r1'], supports_images=False, supports_tools=False),
     Model(name='claude-3-5-haiku-latest', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
     Model(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], shortcuts=['sonnet', 's', 'claude', 'c']),
+    Model(name='grok-2-1212', api=APIS['xai'], shortcuts=['grok', 'g'], supports_images=False),
+    Model(name='grok-2-vision-1212', api=APIS['xai'], shortcuts=['grok-vision', 'gv']),
     Model(name='flux-pro-1.1', api=APIS['bfl'], shortcuts=['flux', 'f'], stream=False, supports_images=False, supports_tools=False, supports_system_prompt=False),
 ]
 

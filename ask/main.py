@@ -71,7 +71,6 @@ def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) 
                 print(extra.text)
             elif isinstance(extra, Reasoning):
                 print(f'<think>\n{extra.text}\n</think>')
-    print(extras)
     return extras
 
 def act(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> None:
