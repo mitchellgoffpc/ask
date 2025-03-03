@@ -55,6 +55,7 @@ def process_url(url: str) -> tuple[str, str | bytes]:
     else:
         raise ValueError(f"Unsupported content type {mimetype} for URL {url}")
 
+
 # Act / Generate
 
 def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> list[Content]:
@@ -168,7 +169,7 @@ def main() -> None:
     model = MODEL_SHORTCUTS[args.model]
     images = [Image(mimetype, data) for mimetype, data in media_files]
     messages = [Message(role='user', content=[*images, Text(question)])]
-    tools = list(TOOLS.values())
+    tools: list[Tool] = []  # list(TOOLS.values())
 
     # Run the query
     if args.chat:
