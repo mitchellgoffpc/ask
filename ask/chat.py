@@ -1,9 +1,9 @@
 import readline
-from pathlib import Path
 import subprocess
-from ask.query import query
-from ask.edit import apply_edits
-from ask.models import MODELS, MODEL_SHORTCUTS, Text, Message, Model
+from pathlib import Path
+from ask.tools import Tool
+from ask.query import act
+from ask.models import MODELS, MODEL_SHORTCUTS, Model, Message, Text, Image
 
 # Tab completion
 
@@ -60,19 +60,19 @@ def switch_model(arg: str, model: Model) -> Model:
         print(f"Model {arg!r} not found.")
     return model
 
-def attach_file(arg: str, prompt: list[Message], attached_files: dict[Path, str]) -> list[Message]:
+def attach_file(arg: str, messages: list[Message], attached_files: dict[Path, str]) -> list[Message]:
     file_paths = arg.split()
     for file_path in file_paths:
         path = Path(file_path).expanduser()
         if path.exists():
             content = path.read_text().strip()
             attached_files[path] = content
-            prompt.append(Message(role='user', content=[Text(f"I'm attaching the following file to our converstaion:\n\n{path}\n```\n{content}\n```")]))
-            prompt.append(Message(role='assistant', content=[Text(f"Successfully attached {path}.")]))
+            messages.append(Message(role='user', content=[Text(f"I'm attaching the following file to our conversation:\n\n{path}\n```\n{content}\n```")]))
+            messages.append(Message(role='assistant', content=[Text(f"Successfully attached {path}.")]))
             print(f"File {path} added to context.")
         else:
             print(f"File {path} not found.")
-    return prompt
+    return messages
 
 def show_files(attached_files: dict[Path, str]) -> None:
     if attached_files:
@@ -83,47 +83,9 @@ def show_files(attached_files: dict[Path, str]) -> None:
         print("No files attached.")
 
 
-# Query
-
-def ask(prompt: list[Message], model: Model, user_input: str, system_prompt: str, attached_files: dict[Path, str]) -> str:
-    context = []
-    for path, original_content in {Path(p).expanduser(): c for p, c in attached_files.items()}.items():
-        content = path.read_text().strip()
-        if content != original_content:
-            context.append(f'{path}\n```\n{content}\n```')
-
-    context_str = ''
-    if context:
-        context_str = '\n\n'.join(context)
-        context_str = f"Here are the most up-to-date versions of my attached files:\n\n{context_str}\n\n"
-
-    chunks = []
-    user_message = Message(role='user', content=[Text(context_str + user_input)])
-    for chunk, _ in query(model, [*prompt, user_message], tools=[], system_prompt=system_prompt):
-        chunks.append(chunk)
-        print(chunk, end='', flush=True)
-    print()
-    return ''.join(chunks)
-
-def act(prompt: list[Message], model: Model, system_prompt: str, attached_files: dict[Path, str]) -> list[Message]:
-    while True:
-        assert prompt and prompt[-1].role == 'user'
-        response = ask(prompt[:-1], model, prompt[-1].content[-1].text, system_prompt, attached_files)  # type: ignore
-        prompt.append(Message(role='assistant', content=[Text(response)]))
-
-        apply_edits(response)
-        return prompt
-        # command_type, command = extract_command(response)
-        # if command:
-        #     result = execute_command(command_type, command)
-        #     prompt.append(Message(role='user', content=[Text(f"I ran the command `{command}`. Here's the output I got:\n\n```\n{result}\n```")]))
-        # else:
-        #     return prompt
-
-
 # Main chat loop
 
-def chat(prompt: list[Message], model: Model, system_prompt: str) -> None:
+def chat(model: Model, question: str, tools: list[Tool], files: dict[str, Text | Image], system_prompt: str) -> None:
     history_file = Path.home() / '.ask_history'
     history_file.touch(exist_ok=True)
 
@@ -133,11 +95,12 @@ def chat(prompt: list[Message], model: Model, system_prompt: str) -> None:
     readline.read_history_file(str(history_file))
     readline.set_history_length(1000)
 
-    prompt = [msg for msg in prompt if msg.content]
+    messages = []
     attached_files: dict[Path, str] = {}
-
-    if prompt and prompt[-1].role == 'user':
-        prompt = act(prompt, model, system_prompt, attached_files)
+    image_content = [content for content in files.values() if isinstance(content, Image)]
+    if question.strip() or image_content:
+        messages.append(Message(role='user', content=[*image_content, Text(question)]))
+        messages = act(model, messages, tools, system_prompt)
 
     while True:
         try:
@@ -152,7 +115,7 @@ def chat(prompt: list[Message], model: Model, system_prompt: str) -> None:
                     result = subprocess.run(user_input[1:], shell=True, check=True, text=True, capture_output=True)
                     print(result.stdout.rstrip('\n'))
                     if result.stderr:
-                        print(result.stdout.rstrip('\n'))
+                        print(result.stderr.rstrip('\n'))
                 except subprocess.CalledProcessError as e:
                     print(f"Command failed with exit code {e.returncode}")
                     print(e.stderr)
@@ -173,12 +136,12 @@ def chat(prompt: list[Message], model: Model, system_prompt: str) -> None:
             elif cmd in ('/files',):
                 show_files(attached_files)
             elif cmd in ('/file', '/f'):
-                prompt = attach_file(arg, prompt, attached_files)
+                messages = attach_file(arg, messages, attached_files)
             elif cmd.startswith('/'):
                 print("Invalid command. Type /help for a list of commands.")
             else:
-                prompt.append(Message(role='user', content=[Text(user_input)]))
-                prompt = act(prompt, model, system_prompt, attached_files)
+                messages.append(Message(role='user', content=[Text(user_input)]))
+                messages = act(model, messages, tools, system_prompt)
 
         except KeyboardInterrupt:
             print()
