@@ -13,11 +13,9 @@ class TextBox:
         self.cursor_pos = 0
 
     def handle_input(self, ch):
-        if ch == '\n':
-            return True
-        elif ch == '\x03':  # Ctrl+C
-            sys.exit()
-        elif ch == '\x7f':  # Backspace
+        if ch == '\r':  # Enter
+            ch = '\n'
+        if ch == '\x7f':  # Backspace
             if self.cursor_pos > 0:
                 self.content = self.content[:self.cursor_pos - 1] + self.content[self.cursor_pos:]
                 self.cursor_pos -= 1
@@ -25,41 +23,31 @@ class TextBox:
             next_ch = sys.stdin.read(1)
             if next_ch == '[':
                 direction = sys.stdin.read(1)
-                if direction == 'D':  # Left arrow
-                    if self.cursor_pos > 0:
-                        self.cursor_pos -= 1
-                elif direction == 'C':  # Right arrow
-                    if self.cursor_pos < len(self.content):
-                        self.cursor_pos += 1
-                elif direction == 'A':  # Up arrow
-                    current_line, current_col = self.get_cursor_line_col()
-                    if current_line > 0:
-                        line_start = self.get_line_start_position(current_line - 1)
-                        self.cursor_pos = min(line_start + current_col, self.get_line_end_position(current_line - 1))
-                elif direction == 'B':  # Down arrow
-                    current_line, current_col = self.get_cursor_line_col()
-                    if current_line < self.get_total_lines() - 1:
-                        line_start = self.get_line_start_position(current_line + 1)
-                        self.cursor_pos = min(line_start + current_col, self.get_line_end_position(current_line + 1))
+                current_line, current_col = self.get_cursor_line_col()
+                if direction == 'D' and self.cursor_pos > 0:  # Left arrow
+                    self.cursor_pos -= 1
+                elif direction == 'C' and self.cursor_pos < len(self.content):  # Right arrow
+                    self.cursor_pos += 1
+                elif direction == 'A' and current_line > 0:  # Up arrow
+                    line_start = self.get_line_start_position(current_line - 1)
+                    self.cursor_pos = min(line_start + current_col, self.get_line_end_position(current_line - 1))
+                elif direction == 'B' and current_line < self.get_total_lines() - 1:  # Down arrow
+                    line_start = self.get_line_start_position(current_line + 1)
+                    self.cursor_pos = min(line_start + current_col, self.get_line_end_position(current_line + 1))
         else:
             self.content = self.content[:self.cursor_pos] + ch + self.content[self.cursor_pos:]
             self.cursor_pos += 1
-        return False
-
-    def wrap_content(self):
-        lines = []
-        start = 0
-        while start < len(self.content):
-            end = min(start + self.width, len(self.content))
-            lines.append(self.content[start:end])
-            start = end
-        if not lines or len(lines[-1]) == self.width:
-            lines.append('')
-        return lines
 
     def get_cursor_line_col(self):
-        line = self.cursor_pos // self.width
-        col = self.cursor_pos % self.width
+        paragraphs = self.content[:self.cursor_pos].split('\n')
+        line = 0
+        for paragraph in paragraphs[:-1]:
+            paragraph_length = len(paragraph)
+            num_lines = (paragraph_length + self.width - 1) // self.width or 1
+            line += num_lines
+        last_paragraph = paragraphs[-1]
+        line += len(last_paragraph) // self.width
+        col = len(last_paragraph) % self.width
         return line, col
 
     def get_total_lines(self):
@@ -71,10 +59,26 @@ class TextBox:
     def get_line_end_position(self, line):
         return min((line + 1) * self.width, len(self.content))
 
+    def wrap_content(self):
+        lines = []
+        paragraphs = self.content.split('\n')
+        for paragraph in paragraphs:
+            if paragraph == '':
+                lines.append('')
+            else:
+                start = 0
+                while start < len(paragraph):
+                    end = min(start + self.width, len(paragraph))
+                    lines.append(paragraph[start:end])
+                    start = end
+        if not lines or len(lines[-1]) == self.width:
+            lines.append('')
+        return lines
+
     def render(self):
-        lines = self.wrap_content()
         top = self.box_style["topLeft"] + self.box_style["top"] * self.width + self.box_style["topRight"]
         bottom = self.box_style["bottomLeft"] + self.box_style["bottom"] * self.width + self.box_style["bottomRight"]
+        lines = self.wrap_content()
 
         content_lines = ''
         cursor_line, cursor_col = self.get_cursor_line_col()
@@ -106,8 +110,9 @@ if __name__ == "__main__":
         tty.setraw(fd)
         while True:
             ch = sys.stdin.read(1)
-            if textbox.handle_input(ch):
-                break
+            if ch == '\x03':  # Ctrl+C
+                sys.exit()
+            textbox.handle_input(ch)
             sys.stdout.write(cursor_up(len(previous_render_lines)))
             new_render = textbox.render()
             new_render_lines = new_render.splitlines()
