@@ -4,11 +4,12 @@ import termios
 from ask.ui.textbox import TextBox
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
-if __name__ == "__main__":
-    textbox = TextBox()
+def render(*elements):
     hide_cursor()
-    initial_render = textbox.render()
-    previous_render_lines = initial_render.splitlines()
+    initial_renders = [element.render() for element in elements]
+    previous_render_lines = []
+    for render_output in initial_renders:
+        previous_render_lines.extend(render_output.splitlines())
     print('\n\r'.join(previous_render_lines))
 
     fd = sys.stdin.fileno()
@@ -19,10 +20,13 @@ if __name__ == "__main__":
             ch = sys.stdin.read(1)
             if ch == '\x03':  # Ctrl+C
                 sys.exit()
-            textbox.handle_input(ch)
+            for element in elements:
+                element.handle_input(ch)
             sys.stdout.write(cursor_up(len(previous_render_lines)))
-            new_render = textbox.render()
-            new_render_lines = new_render.splitlines()
+            new_renders = [element.render() for element in elements]
+            new_render_lines = []
+            for render_output in new_renders:
+                new_render_lines.extend(render_output.splitlines())
 
             # Pad new render to match the number of previous lines
             max_lines = max(len(previous_render_lines), len(new_render_lines))
@@ -32,7 +36,7 @@ if __name__ == "__main__":
             # Render current state
             for prev_line, new_line in zip(previous_render_lines, new_render_lines):
                 sys.stdout.write('\r')
-                if len(new_line) < len(prev_line):  # Clear if the new line is shorter
+                if len(new_line) < len(prev_line):
                     sys.stdout.write(erase_line)
                 sys.stdout.write(new_line + '\n\r')
             sys.stdout.flush()
@@ -41,3 +45,8 @@ if __name__ == "__main__":
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         show_cursor()
+
+
+if __name__ == "__main__":
+    textbox = TextBox()
+    render(textbox)
