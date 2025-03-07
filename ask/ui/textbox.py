@@ -1,15 +1,12 @@
 import sys
-import tty
 import shutil
-import termios
-from ask.ui import boxes
+from ask.ui.box import Borders
 from ask.ui.styles import Colors
-from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
 class TextBox:
-    def __init__(self, width=None, box_style=boxes.SINGLE):
+    def __init__(self, width=None, border_style=Borders.SINGLE):
         self._width = width
-        self.box_style = box_style
+        self.border_style = border_style
         self.content = ''
         self.cursor_pos = 0
 
@@ -81,8 +78,8 @@ class TextBox:
         return lines
 
     def render(self):
-        top = self.box_style["topLeft"] + self.box_style["top"] * self.width + self.box_style["topRight"]
-        bottom = self.box_style["bottomLeft"] + self.box_style["bottom"] * self.width + self.box_style["bottomRight"]
+        top = self.border_style["topLeft"] + self.border_style["top"] * self.width + self.border_style["topRight"]
+        bottom = self.border_style["bottomLeft"] + self.border_style["bottom"] * self.width + self.border_style["bottomRight"]
         lines = self.wrap_content()
 
         content_lines = ''
@@ -94,48 +91,9 @@ class TextBox:
                 cursor_char = line_content[cursor_col:cursor_col + 1]
                 content_after_cursor = line_content[cursor_col + 1:]
                 cursor = Colors.INVERSE + cursor_char + Colors.INVERSE_END
-                full_line = self.box_style["left"] + content_before_cursor + cursor + content_after_cursor + self.box_style["right"]
+                full_line = self.border_style["left"] + content_before_cursor + cursor + content_after_cursor + self.border_style["right"]
             else:
-                full_line = self.box_style["left"] + line_content + self.box_style["right"]
+                full_line = self.border_style["left"] + line_content + self.border_style["right"]
             content_lines += '\n' + full_line
 
         return top + content_lines + '\n' + bottom
-
-
-if __name__ == "__main__":
-    textbox = TextBox()
-    hide_cursor()
-    initial_render = textbox.render()
-    previous_render_lines = initial_render.splitlines()
-    print('\n\r'.join(previous_render_lines))
-
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(fd)
-        while True:
-            ch = sys.stdin.read(1)
-            if ch == '\x03':  # Ctrl+C
-                sys.exit()
-            textbox.handle_input(ch)
-            sys.stdout.write(cursor_up(len(previous_render_lines)))
-            new_render = textbox.render()
-            new_render_lines = new_render.splitlines()
-
-            # Pad new render to match the number of previous lines
-            max_lines = max(len(previous_render_lines), len(new_render_lines))
-            new_render_lines.extend([''] * (max_lines - len(new_render_lines)))
-            previous_render_lines.extend([''] * (max_lines - len(previous_render_lines)))
-
-            # Render current state
-            for prev_line, new_line in zip(previous_render_lines, new_render_lines):
-                sys.stdout.write('\r')
-                if len(new_line) < len(prev_line):  # Clear if the new line is shorter
-                    sys.stdout.write(erase_line)
-                sys.stdout.write(new_line + '\n\r')
-            sys.stdout.flush()
-
-            previous_render_lines = new_render_lines
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        show_cursor()
