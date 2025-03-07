@@ -8,10 +8,14 @@ from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
 class TextBox:
     def __init__(self, width=None, box_style=boxes.SINGLE):
-        self.width = shutil.get_terminal_size().columns - 2 if width is None else width  # Adjusting for box borders
+        self._width = width
         self.box_style = box_style
         self.content = ''
         self.cursor_pos = 0
+
+    @property
+    def width(self):
+        return self._width or shutil.get_terminal_size().columns - 2  # Adjusting for box borders
 
     def handle_input(self, ch):
         if ch == '\r':  # Enter
