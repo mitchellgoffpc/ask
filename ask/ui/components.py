@@ -16,7 +16,7 @@ def add_margin(text: str, margin: Spacing) -> str:
 
 
 class Component:
-    def __init__(self):
+    def __init__(self) -> None:
         self.children: list['Component'] = []
 
     def __getitem__(self, args: tuple['Component', ...]) -> Self:
@@ -32,7 +32,7 @@ class Component:
 
 
 class Text(Component):
-    def __init__(self, text: str, margin: Spacing = 0):
+    def __init__(self, text: str, margin: Spacing = 0) -> None:
         super().__init__()
         self.text = text
         self.margin = margin
@@ -45,7 +45,16 @@ class Text(Component):
 
 
 class Box(Component):
-    def __init__(self, width=None, height=None, margin=None, padding=None, border_color=None, border_style=Borders.ROUND):
+    def __init__(
+        self,
+        width: int | None = None,
+        height: int | None = None,
+        margin: Spacing = 0,
+        padding: Spacing = 0,
+        border_color: str | None = None,
+        border_style: dict = Borders.ROUND
+    ) -> None:
+        super().__init__()
         self.width = width
         self.height = height
         self.margin = margin
@@ -53,9 +62,9 @@ class Box(Component):
         self.border_style = border_style
         self.border_color = border_color
 
-    def render(self):
+    def render(self) -> str:
         content = '\n'.join(child.render() for child in self.children)
-        content = add_margin(content, self.padding)
+        content = add_margin(content, self.padding) if self.padding is not None else content
         lines = content.split('\n')
         content_width = max(ansi_len(line) for line in lines)
         width = self.width if self.width else content_width
@@ -76,4 +85,4 @@ class Box(Component):
             rendered_lines.append(rendered_line)
         rendered_lines.append(bottom_border)
         rendered = '\n'.join(rendered_lines)
-        return add_margin(rendered, self.margin)
+        return add_margin(rendered, self.margin) if self.margin is not None else rendered
