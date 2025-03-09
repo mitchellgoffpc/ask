@@ -1,11 +1,12 @@
 import sys
 import shutil
-from ask.ui.box import Borders
-from ask.ui.styles import Colors
+from ask.ui.components import Component
+from ask.ui.styles import Styles, Colors, Borders
 
-class TextBox:
-    def __init__(self, width=None, border_style=Borders.SINGLE):
+class TextBox(Component):
+    def __init__(self, width=None, border_color=None, border_style=Borders.ROUND):
         self._width = width
+        self.border_color = border_color
         self.border_style = border_style
         self.content = ''
         self.cursor_pos = 0
@@ -21,9 +22,9 @@ class TextBox:
             if self.cursor_pos > 0:
                 self.content = self.content[:self.cursor_pos - 1] + self.content[self.cursor_pos:]
                 self.cursor_pos -= 1
-        elif ch == '\x1b':  # Escape sequence (arrow keys)
+        elif ch == '\x1b':  # Escape sequence (arrow keys) or Alt key combinations
             next_ch = sys.stdin.read(1)
-            if next_ch == '[':
+            if next_ch == '[':  # Arrow keys
                 direction = sys.stdin.read(1)
                 current_line, current_col = self.get_cursor_line_col()
                 if direction == 'D' and self.cursor_pos > 0:  # Left arrow
@@ -36,6 +37,15 @@ class TextBox:
                 elif direction == 'B' and current_line < self.get_total_lines() - 1:  # Down arrow
                     line_start = self.get_line_start_position(current_line + 1)
                     self.cursor_pos = min(line_start + current_col, self.get_line_end_position(current_line + 1))
+            elif next_ch == '\x7f':  # Alt+Backspace, delete word
+                if self.cursor_pos > 0:
+                    pos = self.cursor_pos - 1
+                    while pos >= 0 and self.content[pos].isspace():
+                        pos -= 1
+                    while pos >= 0 and not self.content[pos].isspace():
+                        pos -= 1
+                    self.content = self.content[:pos + 1] + self.content[self.cursor_pos:]
+                    self.cursor_pos = pos + 1
         else:
             self.content = self.content[:self.cursor_pos] + ch + self.content[self.cursor_pos:]
             self.cursor_pos += 1
@@ -78,8 +88,9 @@ class TextBox:
         return lines
 
     def render(self):
-        top = self.border_style["topLeft"] + self.border_style["top"] * self.width + self.border_style["topRight"]
-        bottom = self.border_style["bottomLeft"] + self.border_style["bottom"] * self.width + self.border_style["bottomRight"]
+        color_code = self.border_color or ''
+        top = Colors.ansi(self.border_style["topLeft"] + self.border_style["top"] * self.width + self.border_style["topRight"], color_code)
+        bottom = Colors.ansi(self.border_style["bottomLeft"] + self.border_style["bottom"] * self.width + self.border_style["bottomRight"], color_code)
         lines = self.wrap_content()
 
         content_lines = ''
@@ -90,10 +101,7 @@ class TextBox:
                 content_before_cursor = line_content[:cursor_col]
                 cursor_char = line_content[cursor_col:cursor_col + 1]
                 content_after_cursor = line_content[cursor_col + 1:]
-                cursor = Colors.INVERSE + cursor_char + Colors.INVERSE_END
-                full_line = self.border_style["left"] + content_before_cursor + cursor + content_after_cursor + self.border_style["right"]
-            else:
-                full_line = self.border_style["left"] + line_content + self.border_style["right"]
-            content_lines += '\n' + full_line
+                line_content = content_before_cursor + Styles.inverse(cursor_char) + content_after_cursor
+            content_lines += '\n' + Colors.ansi(self.border_style['left'], color_code) + line_content + Colors.ansi(self.border_style['right'], color_code)
 
         return top + content_lines + '\n' + bottom

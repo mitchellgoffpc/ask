@@ -90,9 +90,44 @@ def rgb_to_best_ansi(red: int, green: int, blue: int, *, offset: int = 0) -> str
 def hex_to_best_ansi(hex_str: str, *, offset: int = 0) -> str:
     return rgb_to_best_ansi(*hex_to_rgb(hex_str), offset=offset)
 
+def ansi_len(text: str) -> int:
+    return len(re.sub(r'\u001B\[[0-9;]+m', '', text))
+
+def apply_style(text: str, start: str, end: str) -> str:
+    return f"{start}{text}{end}"
+
+
+class Styles:
+    RESET = "\u001B[0m"
+    BOLD = "\u001B[1m"
+    DIM = "\u001B[2m"
+    ITALIC = "\u001B[3m"
+    UNDERLINE = "\u001B[4m"
+    OVERLINE = "\u001B[53m"
+    INVERSE = "\u001B[7m"
+    HIDDEN = "\u001B[8m"
+    STRIKETHROUGH = "\u001B[9m"
+
+    BOLD_END = "\u001B[22m"
+    DIM_END = "\u001B[22m"
+    ITALIC_END = "\u001B[23m"
+    UNDERLINE_END = "\u001B[24m"
+    OVERLINE_END = "\u001B[55m"
+    INVERSE_END = "\u001B[27m"
+    HIDDEN_END = "\u001B[28m"
+    STRIKETHROUGH_END = "\u001B[29m"
+
+    bold = staticmethod(partial(apply_style, start=BOLD, end=RESET))
+    dim = staticmethod(partial(apply_style, start=DIM, end=DIM_END))
+    italic = staticmethod(partial(apply_style, start=ITALIC, end=ITALIC_END))
+    underline = staticmethod(partial(apply_style, start=UNDERLINE, end=UNDERLINE_END))
+    overline = staticmethod(partial(apply_style, start=OVERLINE, end=OVERLINE_END))
+    inverse = staticmethod(partial(apply_style, start=INVERSE, end=INVERSE_END))
+    hidden = staticmethod(partial(apply_style, start=HIDDEN, end=HIDDEN_END))
+    strikethrough = staticmethod(partial(apply_style, start=STRIKETHROUGH, end=STRIKETHROUGH_END))
+
 
 class Colors:
-    # Colors
     BLACK = "\u001B[30m"
     RED = "\u001B[31m"
     GREEN = "\u001B[32m"
@@ -111,7 +146,6 @@ class Colors:
     WHITE_BRIGHT = "\u001B[97m"
     END = "\u001B[39m"
 
-    # Background colors
     BG_BLACK = "\u001B[40m"
     BG_RED = "\u001B[41m"
     BG_GREEN = "\u001B[42m"
@@ -130,33 +164,93 @@ class Colors:
     BG_WHITE_BRIGHT = "\u001B[107m"
     BG_END = "\u001B[49m"
 
-    # Styles
-    RESET = "\u001B[0m"
-    BOLD = "\u001B[1m"
-    DIM = "\u001B[2m"
-    ITALIC = "\u001B[3m"
-    UNDERLINE = "\u001B[4m"
-    OVERLINE = "\u001B[53m"
-    INVERSE = "\u001B[7m"
-    HIDDEN = "\u001B[8m"
-    STRIKETHROUGH = "\u001B[9m"
-    BOLD_END = "\u001B[22m"
-    DIM_END = "\u001B[22m"
-    ITALIC_END = "\u001B[23m"
-    UNDERLINE_END = "\u001B[24m"
-    OVERLINE_END = "\u001B[55m"
-    INVERSE_END = "\u001B[27m"
-    HIDDEN_END = "\u001B[28m"
-    STRIKETHROUGH_END = "\u001B[29m"
+    HEX = staticmethod(hex_to_best_ansi)
+    RGB = staticmethod(rgb_to_best_ansi)
+    BG_HEX = staticmethod(partial(hex_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
+    BG_RGB = staticmethod(partial(rgb_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
 
-    ansi = staticmethod(ansi16)
-    ansi256 = staticmethod(ansi256)
-    ansi16m = staticmethod(ansi16m)
-    bg_ansi = staticmethod(partial(ansi16, offset=ANSI_BACKGROUND_OFFSET))
-    bg_ansi256 = staticmethod(partial(ansi256, offset=ANSI_BACKGROUND_OFFSET))
-    bg_ansi16m = staticmethod(partial(ansi16m, offset=ANSI_BACKGROUND_OFFSET))
+    @staticmethod
+    def ansi(text: str, code: str) -> str: return apply_style(text, start=code, end=Colors.END)
+    @staticmethod
+    def hex(text: str, hex: str) -> str: return apply_style(text, start=hex_to_best_ansi(hex), end=Colors.END)
+    @staticmethod
+    def rgb(text: str, rgb: tuple[int, int, int]) -> str: return apply_style(text, start=rgb_to_best_ansi(*rgb), end=Colors.END)
 
-    hex = staticmethod(hex_to_best_ansi)
-    rgb = staticmethod(rgb_to_best_ansi)
-    bg_hex = staticmethod(partial(hex_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
-    bg_rgb = staticmethod(partial(rgb_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
+
+class Borders:
+    SINGLE = {
+        "topLeft": "┌",
+        "top": "─",
+        "topRight": "┐",
+        "right": "│",
+        "bottomRight": "┘",
+        "bottom": "─",
+        "bottomLeft": "└",
+        "left": "│"
+    }
+
+    DOUBLE = {
+        "topLeft": "╔",
+        "top": "═",
+        "topRight": "╗",
+        "right": "║",
+        "bottomRight": "╝",
+        "bottom": "═",
+        "bottomLeft": "╚",
+        "left": "║"
+    }
+
+    ROUND = {
+        "topLeft": "╭",
+        "top": "─",
+        "topRight": "╮",
+        "right": "│",
+        "bottomRight": "╯",
+        "bottom": "─",
+        "bottomLeft": "╰",
+        "left": "│"
+    }
+
+    BOLD = {
+        "topLeft": "┏",
+        "top": "━",
+        "topRight": "┓",
+        "right": "┃",
+        "bottomRight": "┛",
+        "bottom": "━",
+        "bottomLeft": "┗",
+        "left": "┃"
+    }
+
+    SINGLE_DOUBLE = {
+        "topLeft": "╓",
+        "top": "─",
+        "topRight": "╖",
+        "right": "║",
+        "bottomRight": "╜",
+        "bottom": "─",
+        "bottomLeft": "╙",
+        "left": "║"
+    }
+
+    DOUBLE_SINGLE = {
+        "topLeft": "╒",
+        "top": "═",
+        "topRight": "╕",
+        "right": "│",
+        "bottomRight": "╛",
+        "bottom": "═",
+        "bottomLeft": "╘",
+        "left": "│"
+    }
+
+    CLASSIC = {
+        "topLeft": "+",
+        "top": "-",
+        "topRight": "+",
+        "right": "|",
+        "bottomRight": "+",
+        "bottom": "-",
+        "bottomLeft": "+",
+        "left": "|"
+    }
