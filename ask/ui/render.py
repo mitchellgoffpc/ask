@@ -2,8 +2,7 @@ import sys
 import tty
 import termios
 from ask.ui.styles import Styles, Colors
-from ask.ui.components import Component, Box, Text
-from ask.ui.textbox import TextBox
+from ask.ui.components import Component
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
 def render(*elements: Component) -> None:
@@ -58,11 +57,13 @@ def render(*elements: Component) -> None:
 
 if __name__ == "__main__":
     from pathlib import Path
+    from ask.ui.components import Box, Text
+    from ask.ui.textbox import PromptTextBox
     render(
         Box(padding={'left': 1, 'right': 1}, margin={'bottom': 1}, border_color=Colors.HEX('#BE5103'))[
             Text(f"{Colors.hex('✻', '#BE5103')} Welcome to {Styles.bold('Ask')}!", margin={'bottom': 1}),
             Text(Colors.hex("  /help for help", '#999999'), margin={'bottom': 1}),
             Text(Colors.hex(f"  cwd: {Path.cwd()}", '#999999')),
         ],
-        TextBox(border_color=Colors.HEX('#999999')),
+        PromptTextBox(border_color=Colors.HEX('#4A4A4A'), placeholder='Try "how do I log an error?"'),
     )

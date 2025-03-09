@@ -1,6 +1,7 @@
 import os
 import re
 from functools import partial
+from dataclasses import dataclass
 
 ANSI_BACKGROUND_OFFSET = 10
 ANSI_256_SUPPORT = '256color' in os.getenv("TERM", '')
@@ -177,80 +178,22 @@ class Colors:
     def rgb(text: str, rgb: tuple[int, int, int]) -> str: return apply_style(text, start=rgb_to_best_ansi(*rgb), end=Colors.END)
 
 
+@dataclass
+class BorderStyle:
+    top_left: str
+    top: str
+    top_right: str
+    right: str
+    bottom_right: str
+    bottom: str
+    bottom_left: str
+    left: str
+
 class Borders:
-    SINGLE = {
-        "topLeft": "┌",
-        "top": "─",
-        "topRight": "┐",
-        "right": "│",
-        "bottomRight": "┘",
-        "bottom": "─",
-        "bottomLeft": "└",
-        "left": "│"
-    }
-
-    DOUBLE = {
-        "topLeft": "╔",
-        "top": "═",
-        "topRight": "╗",
-        "right": "║",
-        "bottomRight": "╝",
-        "bottom": "═",
-        "bottomLeft": "╚",
-        "left": "║"
-    }
-
-    ROUND = {
-        "topLeft": "╭",
-        "top": "─",
-        "topRight": "╮",
-        "right": "│",
-        "bottomRight": "╯",
-        "bottom": "─",
-        "bottomLeft": "╰",
-        "left": "│"
-    }
-
-    BOLD = {
-        "topLeft": "┏",
-        "top": "━",
-        "topRight": "┓",
-        "right": "┃",
-        "bottomRight": "┛",
-        "bottom": "━",
-        "bottomLeft": "┗",
-        "left": "┃"
-    }
-
-    SINGLE_DOUBLE = {
-        "topLeft": "╓",
-        "top": "─",
-        "topRight": "╖",
-        "right": "║",
-        "bottomRight": "╜",
-        "bottom": "─",
-        "bottomLeft": "╙",
-        "left": "║"
-    }
-
-    DOUBLE_SINGLE = {
-        "topLeft": "╒",
-        "top": "═",
-        "topRight": "╕",
-        "right": "│",
-        "bottomRight": "╛",
-        "bottom": "═",
-        "bottomLeft": "╘",
-        "left": "│"
-    }
-
-    CLASSIC = {
-        "topLeft": "+",
-        "top": "-",
-        "topRight": "+",
-        "right": "|",
-        "bottomRight": "+",
-        "bottom": "-",
-        "bottomLeft": "+",
-        "left": "|"
-    }
+    SINGLE = BorderStyle("┌", "─", "┐", "│", "┘", "─", "└", "│")
+    DOUBLE = BorderStyle("╔", "═", "╗", "║", "╝", "═", "╚", "║")
+    ROUND = BorderStyle("╭", "─", "╮", "│", "╯", "─", "╰", "│")
+    BOLD = BorderStyle("┏", "━", "┓", "┃", "┛", "━", "┗", "┃")
+    SINGLE_DOUBLE = BorderStyle("╓", "─", "╖", "║", "╜", "─", "╙", "║")
+    DOUBLE_SINGLE = BorderStyle("╒", "═", "╕", "│", "╛", "═", "╘", "│")
+    CLASSIC = BorderStyle("+", "-", "+", "|", "+", "-", "+", "|")
