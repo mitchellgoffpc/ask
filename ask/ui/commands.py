@@ -15,12 +15,11 @@ class CommandsList(Component):
     leaf = True
 
     def __init__(self, prefix: str = ""):
-        super().__init__()
-        self.state.update({'prefix': prefix})
+        super().__init__(prefix=prefix)
 
     def render(self, _: list[str]) -> str:
-        matching_commands = {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['prefix'])}
-        if not self.state['prefix'] or not matching_commands:
+        matching_commands = {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.props['prefix'])}
+        if not self.props['prefix'] or not matching_commands:
             return ""
         cmd_width = max(len(cmd) for cmd in matching_commands)
         return "\n".join(

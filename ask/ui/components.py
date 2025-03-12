@@ -29,9 +29,9 @@ def add_margin(text: str, margin: Spacing) -> str:
 
 
 class State:
-    def __init__(self, uuid: uuid.UUID) -> None:
-        self.state: dict[str, Any] = {}
+    def __init__(self, uuid: uuid.UUID, state: dict[str, Any] = {}) -> None:
         self.uuid = uuid
+        self.state = state
 
     def __getitem__(self, key: str) -> Any:
         return self.state.get(key)
@@ -48,12 +48,13 @@ class State:
 
 class Component:
     leaf = False
+    initial_state: dict[str, Any] = {}
 
     def __init__(self, **props: Any) -> None:
         self.children: list['Component'] = []
         self.uuid = uuid.uuid4()
         self.props = props
-        self.state = State(self.uuid)
+        self.state = State(self.uuid, self.initial_state)
 
     def __getitem__(self, args: tuple['Component', ...]) -> Self:
         if self.leaf:

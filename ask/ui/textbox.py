@@ -7,11 +7,11 @@ TextCallback = Callable[[str], None] | None
 
 class TextBox(Box):
     leaf = True
+    initial_state = {'content': '', 'cursor_pos': 0}
 
     def __init__(self, width: Size = 1.0, border_color: str | None = None, border_style: BorderStyle = Borders.ROUND, handle_change: TextCallback = None, **props):
         super().__init__(width=width, border_color=border_color, border_style=border_style, handle_change=handle_change, **props)
         assert self.content_width > 0, "TextBox width must be specified"
-        self.state.update({'content': '', 'cursor_pos': 0})
 
     def handle_input(self, ch: str) -> None:
         cursor_pos = self.state['cursor_pos']
