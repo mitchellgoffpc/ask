@@ -2,15 +2,39 @@ import sys
 import tty
 import termios
 from ask.ui.styles import Styles, Colors
-from ask.ui.components import Component
+from ask.ui.components import Component, dirty
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
-def render(*elements: Component) -> None:
+def render_root(root: Component) -> None:
     hide_cursor()
-    initial_renders = [element.render() for element in elements]
-    previous_render_lines = []
-    for render_output in initial_renders:
-        previous_render_lines.extend(render_output.split('\n'))
+
+    nodes = {}
+    parents = {}
+    children = {}
+    renders = {}
+
+    def build_tree(component):
+        dirty.discard(component.uuid)
+        nodes[component.uuid] = component
+        contents = component.contents()
+        children[component.uuid] = contents
+        for child in contents:
+            parents[child.uuid] = component
+            build_tree(child)
+
+    def render(component):
+        contents = [render(child) for child in children[component.uuid]]
+        renders[component.uuid] = component.render(contents)
+        return renders[component.uuid]
+
+    def propogate(node, value, handler='handle_input'):
+        getattr(node, handler)(value)
+        for child in children.get(node.uuid, []):
+            propogate(child, value, handler)
+
+    build_tree(root)
+    initial_render = render(root)
+    previous_render_lines = initial_render.split('\n')
     print('\n\r'.join(previous_render_lines))
 
     fd = sys.stdin.fileno()
@@ -21,14 +45,12 @@ def render(*elements: Component) -> None:
             ch = sys.stdin.read(1)
             if ch == '\x03':  # Ctrl+C
                 sys.exit()
-            for element in elements:
-                element.handle_input(ch)
+            propogate(root, ch, 'handle_input')
+            if not dirty:
+                continue
 
             output = ''
-            new_renders = [element.render() for element in elements]
-            new_render_lines = []
-            for render_output in new_renders:
-                new_render_lines.extend(render_output.split('\n'))
+            new_render_lines = render(root).split('\n')
 
             # Pad new render to match the number of previous lines
             max_lines = max(len(previous_render_lines), len(new_render_lines))
@@ -57,13 +79,26 @@ def render(*elements: Component) -> None:
 
 if __name__ == "__main__":
     from pathlib import Path
-    from ask.ui.components import Box, Text
+    from ask.ui.components import Component, Box, Text
     from ask.ui.textbox import PromptTextBox
-    render(
-        Box(padding={'left': 1, 'right': 1}, margin={'bottom': 1}, border_color=Colors.HEX('#BE5103'))[
-            Text(f"{Colors.hex('✻', '#BE5103')} Welcome to {Styles.bold('Ask')}!", margin={'bottom': 1}),
-            Text(Colors.hex("  /help for help", '#999999'), margin={'bottom': 1}),
-            Text(Colors.hex(f"  cwd: {Path.cwd()}", '#999999')),
-        ],
-        PromptTextBox(border_color=Colors.HEX('#4A4A4A'), placeholder='Try "how do I log an error?"'),
-    )
+    from ask.ui.commands import CommandsList
+
+    class App(Component):
+        def __init__(self):
+            super().__init__()
+            self.state.update({'text': ''})
+
+        def contents(self) -> list[Component]:
+            return [
+                Box(padding={'left': 1, 'right': 1}, margin={'bottom': 1}, border_color=Colors.HEX('#BE5103'))[
+                    Text(f"{Colors.hex('✻', '#BE5103')} Welcome to {Styles.bold('Ask')}!", margin={'bottom': 1}),
+                    Text(Colors.hex("  /help for help", '#999999'), margin={'bottom': 1}),
+                    Text(Colors.hex(f"  cwd: {Path.cwd()}", '#999999')),
+                ],
+                PromptTextBox(border_color=Colors.HEX('#4A4A4A'), placeholder='Try "how do I log an error?"', handle_change=lambda x: self.state.update({'text': x})),
+                Text(Colors.hex('! for bash mode · / for commands', '#999999'), margin={'left': 2}),
+                CommandsList(prefix=self.state['text']),
+            ]
+
+    app = App()
+    render_root(app)
