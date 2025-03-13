@@ -12,8 +12,16 @@ def render_root(root: Component) -> None:
 
     nodes: dict[UUID, Component] = {}
     parents: dict[UUID, Component] = {}
-    children: dict[UUID, list[Component]] = {}
+    children: dict[UUID, list[Component | None]] = {}
     renders: dict[UUID, str] = {}
+
+    # Utility function to print the component tree
+    def print_node(uuid: UUID, level: int = 0) -> None:
+        component = nodes[uuid]
+        print('  ' * level + f'└─ {component.__class__.__name__}')
+        for child in children.get(uuid, []):
+            if child:  # Skip None values
+                print_node(child.uuid, level + 1)
 
     # Add a component and all its children to the tree
     def mount(component):
@@ -36,14 +44,15 @@ def render_root(root: Component) -> None:
         dirty.discard(component.uuid)
 
     def render(component):
-        contents = [render(child) for child in children[component.uuid]]
+        contents = [render(child) for child in children[component.uuid] if child]
         renders[component.uuid] = component.render(contents)
         return renders[component.uuid]
 
     def propogate(node, value, handler='handle_input'):
         getattr(node, handler)(value)
         for child in children.get(node.uuid, []):
-            propogate(child, value, handler)
+            if child:
+                propogate(child, value, handler)
 
     mount(root)
     initial_render = render(root)
@@ -70,21 +79,24 @@ def render_root(root: Component) -> None:
                 new_contents = component.contents()
                 old_contents = children.get(component.uuid, [])
 
-                for old_child, new_child in zip_longest(old_contents, new_contents):
-                    if old_child is None:
+                for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents)):
+                    if not old_child and not new_child:
+                        continue
+                    elif not old_child:
                         # New child added
                         children[component.uuid].append(new_child)
                         parents[new_child.uuid] = component
                         nodes[new_child.uuid] = new_child
                         dirty.add(new_child.uuid)
                         mount(new_child)
-                    elif new_child is None:
+                    elif not new_child:
                         # Child removed
                         unmount(old_child)
+                        children[component.uuid][i] = None
                     elif old_child.__class__ is not new_child.__class__:
                         # Class changed, replace the child
                         unmount(old_child)
-                        children[component.uuid][old_contents.index(old_child)] = new_child
+                        children[component.uuid][i] = new_child
                         parents[new_child.uuid] = component
                         nodes[new_child.uuid] = new_child
                         dirty.add(new_child.uuid)
@@ -93,6 +105,10 @@ def render_root(root: Component) -> None:
                         # Same class but props changed, update props and mark dirty
                         old_child.props = new_child.props.copy()
                         dirty.add(old_child.uuid)
+
+                # Remove trailing None children
+                while children[component.uuid] and not children[component.uuid][-1]:
+                    children[component.uuid].pop()
 
             # Re-render the tree
             new_render_lines = render(root).split('\n')
@@ -116,6 +132,7 @@ def render_root(root: Component) -> None:
             sys.stdout.write(output)
             sys.stdout.flush()
             previous_render_lines = new_render_lines
+
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         show_cursor()
@@ -123,25 +140,33 @@ def render_root(root: Component) -> None:
 
 if __name__ == "__main__":
     from pathlib import Path
+    from ask.ui.styles import Theme
     from ask.ui.components import Component, Box, Text
     from ask.ui.textbox import PromptTextBox
     from ask.ui.commands import CommandsList
 
     class App(Component):
-        def __init__(self):
-            super().__init__()
-            self.state.update({'text': ''})
+        initial_state = {'text': '', 'bash_mode': False}
+
+        def handle_change(self, value: str) -> None:
+            self.state.update({'text': value})
+
+        def handle_set_bash_mode(self, value: bool) -> None:
+            self.state.update({'bash_mode': value})
 
         def contents(self) -> list[Component]:
             return [
-                Box(padding={'left': 1, 'right': 1}, margin={'bottom': 1}, border_color=Colors.HEX('#BE5103'))[
-                    Text(f"{Colors.hex('✻', '#BE5103')} Welcome to {Styles.bold('Ask')}!", margin={'bottom': 1}),
-                    Text(Colors.hex("  /help for help", '#999999'), margin={'bottom': 1}),
-                    Text(Colors.hex(f"  cwd: {Path.cwd()}", '#999999')),
+                Box(padding={'left': 1, 'right': 1}, margin={'bottom': 1}, border_color=Colors.HEX(Theme.ORANGE))[
+                    Text(f"{Colors.hex('✻', Theme.ORANGE)} Welcome to {Styles.bold('Ask')}!", margin={'bottom': 1}),
+                    Text(Colors.hex("  /help for help", Theme.GRAY), margin={'bottom': 1}),
+                    Text(Colors.hex(f"  cwd: {Path.cwd()}", Theme.GRAY)),
                 ],
-                PromptTextBox(border_color=Colors.HEX('#4A4A4A'), placeholder='Try "how do I log an error?"', handle_change=lambda x: self.state.update({'text': x})),
-                Text(Colors.hex('! for bash mode · / for commands', '#999999'), margin={'left': 2}),
-                CommandsList(prefix=self.state['text']),
+                PromptTextBox(
+                    placeholder='Try "how do I log an error?"',
+                    bash_mode=self.state['bash_mode'],
+                    handle_change=self.handle_change,
+                    handle_set_bash_mode=self.handle_set_bash_mode),
+                CommandsList(prefix=self.state['text'], bash_mode=self.state['bash_mode']),
             ]
 
     app = App()

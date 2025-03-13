@@ -197,3 +197,10 @@ class Borders:
     SINGLE_DOUBLE = BorderStyle("╓", "─", "╖", "║", "╜", "─", "╙", "║")
     DOUBLE_SINGLE = BorderStyle("╒", "═", "╕", "│", "╛", "═", "╘", "│")
     CLASSIC = BorderStyle("+", "-", "+", "|", "+", "-", "+", "|")
+
+class Theme:
+    ORANGE = '#BE5103'
+    PINK = '#FF69B4'
+    DARK_PINK = '#8E2261'
+    GRAY = '#999999'
+    DARK_GRAY = '#4A4A4A'

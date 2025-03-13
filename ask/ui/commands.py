@@ -1,5 +1,5 @@
-from ask.ui.components import Component
-from ask.ui.styles import Colors, Styles
+from ask.ui.components import Component, Text
+from ask.ui.styles import Colors, Styles, Theme
 
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
@@ -14,14 +14,16 @@ COMMANDS = {
 class CommandsList(Component):
     leaf = True
 
-    def __init__(self, prefix: str = ""):
-        super().__init__(prefix=prefix)
+    def __init__(self, prefix: str = "", bash_mode: bool = False):
+        super().__init__(prefix=prefix, bash_mode=bash_mode)
 
-    def render(self, _: list[str]) -> str:
+    def contents(self) -> list[Component]:
         matching_commands = {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.props['prefix'])}
         if not self.props['prefix'] or not matching_commands:
-            return ""
+            bash_color = Theme.PINK if self.props['bash_mode'] else Theme.GRAY
+            return [Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), margin={'left': 2})]
         cmd_width = max(len(cmd) for cmd in matching_commands)
-        return "\n".join(
-            f"{Styles.bold(Colors.hex(cmd, '#BE5103')).ljust(cmd_width + 11)}  {Colors.hex(desc, '#999999')}"
-            for cmd, desc in matching_commands.items())
+        return [
+            Text(f"{Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.ORANGE))}  {Colors.hex(desc, Theme.GRAY)}")
+            for cmd, desc in matching_commands.items()
+        ]

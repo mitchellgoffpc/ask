@@ -63,7 +63,9 @@ class Component:
         return self
 
     def contents(self) -> list['Component']:
-        return self.children
+        if self.leaf:
+            return []
+        raise NotImplementedError(f"{self.__class__.__name__} component must implement `contents` method")
 
     def render(self, contents: list[str]) -> str:
         return '\n'.join(contents)
@@ -122,6 +124,9 @@ class Box(Component):
     @property
     def content_height(self) -> int:
         return max(0, self.box_height - 2)
+
+    def contents(self) -> list[Component]:
+        return self.children
 
     def render(self, contents: list[str]) -> str:
         content = '\n'.join(contents)

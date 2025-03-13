@@ -1,16 +1,25 @@
 import sys
 from typing import Callable
 from ask.ui.components import Box, Size
-from ask.ui.styles import Styles, Colors, Borders, BorderStyle
+from ask.ui.styles import Styles, Colors, Borders, BorderStyle, Theme
 
-TextCallback = Callable[[str], None] | None
+TextCallback = Callable[[str], None]
+BoolCallback = Callable[[bool], None]
 
 class TextBox(Box):
     leaf = True
     initial_state = {'content': '', 'cursor_pos': 0}
 
-    def __init__(self, width: Size = 1.0, border_color: str | None = None, border_style: BorderStyle = Borders.ROUND, handle_change: TextCallback = None, **props):
-        super().__init__(width=width, border_color=border_color, border_style=border_style, handle_change=handle_change, **props)
+    def __init__(
+        self,
+        width: Size = 1.0,
+        border_color: str | None = None,
+        border_style: BorderStyle = Borders.ROUND,
+        handle_change: TextCallback | None = None,
+        placeholder: str = "",
+        **props
+    ):
+        super().__init__(width=width, border_color=border_color, border_style=border_style, handle_change=handle_change, placeholder=placeholder, **props)
         assert self.content_width > 0, "TextBox width must be specified"
 
     def handle_input(self, ch: str) -> None:
@@ -92,9 +101,11 @@ class TextBox(Box):
         return lines
 
     def render_contents(self) -> str:
+        if not self.state['content'] and self.props['placeholder']:
+            return Styles.inverse(self.props['placeholder'][0]) + Colors.hex(self.props['placeholder'][1:], '#999999')
+
         lines = self.wrap_content()
         cursor_line, cursor_col = self.get_cursor_line_col()
-
         result_lines = []
         for idx, line_content in enumerate(lines):
             line_content = line_content.ljust(self.content_width)
@@ -112,16 +123,24 @@ class TextBox(Box):
 
 
 class PromptTextBox(TextBox):
-    def __init__(self, placeholder: str = "", **props):
-        super().__init__(placeholder=placeholder, **props)
+    def __init__(self, bash_mode: bool, handle_set_bash_mode: BoolCallback, **props):
+        border_color = Theme.DARK_PINK if bash_mode else Theme.DARK_GRAY
+        super().__init__(border_color=Colors.HEX(border_color), bash_mode=bash_mode, handle_set_bash_mode=handle_set_bash_mode, **props)
+
+    def handle_input(self, ch: str) -> None:
+        if self.props['bash_mode'] and not self.state['content'] and ch == '\x7f':
+            self.props['handle_set_bash_mode'](False)
+        elif not self.state['content'] and ch == '!':
+            self.props['handle_set_bash_mode'](True)
+        else:
+            super().handle_input(ch)
 
     @property
     def content_width(self) -> int:
         return max(0, self.box_width - 5)  # 2 spaces for borders, 3 spaces for prompt arrow
 
     def render_contents(self) -> str:
-        if not self.state['content'] and self.props['placeholder']:
-            return f" > {Styles.inverse(self.props['placeholder'][0])}{Colors.hex(self.props['placeholder'][1:], '#999999')}"
+        marker = Colors.hex('!', Theme.PINK) if self.props['bash_mode'] else '>'
         lines = super().render_contents().split('\n')
-        lines = [f" > {line}" if i == 0 else f"   {line}" for i, line in enumerate(lines)]
+        lines = [f" {marker} {line}" if i == 0 else f"   {line}" for i, line in enumerate(lines)]
         return '\n'.join(lines)
