@@ -21,6 +21,7 @@ MODELS = [
     Model(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
     Model(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4om', 'gpt4m', '4om', '4m']),
     Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o']),
+    Model(name='gpt-4.5-preview', api=APIS['openai'], shortcuts=['gpt45', '45']),
     Model(name='o1-mini', api=APIS['openai-o1'], shortcuts=['o1m'], supports_images=False, supports_tools=False, supports_system_prompt=False),
     Model(name='o1-preview', api=APIS['openai-o1'], shortcuts=['o1p'], supports_images=False, supports_tools=False, supports_system_prompt=False),
     Model(name='o1', api=APIS['openai-o1'], shortcuts=['o1']),
