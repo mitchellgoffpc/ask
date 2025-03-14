@@ -13,17 +13,43 @@ COMMANDS = {
 
 class CommandsList(Component):
     leaf = True
+    initial_state = {'selected_index': 0}
 
     def __init__(self, prefix: str = "", bash_mode: bool = False):
         super().__init__(prefix=prefix, bash_mode=bash_mode)
 
+    def handle_input(self, ch: str) -> None:
+        matching_commands = self.get_matching_commands()
+        selected_index = self.state['selected_index']
+        if not self.props['prefix'] or not matching_commands:
+            return
+        if ch.startswith('\x1b['):  # Arrow keys
+            direction = ch[2:]
+            if direction == 'A':  # Up arrow
+                selected_index -= 1
+            elif direction == 'B':  # Down arrow
+                selected_index += 1
+            self.state.update({'selected_index': selected_index % len(matching_commands)})
+
+    def get_matching_commands(self) -> dict[str, str]:
+        return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.props['prefix'])}
+
     def contents(self) -> list[Component]:
-        matching_commands = {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.props['prefix'])}
+        matching_commands = self.get_matching_commands()
         if not self.props['prefix'] or not matching_commands:
             bash_color = Theme.PINK if self.props['bash_mode'] else Theme.GRAY
             return [Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), margin={'left': 2})]
+
+        selected_index = min(self.state['selected_index'], len(matching_commands) - 1)
         cmd_width = max(len(cmd) for cmd in matching_commands)
-        return [
-            Text(f"{Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.ORANGE))}  {Colors.hex(desc, Theme.GRAY)}")
-            for cmd, desc in matching_commands.items()
-        ]
+        result: list[Component] = []
+        for idx, (cmd, desc) in enumerate(matching_commands.items()):
+            if idx == selected_index:  # add highlight
+                cmd_text = Styles.inverse(Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.ORANGE)))
+                desc_text = Styles.inverse(Colors.hex(desc, Theme.GRAY))
+            else:
+                cmd_text = Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.ORANGE))
+                desc_text = Colors.hex(desc, Theme.GRAY)
+            result.append(Text(f"{cmd_text}  {desc_text}"))
+
+        return result

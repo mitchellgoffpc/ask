@@ -1,4 +1,3 @@
-import sys
 from typing import Callable
 from ask.ui.components import Box, Size
 from ask.ui.styles import Styles, Colors, Borders, BorderStyle, Theme
@@ -31,10 +30,9 @@ class TextBox(Box):
             if cursor_pos > 0:
                 content = content[:cursor_pos - 1] + content[cursor_pos:]
                 cursor_pos -= 1
-        elif ch == '\x1b':  # Escape sequence (arrow keys) or Alt key combinations
-            next_ch = sys.stdin.read(1)
-            if next_ch == '[':  # Arrow keys
-                direction = sys.stdin.read(1)
+        elif ch.startswith('\x1b'):  # Escape sequence
+            if ch.startswith('\x1b['):  # Arrow keys
+                direction = ch[2:]
                 current_line, current_col = self.get_cursor_line_col()
                 if direction == 'D' and cursor_pos > 0:  # Left arrow
                     cursor_pos -= 1
@@ -46,16 +44,15 @@ class TextBox(Box):
                 elif direction == 'B' and current_line < self.get_total_lines() - 1:  # Down arrow
                     line_start = self.get_line_start_position(current_line + 1)
                     cursor_pos = min(line_start + current_col, self.get_line_end_position(current_line + 1))
-            elif next_ch == '\x7f':  # Alt+Backspace, delete word
-                if cursor_pos > 0:
-                    pos = cursor_pos - 1
-                    while pos >= 0 and content[pos].isspace():
-                        pos -= 1
-                    while pos >= 0 and not content[pos].isspace():
-                        pos -= 1
-                    content = content[:pos + 1] + content[cursor_pos:]
-                    cursor_pos = pos + 1
-        else:
+            elif ch == '\x1b\x7f' and cursor_pos > 0:  # Alt+Backspace, delete word
+                pos = cursor_pos - 1
+                while pos >= 0 and content[pos].isspace():
+                    pos -= 1
+                while pos >= 0 and not content[pos].isspace():
+                    pos -= 1
+                content = content[:pos + 1] + content[cursor_pos:]
+                cursor_pos = pos + 1
+        else:  # Regular character
             content = content[:cursor_pos] + ch + content[cursor_pos:]
             cursor_pos += 1
 

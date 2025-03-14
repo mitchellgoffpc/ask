@@ -64,10 +64,21 @@ def render_root(root: Component) -> None:
     try:
         tty.setraw(fd)
         while True:
+            # Read input character and handle escape sequences
             ch = sys.stdin.read(1)
             if ch == '\x03':  # Ctrl+C
                 sys.exit()
-            propogate(root, ch, 'handle_input')
+
+            # Handle escape sequences and regular input
+            sequence = sequence = ch
+            if ch == '\x1b':  # Escape sequence
+                sequence += sys.stdin.read(1)
+                if sequence[-1] == '[':
+                    while not (ch := sys.stdin.read(1)).isalpha():
+                        sequence += ch
+                    sequence += ch
+            propogate(root, sequence, 'handle_input')
+
             if not dirty:
                 continue
 
