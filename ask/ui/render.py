@@ -22,7 +22,6 @@ def print_node(uuid: UUID, level: int = 0) -> None:
 
 # Add a component and all its children to the tree
 def mount(component):
-    dirty.discard(component.uuid)
     nodes[component.uuid] = component
     contents = component.contents()
     children[component.uuid] = contents
@@ -38,7 +37,6 @@ def unmount(component):
     del nodes[component.uuid]
     del parents[component.uuid]
     del renders[component.uuid]
-    dirty.discard(component.uuid)
 
 # Update a component's subtree
 def update(component):
@@ -80,6 +78,14 @@ def render(component):
     renders[component.uuid] = component.render(contents)
     return renders[component.uuid]
 
+# Get the depth of a node
+def depth(node, root):
+    depth = 0
+    while node is not root:
+        node = parents[node.uuid]
+        depth += 1
+    return depth
+
 # Propogate input to a component and its subtree
 def propogate(node, value, handler='handle_input'):
     getattr(node, handler)(value)
@@ -120,7 +126,7 @@ def render_root(root: Component) -> None:
 
             if not dirty:
                 continue
-            for uuid in dirty:
+            for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards
                 update(nodes[uuid])
             dirty.clear()
 
