@@ -7,52 +7,91 @@ from ask.ui.styles import Styles, Colors
 from ask.ui.components import Component, dirty
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
+nodes: dict[UUID, Component] = {}
+parents: dict[UUID, Component] = {}
+children: dict[UUID, list[Component | None]] = {}
+renders: dict[UUID, str] = {}
+
+# Utility function to print the component tree
+def print_node(uuid: UUID, level: int = 0) -> None:
+    component = nodes[uuid]
+    print('  ' * level + f'└─ {component.__class__.__name__}')
+    for child in children.get(uuid, []):
+        if child:  # Skip None values
+            print_node(child.uuid, level + 1)
+
+# Add a component and all its children to the tree
+def mount(component):
+    dirty.discard(component.uuid)
+    nodes[component.uuid] = component
+    contents = component.contents()
+    children[component.uuid] = contents
+    for child in contents:
+        parents[child.uuid] = component
+        mount(child)
+
+# Remove a component and all its children from the tree
+def unmount(component):
+    for child in children[component.uuid]:
+        unmount(child)
+    del children[component.uuid]
+    del nodes[component.uuid]
+    del parents[component.uuid]
+    del renders[component.uuid]
+    dirty.discard(component.uuid)
+
+# Update a component's subtree
+def update(component):
+    new_contents = component.contents()
+    old_contents = children.get(component.uuid, [])
+
+    for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents)):
+        if not old_child and not new_child:
+            continue
+        elif not old_child:
+            # New child added
+            children[component.uuid].append(new_child)
+            parents[new_child.uuid] = component
+            nodes[new_child.uuid] = new_child
+            mount(new_child)
+        elif not new_child:
+            # Child removed
+            unmount(old_child)
+            children[component.uuid][i] = None
+        elif old_child.__class__ is not new_child.__class__:
+            # Class changed, replace the child
+            unmount(old_child)
+            children[component.uuid][i] = new_child
+            parents[new_child.uuid] = component
+            nodes[new_child.uuid] = new_child
+            mount(new_child)
+        elif old_child.props != new_child.props:
+            # Same class but props changed, update props and mark dirty
+            old_child.props = new_child.props.copy()
+            update(old_child)
+
+    # Remove trailing None children
+    while children[component.uuid] and not children[component.uuid][-1]:
+        children[component.uuid].pop()
+
+# Render a component and its subtree to a string
+def render(component):
+    contents = [render(child) for child in children[component.uuid] if child]
+    renders[component.uuid] = component.render(contents)
+    return renders[component.uuid]
+
+# Propogate input to a component and its subtree
+def propogate(node, value, handler='handle_input'):
+    getattr(node, handler)(value)
+    for child in children.get(node.uuid, []):
+        if child:
+            propogate(child, value, handler)
+
+
+# Main render loop
+
 def render_root(root: Component) -> None:
     hide_cursor()
-
-    nodes: dict[UUID, Component] = {}
-    parents: dict[UUID, Component] = {}
-    children: dict[UUID, list[Component | None]] = {}
-    renders: dict[UUID, str] = {}
-
-    # Utility function to print the component tree
-    def print_node(uuid: UUID, level: int = 0) -> None:
-        component = nodes[uuid]
-        print('  ' * level + f'└─ {component.__class__.__name__}')
-        for child in children.get(uuid, []):
-            if child:  # Skip None values
-                print_node(child.uuid, level + 1)
-
-    # Add a component and all its children to the tree
-    def mount(component):
-        dirty.discard(component.uuid)
-        nodes[component.uuid] = component
-        contents = component.contents()
-        children[component.uuid] = contents
-        for child in contents:
-            parents[child.uuid] = component
-            mount(child)
-
-    # Remove a component and all its children from the tree
-    def unmount(component):
-        for child in children[component.uuid]:
-            unmount(child)
-        del children[component.uuid]
-        del nodes[component.uuid]
-        del parents[component.uuid]
-        del renders[component.uuid]
-        dirty.discard(component.uuid)
-
-    def render(component):
-        contents = [render(child) for child in children[component.uuid] if child]
-        renders[component.uuid] = component.render(contents)
-        return renders[component.uuid]
-
-    def propogate(node, value, handler='handle_input'):
-        getattr(node, handler)(value)
-        for child in children.get(node.uuid, []):
-            if child:
-                propogate(child, value, handler)
 
     mount(root)
     initial_render = render(root)
@@ -81,45 +120,9 @@ def render_root(root: Component) -> None:
 
             if not dirty:
                 continue
-
-            # Process dirty nodes and update the tree
-            while len(dirty):
-                node_uuid = dirty.pop()
-                component = nodes[node_uuid]
-                dirty.discard(component.uuid)
-                new_contents = component.contents()
-                old_contents = children.get(component.uuid, [])
-
-                for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents)):
-                    if not old_child and not new_child:
-                        continue
-                    elif not old_child:
-                        # New child added
-                        children[component.uuid].append(new_child)
-                        parents[new_child.uuid] = component
-                        nodes[new_child.uuid] = new_child
-                        dirty.add(new_child.uuid)
-                        mount(new_child)
-                    elif not new_child:
-                        # Child removed
-                        unmount(old_child)
-                        children[component.uuid][i] = None
-                    elif old_child.__class__ is not new_child.__class__:
-                        # Class changed, replace the child
-                        unmount(old_child)
-                        children[component.uuid][i] = new_child
-                        parents[new_child.uuid] = component
-                        nodes[new_child.uuid] = new_child
-                        dirty.add(new_child.uuid)
-                        mount(new_child)
-                    elif old_child.props != new_child.props:
-                        # Same class but props changed, update props and mark dirty
-                        old_child.props = new_child.props.copy()
-                        dirty.add(old_child.uuid)
-
-                # Remove trailing None children
-                while children[component.uuid] and not children[component.uuid][-1]:
-                    children[component.uuid].pop()
+            for uuid in dirty:
+                update(nodes[uuid])
+            dirty.clear()
 
             # Re-render the tree
             new_render_lines = render(root).split('\n')
@@ -148,6 +151,8 @@ def render_root(root: Component) -> None:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         show_cursor()
 
+
+# Entry point for testing
 
 if __name__ == "__main__":
     from pathlib import Path
