@@ -70,6 +70,9 @@ class Component:
     def render(self, contents: list[str]) -> str:
         return '\n'.join(contents)
 
+    def handle_update(self, new_props: dict[str, Any]) -> None:
+        pass
+
     def handle_input(self, ch: str) -> None:
         pass
 

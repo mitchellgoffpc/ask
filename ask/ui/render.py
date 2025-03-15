@@ -64,7 +64,8 @@ def update(component):
             nodes[new_child.uuid] = new_child
             mount(new_child)
         elif old_child.props != new_child.props:
-            # Same class but props changed, update props and mark dirty
+            # Same class but props changed, update the props and re-render
+            old_child.handle_update(new_child.props)
             old_child.props = new_child.props.copy()
             update(old_child)
 
