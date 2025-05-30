@@ -41,7 +41,7 @@ include-package-data = true
 "*" = ["*"]
 
 [tool.ruff]
-line-length = 140
+line-length = 160
 target-version = "py310"
 exclude = ["lakitu/env/lib/"]
 

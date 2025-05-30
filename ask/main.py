@@ -10,7 +10,8 @@ from ask.files import read_files
 DEFAULT_SYSTEM_PROMPT = """
     Your task is to assist the user with whatever they ask of you.
     When asked to write or modifiy files, you should denote the file names in this format:\n\n### `path/to/file`\n\n```\nfile contents here\n```\n\n
-    If a file is long and you want to leave some parts unchanged, add a line that with an [UNCHANGED] marker to denote a section of code that shouldn't be changed.
+    If a file is long and you want to leave some parts unchanged,
+    add a line that with an [UNCHANGED] marker to denote a section of code that shouldn't be changed.
     The line should just say '[UNCHANGED]', with no comment markers or additional text.
     You should never write 'previous code goes here' or 'original code unchanged', always use the [UNCHANGED] marker instead.\n
     Be sure to include some surrounding context in each section so I know where it's supposed to go.

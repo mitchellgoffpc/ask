@@ -42,7 +42,7 @@ MODELS = [
     Model(name='claude-opus-4-20250514', api=APIS['anthropic'], shortcuts=['opus', 'o']),
     Model(name='grok-2-1212', api=APIS['xai'], shortcuts=['grok', 'g'], supports_images=False),
     Model(name='grok-2-vision-1212', api=APIS['xai'], shortcuts=['grok-vision', 'gv']),
-    Model(name='flux-pro-1.1', api=APIS['bfl'], shortcuts=['flux', 'f'], stream=False, supports_images=False, supports_tools=False, supports_system_prompt=False),
+    Model(name='flux-pro-1.1', api=APIS['bfl'], shortcuts=['flux', 'f'], stream=False, supports_images=False, supports_tools=False, supports_system_prompt=False),  # noqa: E501
 ]
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
