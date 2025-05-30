@@ -2,20 +2,18 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
+      - id: trailing-whitespace
+      - id: check-added-large-files
       - id: check-ast
       - id: check-json
       - id: check-yaml
-  - repo: local
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.7
     hooks:
-      - id: flake8
-        name: flake8
-        entry: flake8 ask/ --indent-size=4 --ignore=E501,E302,E704 --statistics -j4
-        language: system
-        always_run: true
-        pass_filenames: false
+      - id: ruff
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
       - id: mypy
-        name: mypy
-        entry: mypy -p ask --check-untyped-defs --explicit-package-bases --warn-unreachable --cache-dir=/dev/null
-        language: system
-        always_run: true
-        pass_filenames: false

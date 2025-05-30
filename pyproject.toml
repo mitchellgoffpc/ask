@@ -39,3 +39,30 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "*" = ["*"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+exclude = ["lakitu/env/lib/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B"]
+ignore = ["I001", "N812", "N813"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = false
+explicit_package_bases = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_optional = true
+platform = "win32"
+cache_dir = "/dev/null"
+exclude = ["^lakitu/env/lib"]
+
+[[tool.mypy.overrides]]
+module = "glfw,hid,torchvision,wandb"
+ignore_missing_imports = true
