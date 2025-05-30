@@ -20,6 +20,7 @@ dependencies = [
     "requests",
     "tqdm",
     "beautifulsoup4",
+    "types-requests",
     "types-beautifulsoup4",
 ]
 
@@ -28,7 +29,7 @@ ask = "ask.main:main"
 
 [project.optional-dependencies]
 linting = [
-    "flake8",
+    "ruff",
     "mypy",
     "pre-commit",
 ]

@@ -51,7 +51,8 @@ class BlackForestLabsAPI(API):
             if result["status"] == "Pending":
                 pass
             elif result["status"] == "Ready":
-                return result['result']['sample']
+                sample: str = result['result']['sample']
+                return sample
             elif result["status"] == "Failed":
                 raise RuntimeError(f"Image generation failed: {result.get('error', 'Unknown error')}")
             else:
