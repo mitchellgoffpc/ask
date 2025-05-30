@@ -1,9 +1,8 @@
-from typing import Callable
+from typing import Callable, Any
 from ask.ui.components import Box, Size
-from ask.ui.styles import Styles, Colors, Theme
+from ask.ui.styles import Styles, Colors
 
 TextCallback = Callable[[str], None]
-BoolCallback = Callable[[bool], None]
 
 class TextBox(Box):
     leaf = True
@@ -15,8 +14,8 @@ class TextBox(Box):
         handle_change: TextCallback | None = None,
         handle_submit: TextCallback | None = None,
         placeholder: str = "",
-        **props
-    ):
+        **props: Any
+    ) -> None:
         super().__init__(width=width, handle_change=handle_change, handle_submit=handle_submit, placeholder=placeholder, **props)
         assert self.content_width > 0, "TextBox width must be specified"
 
@@ -166,63 +165,17 @@ class TextBox(Box):
 
         return position
 
-    def wrap_content(self) -> list[str]:
-        lines = []
-        paragraphs = self.state['content'].split('\n')
-        for paragraph in paragraphs:
-            if paragraph == '':
-                lines.append('')
-            else:
-                start = 0
-                while start < len(paragraph):
-                    end = min(start + self.content_width, len(paragraph))
-                    lines.append(paragraph[start:end])
-                    start = end
-        if not lines or len(lines[-1]) == self.content_width:
-            lines.append('')
-        return lines
-
     def render_contents(self) -> str:
         if not self.state['content'] and self.props['placeholder']:
             return Styles.inverse(self.props['placeholder'][0]) + Colors.hex(self.props['placeholder'][1:], '#999999')
 
-        lines = self.wrap_content()
-        cursor_line, cursor_col = self.get_cursor_line_col()
-        result_lines = []
-        for idx, line_content in enumerate(lines):
-            line_content = line_content.ljust(self.content_width)
-            if idx == cursor_line:
-                content_before_cursor = line_content[:cursor_col]
-                cursor_char = line_content[cursor_col:cursor_col + 1]
-                content_after_cursor = line_content[cursor_col + 1:]
-                line_content = content_before_cursor + Styles.inverse(cursor_char) + content_after_cursor
-            result_lines.append(line_content)
-
-        return '\n'.join(result_lines)
+        content: str = self.state['content']
+        cursor_pos = self.state['cursor_pos']
+        before = content[:cursor_pos]
+        under = content[cursor_pos:cursor_pos + 1] if cursor_pos < len(content) else ' '
+        after = content[cursor_pos + 1:]
+        trailing_space = ' ' if after else ''
+        return before + Styles.inverse(under) + after + trailing_space
 
     def render(self, _: list[str]) -> str:
         return super().render([self.render_contents()])
-
-
-class PromptTextBox(TextBox):
-    def __init__(self, bash_mode: bool, handle_set_bash_mode: BoolCallback, **props):
-        border_color = Theme.DARK_PINK if bash_mode else Theme.DARK_GRAY
-        super().__init__(border_color=Colors.HEX(border_color), bash_mode=bash_mode, handle_set_bash_mode=handle_set_bash_mode, **props)
-
-    def handle_input(self, ch: str) -> None:
-        if self.props['bash_mode'] and not self.state['content'] and ch == '\x7f':
-            self.props['handle_set_bash_mode'](False)
-        elif not self.state['content'] and ch == '!':
-            self.props['handle_set_bash_mode'](True)
-        else:
-            super().handle_input(ch)
-
-    @property
-    def content_width(self) -> int:
-        return max(0, self.box_width - 5)  # 2 spaces for borders, 3 spaces for prompt arrow
-
-    def render_contents(self) -> str:
-        marker = Colors.hex('!', Theme.PINK) if self.props['bash_mode'] else '>'
-        lines = super().render_contents().split('\n')
-        lines = [f" {marker} {line}" if i == 0 else f"   {line}" for i, line in enumerate(lines)]
-        return '\n'.join(lines)

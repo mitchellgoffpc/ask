@@ -3,7 +3,6 @@ import tty
 import termios
 from uuid import UUID
 from itertools import zip_longest
-from ask.ui.styles import Styles, Colors
 from ask.ui.components import Component, dirty
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
@@ -139,7 +138,8 @@ def render_root(root: Component) -> None:
             new_render_lines.extend([''] * (max_lines - len(new_render_lines)))
 
             # If there are unchanged leading lines, move cursor to the first changed line
-            first_diff_idx = next((i for i, (prev, new) in enumerate(zip_longest(previous_render_lines, new_render_lines, fillvalue='')) if prev != new), None)
+            line_diffs = zip_longest(previous_render_lines, new_render_lines, fillvalue='')
+            first_diff_idx = next((i for i, (prev, new) in enumerate(line_diffs) if prev != new), None)
             if first_diff_idx is None:
                 continue
 
@@ -157,40 +157,3 @@ def render_root(root: Component) -> None:
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         show_cursor()
-
-
-# Entry point for testing
-
-if __name__ == "__main__":
-    from pathlib import Path
-    from ask.ui.styles import Theme
-    from ask.ui.components import Component, Box, Text
-    from ask.ui.textbox import PromptTextBox
-    from ask.ui.commands import CommandsList
-
-    class App(Component):
-        initial_state = {'text': '', 'bash_mode': False}
-
-        def handle_change(self, value: str) -> None:
-            self.state.update({'text': value})
-
-        def handle_set_bash_mode(self, value: bool) -> None:
-            self.state.update({'bash_mode': value})
-
-        def contents(self) -> list[Component]:
-            return [
-                Box(padding={'left': 1, 'right': 1}, margin={'bottom': 1}, border_color=Colors.HEX(Theme.ORANGE))[
-                    Text(f"{Colors.hex('✻', Theme.ORANGE)} Welcome to {Styles.bold('Ask')}!", margin={'bottom': 1}),
-                    Text(Colors.hex("  /help for help", Theme.GRAY), margin={'bottom': 1}),
-                    Text(Colors.hex(f"  cwd: {Path.cwd()}", Theme.GRAY)),
-                ],
-                PromptTextBox(
-                    placeholder='Try "how do I log an error?"',
-                    bash_mode=self.state['bash_mode'],
-                    handle_change=self.handle_change,
-                    handle_set_bash_mode=self.handle_set_bash_mode),
-                CommandsList(prefix=self.state['text'], bash_mode=self.state['bash_mode']),
-            ]
-
-    app = App()
-    render_root(app)
