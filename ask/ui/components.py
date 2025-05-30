@@ -1,7 +1,7 @@
 import uuid
 import shutil
-from typing import Any, Self, Literal
-from ask.ui.styles import Colors, Borders, BorderStyle, ansi_len
+from typing import Any, Self, Literal, get_args
+from ask.ui.styles import Colors, Borders, BorderStyle, ansi_len, ansi_slice
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
@@ -11,27 +11,50 @@ dirty = set()
 
 terminal_width = shutil.get_terminal_size().columns
 terminal_height = shutil.get_terminal_size().lines
+
+def get_terminal_size() -> tuple[int, int]:
+    return terminal_width, terminal_height
+
 def update_terminal_width() -> None:
     global terminal_width, terminal_height
     terminal_size = shutil.get_terminal_size()
     terminal_width = terminal_size.columns
     terminal_height = terminal_size.lines
 
-def add_margin(text: str, margin: Spacing) -> str:
-    if isinstance(margin, int):
-        margin = {'top': margin, 'bottom': margin, 'left': margin, 'right': margin}
+def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
+    assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
+    return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
+
+def apply_spacing(text: str, spacing: dict[Side, int]) -> str:
     lines = text.split('\n')
-    top_margin = '\n' * margin.get('top', 0)
-    bottom_margin = '\n' * margin.get('bottom', 0)
-    left_margin = ' ' * margin.get('left', 0)
-    right_margin = ' ' * margin.get('right', 0)
-    return top_margin + '\n'.join(left_margin + line + right_margin for line in lines) + bottom_margin
+    top_spacing = '\n' * spacing.get('top', 0)
+    bottom_spacing = '\n' * spacing.get('bottom', 0)
+    left_spacing = ' ' * spacing.get('left', 0)
+    right_spacing = ' ' * spacing.get('right', 0)
+    return top_spacing + '\n'.join(left_spacing + line + right_spacing for line in lines) + bottom_spacing
+
+def wrap_lines(content: str, max_width: int) -> list[str]:
+    lines = []
+    paragraphs = content.split('\n')
+    for paragraph in paragraphs:
+        if paragraph == '':
+            lines.append('')
+        else:
+            start = 0
+            while start < ansi_len(paragraph):
+                end = min(start + max_width, ansi_len(paragraph))
+                lines.append(ansi_slice(paragraph, start, end))
+                start = end
+    return lines
 
 
 class State:
-    def __init__(self, uuid: uuid.UUID, state: dict[str, Any] = {}) -> None:
+    def __init__(self, uuid: uuid.UUID, state: dict[str, Any]) -> None:
         self.uuid = uuid
-        self.state = state
+        self.state = state.copy()
+
+    def __repr__(self) -> str:
+        return f'State({self.state})'
 
     def __getitem__(self, key: str) -> Any:
         return self.state.get(key)
@@ -83,8 +106,13 @@ class Text(Component):
     def __init__(self, text: str, margin: Spacing = 0) -> None:
         super().__init__(text=text, margin=margin)
 
+    @property
+    def text(self) -> str:
+        text: str = self.props['text']
+        return text
+
     def render(self, _: list[str]) -> str:
-        return add_margin(self.props['text'], self.props['margin'])
+        return apply_spacing(self.text, get_spacing_dict(self.props['margin']))
 
 
 class Box(Component):
@@ -98,7 +126,15 @@ class Box(Component):
         border_style: BorderStyle = Borders.ROUND,
         **props: Any
     ) -> None:
-        super().__init__(width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style, **props)
+        super().__init__(
+            width=width,
+            height=height,
+            margin=margin,
+            padding=padding,
+            border_color=border_color,
+            border_style=border_style,
+            **props
+        )
 
     @property
     def box_width(self) -> int:
@@ -121,24 +157,42 @@ class Box(Component):
             return 0  # needs to be resolved in render method
 
     @property
+    def padded_width(self) -> int:
+        return max(0, self.box_width - 2)  # 2 for left and right borders
+
+    @property
+    def padded_height(self) -> int:
+        return max(0, self.box_height - 2)
+
+    @property
     def content_width(self) -> int:
-        return max(0, self.box_width - 2)
+        horizontal_padding = self.padding['left'] + self.padding['right']
+        return max(0, self.padded_width - horizontal_padding)
 
     @property
     def content_height(self) -> int:
-        return max(0, self.box_height - 2)
+        vertical_padding = self.padding['top'] + self.padding['bottom']
+        return max(0, self.padded_height - vertical_padding)
+
+    @property
+    def margin(self) -> dict[Side, int]:
+        return get_spacing_dict(self.props['margin'])
+
+    @property
+    def padding(self) -> dict[Side, int]:
+        return get_spacing_dict(self.props['padding'])
 
     def contents(self) -> list[Component]:
         return self.children
 
     def render(self, contents: list[str]) -> str:
-        content = '\n'.join(contents)
-        content = add_margin(content, self.props['padding']) if self.props.get('padding') else content
-        lines = content.split('\n')
-        content_width = max(ansi_len(line) for line in lines)
-        width = self.content_width or content_width
-        height = self.content_height or len(lines)
-        color_code = self.props.get('border_color', '')
+        if self.content_width:
+            contents = wrap_lines('\n'.join(contents), self.content_width)
+        content = apply_spacing('\n'.join(contents), self.padding)
+        lines = content.split('\n') if content else []
+        width = self.padded_width or max((ansi_len(line) for line in lines), default=0)
+        height = self.padded_height or len(lines)
+        color_code = self.props.get('border_color') or ''
         border_style = self.props.get('border_style', Borders.ROUND)
 
         top_border = Colors.ansi(border_style.top_left + border_style.top * width + border_style.top_right, color_code)
@@ -151,4 +205,4 @@ class Box(Component):
             rendered_lines.append(Colors.ansi(border_style.left, color_code) + line_content + Colors.ansi(border_style.right, color_code))
         rendered_lines.append(bottom_border)
         rendered = '\n'.join(rendered_lines)
-        return add_margin(rendered, self.props['margin']) if self.props.get('margin') else rendered
+        return apply_spacing(rendered, self.margin)
