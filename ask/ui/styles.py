@@ -91,11 +91,83 @@ def rgb_to_best_ansi(red: int, green: int, blue: int, *, offset: int = 0) -> str
 def hex_to_best_ansi(hex_str: str, *, offset: int = 0) -> str:
     return rgb_to_best_ansi(*hex_to_rgb(hex_str), offset=offset)
 
-def ansi_len(text: str) -> int:
-    return len(re.sub(r'\u001B\[[0-9;]+m', '', text))
-
 def apply_style(text: str, start: str, end: str) -> str:
     return f"{start}{text}{end}"
+
+def ansi_len(text: str) -> int:
+    return len(ansi_strip(text))
+
+def ansi_strip(text: str) -> str:
+    return re.sub(r'\u001B\[[0-9;]+m', '', text)
+
+def ansi_slice(string: str, start: int, end: int) -> str:
+    color_names = ['BLACK', 'RED', 'GREEN', 'YELLOW', 'BLUE', 'MAGENTA', 'CYAN', 'WHITE']
+    color_codes = [getattr(Colors, c) for c in color_names] + [getattr(Colors, f'{c}_BRIGHT') for c in color_names]
+    bgcolor_codes = [getattr(Colors, f'BG_{c}') for c in color_names] + [getattr(Colors, f'BG_{c}_BRIGHT') for c in color_names]
+    style_starts = {v: k for k, v in Styles.__dict__.items() if k.isupper() and not k.endswith('_END')}
+    style_stops = {v: k.removeprefix('_END') for k, v in Styles.__dict__.items() if k.endswith('_END')}
+
+    ansi_pattern = re.compile(r'\u001B\[[0-9;]+m')
+    chunks = []
+    last_pos = 0
+
+    for match in ansi_pattern.finditer(string):
+        if match.start() > last_pos:
+            chunks.append(string[last_pos:match.start()])
+        chunks.append(match.group())
+        last_pos = match.end()
+    if last_pos < len(string):
+        chunks.append(string[last_pos:])
+
+    result = []
+    current_pos = 0
+    active_styles: set[str] = set()
+    active_color = None
+    active_bgcolor = None
+
+    for chunk in chunks:
+        if ansi_pattern.match(chunk):
+            if current_pos >= start:
+                result.append(chunk)
+            if chunk == Styles.RESET:
+                active_styles.clear()
+                active_color = None
+                active_bgcolor = None
+            elif chunk in style_starts:
+                active_styles.add(chunk)
+            elif chunk in style_stops:
+                active_styles.discard(Styles.__dict__[style_stops[chunk]])
+            elif chunk == Colors.END:
+                active_color = None
+            elif chunk == Colors.BG_END:
+                active_bgcolor = None
+            elif chunk in color_codes or chunk.startswith('\u001B[38;5;') or chunk.startswith('\u001B[38;2;'):
+                active_color = chunk
+            elif chunk in bgcolor_codes or chunk.startswith('\u001B[48;5;') or chunk.startswith('\u001B[48;2;'):
+                active_bgcolor = chunk
+
+        else:
+            chunk_end = current_pos + len(chunk)
+            if chunk_end <= start:
+                current_pos = chunk_end
+                continue
+            if current_pos >= end:
+                break
+
+            slice_start = max(0, start - current_pos)
+            slice_end = min(len(chunk), end - current_pos)
+            if slice_start < slice_end:
+                if not result:
+                    result.extend(active_styles)
+                    if active_color:
+                        result.append(active_color)
+                    if active_bgcolor:
+                        result.append(active_bgcolor)
+                result.append(chunk[slice_start:slice_end])
+
+            current_pos = chunk_end
+
+    return ''.join(result)
 
 
 class Styles:
@@ -118,7 +190,7 @@ class Styles:
     HIDDEN_END = "\u001B[28m"
     STRIKETHROUGH_END = "\u001B[29m"
 
-    bold = staticmethod(partial(apply_style, start=BOLD, end=RESET))
+    bold = staticmethod(partial(apply_style, start=BOLD, end=BOLD_END))
     dim = staticmethod(partial(apply_style, start=DIM, end=DIM_END))
     italic = staticmethod(partial(apply_style, start=ITALIC, end=ITALIC_END))
     underline = staticmethod(partial(apply_style, start=UNDERLINE, end=UNDERLINE_END))
@@ -171,7 +243,7 @@ class Colors:
     BG_RGB = staticmethod(partial(rgb_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
 
     @staticmethod
-    def ansi(text: str, code: str) -> str: return apply_style(text, start=code, end=Colors.END)
+    def ansi(text: str, code: str) -> str: return apply_style(text, start=code, end=Colors.END if code else '')
     @staticmethod
     def hex(text: str, hex: str) -> str: return apply_style(text, start=hex_to_best_ansi(hex), end=Colors.END)
     @staticmethod
