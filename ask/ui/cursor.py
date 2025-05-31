@@ -2,7 +2,7 @@ import os
 import sys
 import atexit
 import platform
-from typing import Optional, TextIO
+from typing import TextIO
 
 ESC = '\u001B['
 OSC = '\u001B]'
@@ -58,7 +58,7 @@ def show_cursor_on_exit():
 
 # Move cursor
 
-def cursor_to(x: int, y: Optional[int] = None) -> str:
+def cursor_to(x: int, y: int | None = None) -> str:
     if y is None:
         return f"{ESC}{x + 1}G"
     return f"{ESC}{y + 1}{SEP}{x + 1}H"

@@ -164,7 +164,7 @@ class Box(Component):
         margin: Spacing = 0,
         padding: Spacing = 0,
         border_color: str | None = None,
-        border_style: BorderStyle = Borders.ROUND,
+        border_style: BorderStyle | None = Borders.ROUND,
         **props: Any
     ) -> None:
         super().__init__(
@@ -176,6 +176,10 @@ class Box(Component):
             border_style=border_style,
             **props
         )
+
+    @property
+    def border_thickness(self) -> int:
+        return 1 if self.props.get('border_style') is not None else 0
 
     @property
     def box_width(self) -> int:
@@ -199,11 +203,11 @@ class Box(Component):
 
     @property
     def padded_width(self) -> int:
-        return max(0, self.box_width - 2)  # 2 for left and right borders
+        return max(0, self.box_width - self.border_thickness * 2)
 
     @property
     def padded_height(self) -> int:
-        return max(0, self.box_height - 2)
+        return max(0, self.box_height - self.border_thickness * 2)
 
     @property
     def content_width(self) -> int:
@@ -233,17 +237,22 @@ class Box(Component):
         lines = content.split('\n') if content else []
         width = self.padded_width or max((ansi_len(line) for line in lines), default=0)
         height = self.padded_height or len(lines)
-        color_code = self.props.get('border_color') or ''
         border_style = self.props.get('border_style', Borders.ROUND)
 
-        top_border = Colors.ansi(border_style.top_left + border_style.top * width + border_style.top_right, color_code)
-        bottom_border = Colors.ansi(border_style.bottom_left + border_style.bottom * width + border_style.bottom_right, color_code)
-
-        rendered_lines = [top_border]
+        # Render the content lines without borders
+        rendered_lines = []
         for i in range(height):
             line = lines[i] if i < len(lines) else ''
             line_content = line + ' ' * (width - ansi_len(line))
-            rendered_lines.append(Colors.ansi(border_style.left, color_code) + line_content + Colors.ansi(border_style.right, color_code))
-        rendered_lines.append(bottom_border)
-        rendered = '\n'.join(rendered_lines)
-        return apply_spacing(rendered, self.margin)
+            rendered_lines.append(line_content)
+
+        # Add borders if specified
+        if border_style is not None:
+            color_code = self.props.get('border_color') or ''
+            top_border = Colors.ansi(border_style.top_left + border_style.top * width + border_style.top_right, color_code)
+            bottom_border = Colors.ansi(border_style.bottom_left + border_style.bottom * width + border_style.bottom_right, color_code)
+            left_border = Colors.ansi(border_style.left, color_code)
+            right_border = Colors.ansi(border_style.right, color_code)
+            rendered_lines = [top_border] + [left_border + line + right_border for line in rendered_lines] + [bottom_border]
+
+        return apply_spacing('\n'.join(rendered_lines), self.margin)

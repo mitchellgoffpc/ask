@@ -87,6 +87,17 @@ class TestBoxSizing(unittest.TestCase):
 
 
 class TestBoxRendering(unittest.TestCase):
+    def test_box_without_borders(self):
+        """Test Box rendering with border_style=None."""
+        box = Box(width=10, border_style=None)
+        rendered = box.render(["Test"])
+        lines = rendered.split('\n')
+
+        # There should be no borders, just the content
+        self.assertEqual(len(lines), 1)
+        for line in lines:
+            self.assertEqual(ansi_len(line), 10)
+
     def test_box_content_wrapping(self):
         """Test Box content handling with wrapping and overflow scenarios."""
         # Multiline content should wrap correctly
