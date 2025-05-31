@@ -167,7 +167,7 @@ def ansi_slice(string: str, start: int, end: int) -> str:
 
             current_pos = chunk_end
 
-    return ''.join(result)
+    return ''.join(result) + (Styles.RESET if result and (active_styles or active_color or active_bgcolor) else '')
 
 
 class Styles:

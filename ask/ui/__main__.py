@@ -4,7 +4,7 @@ from typing import Callable, Any
 from ask.models import MODEL_SHORTCUTS, Message, Content, Text as TextContent
 from ask.query import query
 from ask.ui.commands import CommandsList
-from ask.ui.components import Component, Box, Text
+from ask.ui.components import Component, Box, Text, wrap_lines
 from ask.ui.messages import Prompt, TextResponse
 from ask.ui.styles import Colors, Styles, Theme
 from ask.ui.textbox import TextBox
@@ -23,13 +23,9 @@ class PromptTextBox(TextBox):
         else:
             super().handle_input(ch)
 
-    @property
-    def content_width(self) -> int:
-        return max(0, self.box_width - 5)  # 2 spaces for borders, 3 spaces for prompt arrow
-
     def render_contents(self) -> str:
         marker = Colors.hex('!', Theme.PINK) if self.props['bash_mode'] else '>'
-        lines = super().render_contents().split('\n')
+        lines = wrap_lines(super().render_contents(), self.padded_width - 3)
         lines = [f" {marker} {line}" if i == 0 else f"   {line}" for i, line in enumerate(lines)]
         return '\n'.join(lines)
 

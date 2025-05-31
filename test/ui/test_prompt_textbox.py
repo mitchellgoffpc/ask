@@ -1,22 +1,10 @@
 import unittest
 from unittest.mock import Mock
-from ask.ui.styles import ansi_len
+from ask.ui.styles import ansi_len, ansi_strip
 from ask.ui.__main__ import PromptTextBox
 
-class TestPromptTextBox(unittest.TestCase):
-    def test_prompt_textbox_creation_and_initialization(self):
-        """Test PromptTextBox creation with bash mode handling."""
-        handle_set_bash_mode = Mock()
 
-        # Non-bash mode
-        prompt_textbox = PromptTextBox(bash_mode=False, handle_set_bash_mode=handle_set_bash_mode)
-        self.assertFalse(prompt_textbox.props['bash_mode'])
-        self.assertEqual(prompt_textbox.props['handle_set_bash_mode'], handle_set_bash_mode)
-
-        # Bash mode
-        prompt_textbox = PromptTextBox(bash_mode=True, handle_set_bash_mode=handle_set_bash_mode)
-        self.assertTrue(prompt_textbox.props['bash_mode'])
-
+class TestPromptTextBoxInputHandling(unittest.TestCase):
     def test_prompt_textbox_bash_mode_toggle(self):
         """Test bash mode toggling with exclamation mark and backspace."""
         handle_set_bash_mode = Mock()
@@ -61,38 +49,52 @@ class TestPromptTextBox(unittest.TestCase):
         """Test that bash mode doesn't toggle on backspace when there's content."""
         handle_set_bash_mode = Mock()
         prompt_textbox = PromptTextBox(bash_mode=True, handle_set_bash_mode=handle_set_bash_mode, width=20)
-        prompt_textbox.state['content'] = 'ls'
+        prompt_textbox.state['content'] = 'ls -la'
         prompt_textbox.state['cursor_pos'] = len(prompt_textbox.state['content'])
 
         # Backspace should work normally when there's content
         prompt_textbox.handle_input('\x7f')
-        self.assertEqual(prompt_textbox.state['content'], 'l')
+        self.assertEqual(prompt_textbox.state['content'], 'ls -l')
         handle_set_bash_mode.assert_not_called()
 
-    def test_prompt_textbox_rendering_normal_mode(self):
-        """Test prompt textbox rendering in normal mode."""
+
+class TestPromptTextBoxRendering(unittest.TestCase):
+    def test_prompt_textbox_rendering(self):
+        """Test prompt textbox rendering in both normal and bash modes."""
         handle_set_bash_mode = Mock()
-        prompt_textbox = PromptTextBox(bash_mode=False, handle_set_bash_mode=handle_set_bash_mode, width=20)
-        prompt_textbox.state['content'] = 'hello'
-        prompt_textbox.state['cursor_pos'] = len(prompt_textbox.state['content'])
 
-        rendered = prompt_textbox.render([])
+        test_cases = [
+            (False, 'hello', '>'),
+            (True, 'ls -la', '!')
+        ]
+
+        for bash_mode, content, expected_marker in test_cases:
+            with self.subTest(bash_mode=bash_mode):
+                prompt_textbox = PromptTextBox(bash_mode=bash_mode, handle_set_bash_mode=handle_set_bash_mode, width=20)
+                prompt_textbox.state['content'] = content
+                prompt_textbox.state['cursor_pos'] = len(content)
+
+                rendered = prompt_textbox.render([])
+                lines = rendered.split('\n')
+                self.assertIn(expected_marker, rendered)
+                self.assertIn(content, rendered)
+                self.assertTrue(len(lines) == 3)
+                self.assertTrue(all(ansi_len(line) == 20 for line in lines))
+
+    def test_prompt_textbox_rendering_with_wrapping_lines(self):
+        """Test prompt textbox renders wrapped lines correctly with proper padding."""
+        textbox = PromptTextBox(bash_mode=False, handle_set_bash_mode=Mock(), width=15)
+        textbox.state['content'] = 'This is a long line that should wrap correctly.'
+        textbox.state['cursor_pos'] = len(textbox.state['content'])
+        rendered = textbox.render([])
         lines = rendered.split('\n')
-        self.assertIn('>', rendered)  # Normal mode prompt
-        self.assertIn('hello', rendered)
-        self.assertTrue(len(lines) == 3)
-        self.assertTrue(all(ansi_len(line) == 20 for line in lines))
 
-    def test_prompt_textbox_rendering_bash_mode(self):
-        """Test prompt textbox rendering in bash mode."""
-        handle_set_bash_mode = Mock()
-        prompt_textbox = PromptTextBox(bash_mode=True, handle_set_bash_mode=handle_set_bash_mode, width=20)
-        prompt_textbox.state['content'] = 'ls -la'
-        prompt_textbox.state['cursor_pos'] = len(prompt_textbox.state['content'])
+        # All lines should have correct width
+        self.assertGreater(len(lines), 3)
+        for line in lines:
+            self.assertEqual(ansi_len(line), 15)
 
-        rendered = prompt_textbox.render([])
-        lines = rendered.split('\n')
-        self.assertIn('!', rendered)
-        self.assertIn('ls -la', rendered)
-        self.assertTrue(len(lines) == 3)
-        self.assertTrue(all(ansi_len(line) == 20 for line in lines))
+        # Check that content lines have correct padding
+        for i, line in enumerate(lines[1:-1]):
+            prefix = ' > ' if i == 0 else '   '
+            self.assertEqual(ansi_strip(line)[1:4], prefix)
