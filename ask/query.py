@@ -9,7 +9,7 @@ from ask.models.tool_helpers import parse_tool_block
 
 # High-level ask/act functions
 
-def ask(model: Model, messages: list[Message], tools: list, system_prompt: str) -> list[Content]:
+def ask(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> list[Content]:
     contents = []
     for chunk, content in query(model, messages, tools, system_prompt):
         print(chunk, end='', flush=True)

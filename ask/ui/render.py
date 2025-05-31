@@ -1,9 +1,13 @@
+import select
 import sys
-import tty
 import termios
-from uuid import UUID
+import time
+import tty
 from itertools import zip_longest
-from ask.ui.components import Component, dirty
+from queue import Empty
+from uuid import UUID
+
+from ask.ui.components import Component, dirty, events, generators
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 
 nodes: dict[UUID, Component] = {}
@@ -109,21 +113,44 @@ def render_root(root: Component) -> None:
     try:
         tty.setraw(fd)
         while True:
-            # Read input character and handle escape sequences
-            ch = sys.stdin.read(1)
-            if ch == '\x03':  # Ctrl+C
-                sys.exit()
+            # Check for input with 100ms timeout
+            ready, _, _ = select.select([sys.stdin], [], [], 0.1)
+            if ready:
+                # Read input character and handle escape sequences
+                ch = sys.stdin.read(1)
+                if ch == '\x03':  # Ctrl+C
+                    sys.exit()
 
-            # Handle escape sequences and regular input
-            sequence = sequence = ch
-            if ch == '\x1b':  # Escape sequence
-                sequence += sys.stdin.read(1)
-                if sequence[-1] == '[':
-                    while not (ch := sys.stdin.read(1)).isalpha():
+                # Handle escape sequences and regular input
+                sequence = ch
+                if ch == '\x1b':  # Escape sequence
+                    sequence += sys.stdin.read(1)
+                    if sequence[-1] == '[':
+                        while not (ch := sys.stdin.read(1)).isalpha():
+                            sequence += ch
                         sequence += ch
-                    sequence += ch
-            propogate(root, sequence, 'handle_input')
+                propogate(root, sequence, 'handle_input')
 
+            # Process any pending events
+            while not events.empty() and events.queue[0].time <= time.time():
+                events.get().callback()
+
+            # Process generators
+            for generator_id, generator in list(generators.items()):
+                while True:
+                    try:
+                        result = generator.result_queue.get_nowait()
+                        if isinstance(result, Exception):
+                            del generators[generator_id]
+                            raise result
+                        generator.callback(result)
+                    except Empty:  # Queue is empty
+                        break
+
+                if not generator.thread.is_alive():
+                    del generators[generator_id]
+
+            # Check for dirty components
             if not dirty:
                 continue
             for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards

@@ -1,13 +1,20 @@
-import uuid
 import shutil
-from typing import Any, Self, Literal, get_args
+import threading
+import time
+import uuid
+from dataclasses import dataclass, field
+from queue import PriorityQueue, Queue
+from typing import Any, Callable, Iterator, Literal, Self, get_args
+
 from ask.ui.styles import Colors, Borders, BorderStyle, ansi_len, ansi_slice
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Size = int | float | None
 
-dirty = set()
+dirty: set[uuid.UUID] = set()
+events: PriorityQueue['AsyncEvent'] = PriorityQueue()
+generators: dict[uuid.UUID, 'AsyncGenerator'] = {}
 
 terminal_width = shutil.get_terminal_size().columns
 terminal_height = shutil.get_terminal_size().lines
@@ -46,6 +53,28 @@ def wrap_lines(content: str, max_width: int) -> list[str]:
                 lines.append(ansi_slice(paragraph, start, end))
                 start = end
     return lines
+
+def generator_thread(it: Iterator[Any], result_queue: Queue, cancel_event: threading.Event) -> None:
+    try:
+        for item in it:
+            if cancel_event.is_set():
+                break
+            result_queue.put(item)
+    except Exception as e:
+        result_queue.put(e)
+
+
+@dataclass(order=True)
+class AsyncEvent:
+    time: float
+    callback: Callable = field(compare=False)
+
+@dataclass
+class AsyncGenerator:
+    thread: threading.Thread
+    result_queue: Queue
+    cancel_event: threading.Event
+    callback: Callable
 
 
 class State:
@@ -98,6 +127,18 @@ class Component:
 
     def handle_input(self, ch: str) -> None:
         pass
+
+    def async_call(self, callback: Callable, delay_seconds: float = 0) -> None:
+        events.put(AsyncEvent(time.monotonic() + delay_seconds, callback))
+
+    def async_map(self, callback: Callable, it: Iterator[Any]) -> uuid.UUID:
+        generator_id = uuid.uuid4()
+        result_queue: Queue = Queue()
+        cancel_event = threading.Event()
+        thread = threading.Thread(target=generator_thread, args=(it, result_queue, cancel_event))
+        generators[generator_id] = AsyncGenerator(thread, result_queue, cancel_event, callback)
+        thread.start()
+        return generator_id
 
 
 class Text(Component):
