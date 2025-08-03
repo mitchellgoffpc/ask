@@ -43,12 +43,12 @@ include-package-data = true
 
 [tool.ruff]
 line-length = 160
-target-version = "py310"
+target-version = "py311"
 exclude = ["lakitu/env/lib/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B"]
-ignore = ["I001", "N812", "N813"]
+ignore = ["I001", "N802", "N812", "N813"]
 
 [tool.mypy]
 python_version = "3.11"
