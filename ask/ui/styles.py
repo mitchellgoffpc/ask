@@ -1,5 +1,6 @@
 import os
 import re
+from enum import Enum
 from functools import partial
 from dataclasses import dataclass
 
@@ -105,7 +106,7 @@ def ansi_slice(string: str, start: int, end: int) -> str:
     color_codes = [getattr(Colors, c) for c in color_names] + [getattr(Colors, f'{c}_BRIGHT') for c in color_names]
     bgcolor_codes = [getattr(Colors, f'BG_{c}') for c in color_names] + [getattr(Colors, f'BG_{c}_BRIGHT') for c in color_names]
     style_starts = {v: k for k, v in Styles.__dict__.items() if k.isupper() and not k.endswith('_END')}
-    style_stops = {v: k.removeprefix('_END') for k, v in Styles.__dict__.items() if k.endswith('_END')}
+    style_stops = {v: k.removesuffix('_END') for k, v in Styles.__dict__.items() if k.endswith('_END')}
 
     ansi_pattern = re.compile(r'\u001B\[[0-9;]+m')
     chunks = []
@@ -249,6 +250,10 @@ class Colors:
     @staticmethod
     def rgb(text: str, rgb: tuple[int, int, int]) -> str: return apply_style(text, start=rgb_to_best_ansi(*rgb), end=Colors.END)
 
+
+class Flex(Enum):
+    VERTICAL = 'vertical'
+    HORIZONTAL = 'horizontal'
 
 @dataclass
 class BorderStyle:
