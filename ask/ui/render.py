@@ -150,7 +150,8 @@ def render_root(root: Component) -> None:
             if not dirty:
                 continue
             for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards
-                update(uuid, nodes[uuid])
+                if uuid in nodes:
+                    update(uuid, nodes[uuid])
             dirty.clear()
 
             # Re-render the tree

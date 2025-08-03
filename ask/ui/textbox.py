@@ -1,8 +1,6 @@
-from typing import Callable, Any, cast
-from ask.ui.components import Box, Size, wrap_lines
+from typing import Any, cast
+from ask.ui.components import Box, Size, TextCallback, wrap_lines
 from ask.ui.styles import Styles, Colors
-
-TextCallback = Callable[[str], None]
 
 class TextBox(Box):
     leaf = True
@@ -33,6 +31,10 @@ class TextBox(Box):
             self.state['text'] = text
         elif self.props['handle_change'] is not None:
             self.props['handle_change'](text)
+
+    def handle_update(self, new_props: dict[str, Any]) -> None:
+        if 'text' in new_props and len(new_props['text']) > self.state['cursor_pos']:
+            self.state['cursor_pos'] = len(new_props['text'])
 
     def handle_input(self, ch: str) -> None:
         text = self.text

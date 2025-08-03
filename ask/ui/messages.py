@@ -3,7 +3,7 @@ from ask.ui.styles import Flex, Colors, Styles, Theme
 
 
 def Prompt(text: str, errors: list[str] | None = None) -> Component:
-    return Box(margin={'bottom': 1})[
+    return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("> ", Theme.GRAY)),
             Text(Colors.hex(text, Theme.GRAY))
@@ -15,7 +15,7 @@ def Prompt(text: str, errors: list[str] | None = None) -> Component:
     ]
 
 def TextResponse(text: str) -> Component:
-    return Box(flex=Flex.HORIZONTAL, margin={'bottom': 1})[
+    return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
         Text("⏺ "),
         Text(text)
     ]

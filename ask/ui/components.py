@@ -1,6 +1,6 @@
 from functools import wraps
 from threading import Thread
-from typing import Any, Union, Optional, Literal, Self, cast, get_args
+from typing import Any, Callable, Literal, Optional, Self, Union, cast, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
@@ -8,6 +8,8 @@ from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Size = int | float | None
+TextCallback = Callable[[str], None]
+BoolCallback = Callable[[bool], None]
 
 dirty: set[UUID] = set()
 nodes: dict[UUID, 'Component'] = {}
@@ -94,7 +96,7 @@ class State:
         return self.state[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
-        if self.state.get(key) != value and self.uuid in nodes:
+        if self.state.get(key) != value:
             dirty.add(self.uuid)
         self.state[key] = value
 

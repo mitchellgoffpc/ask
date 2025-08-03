@@ -1,23 +1,18 @@
 from typing import Any
-from ask.ui.components import Component, Box, Text
+from ask.ui.components import Component, Box, Text, TextCallback
 from ask.ui.styles import Colors, Styles, Theme
 
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
-    '/compact': 'Clear conversation history but keep a summary in context',
-    '/config': 'Open config panel',
-    '/cost': 'Show the total cost and duration of the current session',
     '/exit': 'Exit the REPL',
-    '/help': 'Show help and available commands',
-    '/init': 'Initialize a new MEMORY.md file with codebase documentation',
     '/quit': 'Exit the REPL'}
 
 class CommandsList(Box):
     leaf = True
     initial_state = {'selected_index': 0}
 
-    def __init__(self, prefix: str = "", bash_mode: bool = False):
-        super().__init__(prefix=prefix, bash_mode=bash_mode)
+    def __init__(self, prefix: str = "", bash_mode: bool = False, handle_autocomplete: TextCallback | None = None) -> None:
+        super().__init__(prefix=prefix, bash_mode=bash_mode, handle_autocomplete=handle_autocomplete)
 
     def handle_update(self, new_props: dict[str, Any]) -> None:
         matching_commands = self.get_matching_commands(new_props['prefix'])
@@ -36,6 +31,9 @@ class CommandsList(Box):
             elif direction == 'B':  # Down arrow
                 selected_index += 1
             self.state['selected_index'] = selected_index % len(matching_commands)
+        elif ch == '\t' and self.props['handle_autocomplete'] and matching_commands:
+            command = list(matching_commands.keys())[selected_index]
+            self.props['handle_autocomplete'](command)
 
     def get_matching_commands(self, prefix: str) -> dict[str, str]:
         return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(prefix)}
