@@ -1,7 +1,7 @@
 import json
 from abc import ABCMeta, abstractmethod
 from typing import Any, Iterator, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from ask.tools import Tool, Parameter
 
 Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse']
@@ -35,6 +35,7 @@ class ToolResponse:
 class Message:
     role: str
     content: list[Content]
+    errors: list[str] = field(default_factory=list)
 
 @dataclass
 class Model:

@@ -1,5 +1,5 @@
 from typing import Any
-from ask.ui.components import Component, Text
+from ask.ui.components import Component, Box, Text
 from ask.ui.styles import Colors, Styles, Theme
 
 COMMANDS = {
@@ -12,7 +12,7 @@ COMMANDS = {
     '/init': 'Initialize a new MEMORY.md file with codebase documentation',
     '/quit': 'Exit the REPL'}
 
-class CommandsList(Component):
+class CommandsList(Box):
     leaf = True
     initial_state = {'selected_index': 0}
 
@@ -22,7 +22,7 @@ class CommandsList(Component):
     def handle_update(self, new_props: dict[str, Any]) -> None:
         matching_commands = self.get_matching_commands(new_props['prefix'])
         if self.state['selected_index'] >= len(matching_commands):
-            self.state.update({'selected_index': 0})
+            self.state['selected_index'] = 0
 
     def handle_input(self, ch: str) -> None:
         matching_commands = self.get_matching_commands(self.props['prefix'])
@@ -35,7 +35,7 @@ class CommandsList(Component):
                 selected_index -= 1
             elif direction == 'B':  # Down arrow
                 selected_index += 1
-            self.state.update({'selected_index': selected_index % len(matching_commands)})
+            self.state['selected_index'] = selected_index % len(matching_commands)
 
     def get_matching_commands(self, prefix: str) -> dict[str, str]:
         return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(prefix)}

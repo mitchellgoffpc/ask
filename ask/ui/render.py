@@ -1,19 +1,14 @@
 import select
+import shutil
 import sys
 import termios
-import time
 import tty
 from itertools import zip_longest
-from queue import Empty
 from uuid import UUID
 
-from ask.ui.components import Component, dirty, events, generators
+from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children, renders, threads
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
-
-nodes: dict[UUID, Component] = {}
-parents: dict[UUID, Component] = {}
-children: dict[UUID, list[Component | None]] = {}
-renders: dict[UUID, str] = {}
+from ask.ui.styles import Flex
 
 # Utility function to print the component tree
 def print_node(uuid: UUID, level: int = 0) -> None:
@@ -28,6 +23,7 @@ def mount(component):
     nodes[component.uuid] = component
     contents = component.contents()
     children[component.uuid] = contents
+    component.handle_mount()
     for child in contents:
         parents[child.uuid] = component
         mount(child)
@@ -36,33 +32,34 @@ def mount(component):
 def unmount(component):
     for child in children[component.uuid]:
         unmount(child)
+    component.handle_unmount()
     del children[component.uuid]
     del nodes[component.uuid]
     del parents[component.uuid]
     del renders[component.uuid]
 
 # Update a component's subtree
-def update(component):
+def update(uuid, component):
     new_contents = component.contents()
-    old_contents = children.get(component.uuid, [])
+    old_contents = children.get(uuid, [])
 
     for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents)):
         if not old_child and not new_child:
             continue
         elif not old_child:
             # New child added
-            children[component.uuid].append(new_child)
+            children[uuid].append(new_child)
             parents[new_child.uuid] = component
             nodes[new_child.uuid] = new_child
             mount(new_child)
         elif not new_child:
             # Child removed
             unmount(old_child)
-            children[component.uuid][i] = None
+            children[uuid][i] = None
         elif old_child.__class__ is not new_child.__class__:
             # Class changed, replace the child
             unmount(old_child)
-            children[component.uuid][i] = new_child
+            children[uuid][i] = new_child
             parents[new_child.uuid] = component
             nodes[new_child.uuid] = new_child
             mount(new_child)
@@ -70,16 +67,29 @@ def update(component):
             # Same class but props changed, update the props and re-render
             old_child.handle_update(new_child.props)
             old_child.props = new_child.props.copy()
-            update(old_child)
+            update(old_child.uuid, new_child)
+        else:
+            update(old_child.uuid, new_child)
 
     # Remove trailing None children
-    while children[component.uuid] and not children[component.uuid][-1]:
-        children[component.uuid].pop()
+    while children[uuid] and not children[uuid][-1]:
+        children[uuid].pop()
 
 # Render a component and its subtree to a string
-def render(component):
-    contents = [render(child) for child in children[component.uuid] if child]
-    renders[component.uuid] = component.render(contents)
+def render(component, width):
+    content_width = component.get_content_width(width)
+    childs = [c for c in children[component.uuid] if c]
+    static_renders = {i: render(c, content_width) for i, c in enumerate(childs) if c.props['width'] is None}
+    fixed_renders = {i: render(c, c.props['width']) for i, c in enumerate(childs) if isinstance(c.props['width'], int)}
+    if component.props.get('flex') is Flex.HORIZONTAL:
+        remaining_width = content_width - sum(childs[i].rendered_width for i in (*static_renders.keys(), *fixed_renders.keys()))
+        scale = remaining_width / max(1, sum(c.props['width'] for c in childs if isinstance(c.props['width'], float)))  # scale down widths if necessary
+    elif component.props.get('flex') is Flex.VERTICAL:
+        scale = content_width
+    dynamic_renders = {i: render(c, min(content_width, int(c.props['width'] * scale))) for i, c in enumerate(childs) if isinstance(c.props['width'], float)}
+    contents = [c for _, c in sorted((static_renders | fixed_renders | dynamic_renders).items())]
+    renders[component.uuid] = component.render(contents, width)
+    component.rendered_width = get_rendered_width(renders[component.uuid])
     return renders[component.uuid]
 
 # Get the depth of a node
@@ -104,7 +114,7 @@ def render_root(root: Component) -> None:
     hide_cursor()
 
     mount(root)
-    initial_render = render(root)
+    initial_render = render(root, shutil.get_terminal_size().columns)
     previous_render_lines = initial_render.split('\n')
     print('\n\r'.join(previous_render_lines))
 
@@ -131,34 +141,20 @@ def render_root(root: Component) -> None:
                         sequence += ch
                 propogate(root, sequence, 'handle_input')
 
-            # Process any pending events
-            while not events.empty() and events.queue[0].time <= time.time():
-                events.get().callback()
-
-            # Process generators
-            for generator_id, generator in list(generators.items()):
-                while True:
-                    try:
-                        result = generator.result_queue.get_nowait()
-                        if isinstance(result, Exception):
-                            del generators[generator_id]
-                            raise result
-                        generator.callback(result)
-                    except Empty:  # Queue is empty
-                        break
-
-                if not generator.thread.is_alive():
-                    del generators[generator_id]
+            # Check for completed threads
+            for uuid in list(threads.keys()):
+                if not threads[uuid].is_alive():
+                    del threads[uuid]
 
             # Check for dirty components
             if not dirty:
                 continue
             for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards
-                update(nodes[uuid])
+                update(uuid, nodes[uuid])
             dirty.clear()
 
             # Re-render the tree
-            new_render_lines = render(root).split('\n')
+            new_render_lines = render(root, shutil.get_terminal_size().columns).split('\n')
 
             # Pad new render to match the number of previous lines
             max_lines = max(len(previous_render_lines), len(new_render_lines))
