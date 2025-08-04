@@ -1,6 +1,8 @@
-from typing import Any, cast
+from typing import Any, Callable, cast
 from ask.ui.components import Box, Size, TextCallback, wrap_lines
 from ask.ui.styles import Styles, Colors
+
+InputCallback = Callable[[str], bool]
 
 class TextBox(Box):
     leaf = True
@@ -11,12 +13,14 @@ class TextBox(Box):
         width: Size = 1.0,
         text: str | None = None,
         placeholder: str = "",
+        handle_input: InputCallback | None = None,
         handle_submit: TextCallback | None = None,
         handle_change: TextCallback | None = None,
         history: list[str] | None = None,
         **props: Any
     ) -> None:
-        super().__init__(width=width, text=text, handle_change=handle_change, handle_submit=handle_submit, placeholder=placeholder, history=history, **props)
+        super().__init__(width=width, text=text, placeholder=placeholder, history=history,
+                         handle_input=handle_input, handle_change=handle_change, handle_submit=handle_submit, **props)
         assert width is not None, "TextBox width must be specified"
         self.state['history'] = [*(history or []), text or '']
         self.state['history_idx'] = len(self.state['history']) - 1
@@ -48,10 +52,14 @@ class TextBox(Box):
             self.state['history'] = [*(new_props['history'] or []), new_props['text'] if new_props['text'] is not None else self.state['text']]
             self.state['history_idx'] = len(self.state['history']) - 1
 
-    def handle_input(self, ch: str) -> None:
+    def handle_raw_input(self, ch: str) -> None:
         text = self.text
         cursor_pos = self.cursor_pos
         history_idx = self.state['history_idx']
+
+        if self.props.get('handle_input'):
+            if not self.props['handle_input'](ch):
+                return
 
         if ch == '\r':  # Enter, submit
             if self.props['handle_submit']:

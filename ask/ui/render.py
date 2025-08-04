@@ -124,7 +124,7 @@ def depth(node, root):
     return depth
 
 # Propogate input to a component and its subtree
-def propogate(node, value, handler='handle_input'):
+def propogate(node, value, handler='handle_raw_input'):
     getattr(node, handler)(value)
     for child in children.get(node.uuid, []):
         if child:
@@ -154,7 +154,7 @@ def render_root(root: Component) -> None:
                         sequence += ch
                 if sequence == '\x03':  # Ctrl+C
                     sys.exit()
-                propogate(root, sequence, 'handle_input')
+                propogate(root, sequence, 'handle_raw_input')
 
             # Check for completed threads
             for uuid in list(threads.keys()):

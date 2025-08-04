@@ -156,7 +156,7 @@ class Component:
     def handle_update(self, new_props: dict[str, Any]) -> None:
         pass
 
-    def handle_input(self, ch: str) -> None:
+    def handle_raw_input(self, ch: str) -> None:
         pass
 
 

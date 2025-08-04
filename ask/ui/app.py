@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import Any
+from typing import Any, cast
 from dataclasses import replace
 from requests import ConnectionError
 
@@ -11,24 +11,21 @@ from ask.ui.components import Component, Box, Text, TextCallback, BoolCallback, 
 from ask.ui.config import Config
 from ask.ui.messages import Prompt, TextResponse
 from ask.ui.styles import Borders, Colors, Theme, Flex
-from ask.ui.textbox import TextBox
+from ask.ui.textbox import TextBox, InputCallback
 
 MAX_RETRIES = 10
 
 class PromptTextBox(Box):
-    def __init__(self, bash_mode: bool, handle_set_text: TextCallback, handle_set_bash_mode: BoolCallback, **props: Any) -> None:
-        super().__init__(bash_mode=bash_mode, handle_set_text=handle_set_text, handle_set_bash_mode=handle_set_bash_mode, **props)
+    def __init__(self, bash_mode: bool, handle_input: InputCallback, handle_set_text: TextCallback, handle_set_bash_mode: BoolCallback, **props: Any) -> None:
+        super().__init__(bash_mode=bash_mode, handle_input=handle_input, handle_set_text=handle_set_text, handle_set_bash_mode=handle_set_bash_mode, **props)
 
-    def handle_input(self, ch: str) -> None:
+    def handle_input(self, ch: str) -> bool:
         if self.props['bash_mode'] and not self.props['text'] and ch == '\x7f':
             self.props['handle_set_bash_mode'](False)
-
-    def handle_set_text(self, text: str) -> None:
-        if text == '!':
+        elif not self.props['bash_mode'] and not self.props['text'] and ch == '!':
             self.props['handle_set_bash_mode'](True)
-            self.props['handle_set_text']("")
-        else:
-            self.props['handle_set_text'](text)
+            return False
+        return cast(bool, self.props['handle_input'](ch))
 
     def contents(self) -> list[Component]:
         border_color = Theme.DARK_PINK if self.props['bash_mode'] else Theme.DARK_GRAY
@@ -41,8 +38,9 @@ class PromptTextBox(Box):
                     text=self.props['text'],
                     history=self.props.get('history'),
                     placeholder=self.props.get('placeholder', 'Type your message here...'),
+                    handle_input=self.handle_input,
                     handle_submit=self.props['handle_submit'],
-                    handle_change=self.handle_set_text)
+                    handle_change=self.props['handle_set_text'])
             ]
         ]
 
@@ -116,6 +114,11 @@ class App(Box):
     def handle_autocomplete(self, command: str) -> None:
         self.state['text'] = command
 
+    def handle_textbox_input(self, ch: str) -> bool:
+        if self.state['text'].startswith('/') and ch in ('\x1b[A', '\x1b[B'):  # Arrow keys
+            return False
+        return True
+
     def render_message(self, message: Message) -> Component:
         if message.role == 'user':
             assert isinstance(message.content[0], TextContent)
@@ -134,16 +137,9 @@ class App(Box):
                 placeholder='Try "how do I log an error?"',
                 history=self.config['history'],
                 bash_mode=self.state['bash_mode'],
+                handle_input=self.handle_textbox_input,
                 handle_submit=self.handle_submit,
                 handle_set_text=self.handle_set_text,
                 handle_set_bash_mode=self.handle_set_bash_mode),
             CommandsList(prefix=self.state['text'], bash_mode=self.state['bash_mode'], handle_autocomplete=self.handle_autocomplete),
         ]
-
-
-# Entry point for testing
-
-if __name__ == "__main__":
-    from ask.ui.render import render_root
-    app = App()
-    render_root(app)

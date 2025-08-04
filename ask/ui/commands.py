@@ -53,6 +53,6 @@ class CommandsList(Box):
             else:
                 cmd_text = Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.GRAY))
                 desc_text = Colors.hex(desc, Theme.GRAY)
-            result.append(Text(f"{cmd_text}  {desc_text}"))
+            result.append(Text(f"  {cmd_text}  {desc_text}"))
 
         return result
