@@ -5,6 +5,8 @@ from ask.tools import Tool
 from ask.query import act
 from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image
 from ask.files import read_files
+from ask.ui.app import App
+from ask.ui.render import render_root
 
 DEFAULT_SYSTEM_PROMPT = """
     Your task is to assist the user with whatever they ask of you.
@@ -23,12 +25,13 @@ def main() -> None:
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-s', '--system', type=str, default=DEFAULT_SYSTEM_PROMPT, help="System prompt for the model")
+    parser.add_argument('-p', '--print', action='store_true', help="Print response and exit")
     parser.add_argument('question', nargs=argparse.REMAINDER)
     parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
     args = parser.parse_args()
 
     # Sanity checks
-    if not args.question and sys.stdin.isatty():
+    if args.print and not args.question and sys.stdin.isatty():
         print('usage: ask <question>', file=sys.stderr)
         sys.exit(1)
     if args.model not in MODEL_SHORTCUTS:
@@ -58,10 +61,13 @@ def main() -> None:
     model = MODEL_SHORTCUTS[args.model]
     tools: list[Tool] = []  # list(TOOLS.values())
 
-    # Run the query
+    # Launch the UI, or run the query and exit
     images = [content for content in files.values() if isinstance(content, Image)]
     messages = [Message(role='user', content=[*images, Text(question)])]
-    act(model, messages, tools, args.system)
+    if args.print:
+        act(model, messages, tools, args.system)
+    else:
+        render_root(App())
 
 
 if __name__ == '__main__':
