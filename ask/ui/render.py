@@ -1,14 +1,27 @@
+import fcntl
+import os
 import select
 import shutil
 import sys
 import termios
 import tty
+from contextlib import contextmanager
 from itertools import zip_longest
 from uuid import UUID
 
-from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children, renders, threads
+from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children, threads
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.styles import Flex
+
+# Context manager to set O_NONBLOCK on a file descriptor
+@contextmanager
+def nonblocking(fd):
+    original_fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    try:
+        fcntl.fcntl(fd, fcntl.F_SETFL, original_fl | os.O_NONBLOCK)
+        yield
+    finally:
+        fcntl.fcntl(fd, fcntl.F_SETFL, original_fl)
 
 # Utility function to print the component tree
 def print_node(uuid: UUID, level: int = 0) -> None:
@@ -36,7 +49,6 @@ def unmount(component):
     del children[component.uuid]
     del nodes[component.uuid]
     del parents[component.uuid]
-    del renders[component.uuid]
 
 # Update a component's subtree
 def update(uuid, component):
@@ -77,20 +89,31 @@ def update(uuid, component):
 
 # Render a component and its subtree to a string
 def render(component, width):
-    content_width = component.get_content_width(width)
-    childs = [c for c in children[component.uuid] if c]
-    static_renders = {i: render(c, content_width) for i, c in enumerate(childs) if c.props['width'] is None}
-    fixed_renders = {i: render(c, c.props['width']) for i, c in enumerate(childs) if isinstance(c.props['width'], int)}
-    if component.props.get('flex') is Flex.HORIZONTAL:
-        remaining_width = content_width - sum(childs[i].rendered_width for i in (*static_renders.keys(), *fixed_renders.keys()))
-        scale = remaining_width / max(1, sum(c.props['width'] for c in childs if isinstance(c.props['width'], float)))  # scale down widths if necessary
-    elif component.props.get('flex') is Flex.VERTICAL:
-        scale = content_width
-    dynamic_renders = {i: render(c, min(content_width, int(c.props['width'] * scale))) for i, c in enumerate(childs) if isinstance(c.props['width'], float)}
-    contents = [c for _, c in sorted((static_renders | fixed_renders | dynamic_renders).items())]
-    renders[component.uuid] = component.render(contents, width)
-    component.rendered_width = get_rendered_width(renders[component.uuid])
-    return renders[component.uuid]
+    remaining_width = component.get_content_width(width)
+    flex = component.props.get('flex') or Flex.VERTICAL
+    renders = {}
+    for i, c in enumerate(children[component.uuid]):
+        if c and isinstance(c.props['width'], int) and remaining_width > 0:
+            renders[i] = render(c, c.props['width'])
+            remaining_width -= c.rendered_width if flex is Flex.HORIZONTAL else 0
+    for i, c in enumerate(children[component.uuid]):
+        if c and c.props['width'] is None and remaining_width > 0:
+            renders[i] = render(c, remaining_width)
+            remaining_width -= c.rendered_width if flex is Flex.HORIZONTAL else 0
+
+    if flex is Flex.HORIZONTAL:
+        scale = remaining_width / max(1, sum(c.props['width'] for c in children[component.uuid] if c and isinstance(c.props['width'], float)))
+    elif flex is Flex.VERTICAL:
+        scale = remaining_width
+    for i, c in enumerate(children[component.uuid]):
+        if c and isinstance(c.props['width'], float) and remaining_width > 0:
+            renders[i] = render(c, min(remaining_width, int(c.props['width'] * scale)))
+            remaining_width -= c.rendered_width
+
+    contents = [c for _, c in sorted(renders.items())]
+    rendered = component.render(contents, width)
+    component.rendered_width = get_rendered_width(rendered)
+    return rendered
 
 # Get the depth of a node
 def depth(node, root):
@@ -123,22 +146,14 @@ def render_root(root: Component) -> None:
     try:
         tty.setraw(fd)
         while True:
-            # Check for input with 100ms timeout
             ready, _, _ = select.select([sys.stdin], [], [], 0.1)
             if ready:
-                # Read input character and handle escape sequences
-                ch = sys.stdin.read(1)
-                if ch == '\x03':  # Ctrl+C
-                    sys.exit()
-
-                # Handle escape sequences and regular input
-                sequence = ch
-                if ch == '\x1b':  # Escape sequence
-                    sequence += sys.stdin.read(1)
-                    if sequence[-1] == '[':
-                        while not (ch := sys.stdin.read(1)).isalpha():
-                            sequence += ch
+                with nonblocking(fd):
+                    sequence = ''
+                    while (ch := sys.stdin.read(1)):
                         sequence += ch
+                if sequence == '\x03':  # Ctrl+C
+                    sys.exit()
                 propogate(root, sequence, 'handle_input')
 
             # Check for completed threads

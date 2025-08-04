@@ -1,6 +1,6 @@
 from functools import wraps
 from threading import Thread
-from typing import Any, Callable, Literal, Optional, Self, Union, cast, get_args
+from typing import Any, Callable, Literal, Optional, Self, Union, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
@@ -15,7 +15,6 @@ dirty: set[UUID] = set()
 nodes: dict[UUID, 'Component'] = {}
 parents: dict[UUID, 'Component'] = {}
 children: dict[UUID, list[Optional['Component']]] = {}
-renders: dict[UUID, str] = {}
 threads: dict[UUID, Thread] = {}
 
 def get_rendered_width(contents: str) -> int:
@@ -175,12 +174,9 @@ class Text(Component):
     ) -> None:
         super().__init__(text=text, width=width, height=height, margin=margin, padding=padding, **props)
 
-    @property
-    def text(self) -> str:
-        return cast(str, self.props['text'])
-
     def render(self, _: list[str], max_width: int) -> str:
-        return apply_boxing(self.text, max_width, self)
+        wrapped = wrap_lines(self.props['text'], max_width)
+        return apply_boxing(wrapped, max_width, self)
 
 
 class Box(Component):

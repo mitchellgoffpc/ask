@@ -1,3 +1,4 @@
+import sys
 import time
 from typing import Any
 from dataclasses import replace
@@ -38,6 +39,7 @@ class PromptTextBox(Box):
                 TextBox(
                     width=1.0,
                     text=self.props['text'],
+                    history=self.props.get('history'),
                     placeholder=self.props.get('placeholder', 'Type your message here...'),
                     handle_submit=self.props['handle_submit'],
                     handle_change=self.handle_set_text)
@@ -99,7 +101,7 @@ class App(Box):
         self.config['history'] = [*self.config['history'], value]
         self.state['text'] = ''
         if value in ('/exit', '/quit'):
-            exit(0)
+            sys.exit()
         elif value == '/clear':
             self.state['messages'] = []
         else:
@@ -130,6 +132,7 @@ class App(Box):
             PromptTextBox(
                 text=self.state['text'],
                 placeholder='Try "how do I log an error?"',
+                history=self.config['history'],
                 bash_mode=self.state['bash_mode'],
                 handle_submit=self.handle_submit,
                 handle_set_text=self.handle_set_text,
