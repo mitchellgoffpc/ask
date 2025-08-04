@@ -2,7 +2,6 @@
 import sys
 import argparse
 from ask.tools import Tool
-from ask.chat import chat
 from ask.query import act
 from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image
 from ask.files import read_files
@@ -24,13 +23,12 @@ def main() -> None:
     parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-s', '--system', type=str, default=DEFAULT_SYSTEM_PROMPT, help="System prompt for the model")
-    parser.add_argument('-c', '--chat', action='store_true', help="Enable chat mode")
     parser.add_argument('question', nargs=argparse.REMAINDER)
     parser.add_argument('stdin', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
     args = parser.parse_args()
 
     # Sanity checks
-    if not args.chat and not args.question and sys.stdin.isatty():
+    if not args.question and sys.stdin.isatty():
         print('usage: ask <question>', file=sys.stderr)
         sys.exit(1)
     if args.model not in MODEL_SHORTCUTS:
@@ -61,12 +59,9 @@ def main() -> None:
     tools: list[Tool] = []  # list(TOOLS.values())
 
     # Run the query
-    if args.chat:
-        chat(model, question, tools, files, args.system)
-    else:
-        images = [content for content in files.values() if isinstance(content, Image)]
-        messages = [Message(role='user', content=[*images, Text(question)])]
-        act(model, messages, tools, args.system)
+    images = [content for content in files.values() if isinstance(content, Image)]
+    messages = [Message(role='user', content=[*images, Text(question)])]
+    act(model, messages, tools, args.system)
 
 
 if __name__ == '__main__':
