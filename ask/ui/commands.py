@@ -48,10 +48,10 @@ class CommandsList(Box):
         result: list[Component] = []
         for idx, (cmd, desc) in enumerate(matching_commands.items()):
             if idx == self.state['selected_index']:  # add highlight
-                cmd_text = Styles.inverse(Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.ORANGE)))
-                desc_text = Styles.inverse(Colors.hex(desc, Theme.GRAY))
+                cmd_text = Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.BLUE))
+                desc_text = Colors.hex(desc, Theme.BLUE)
             else:
-                cmd_text = Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.ORANGE))
+                cmd_text = Styles.bold(Colors.hex(cmd.ljust(cmd_width + 1), Theme.GRAY))
                 desc_text = Colors.hex(desc, Theme.GRAY)
             result.append(Text(f"{cmd_text}  {desc_text}"))
 

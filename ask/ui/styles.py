@@ -276,7 +276,8 @@ class Borders:
     CLASSIC = BorderStyle("+", "-", "+", "|", "+", "-", "+", "|")
 
 class Theme:
-    ORANGE = '#BE5103'
+    BLUE = '#7aa0eb'
+    ORANGE = '#be7003'
     PINK = '#FF69B4'
     DARK_PINK = '#8E2261'
     GRAY = '#999999'

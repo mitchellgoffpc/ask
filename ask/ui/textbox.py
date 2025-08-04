@@ -172,20 +172,6 @@ class TextBox(Box):
             return self.text, cursor_pos, self.state['history_idx']
         return self.text, self.cursor_pos, self.state['history_idx']
 
-    def get_previous_line_position(self):
-        current_line, current_col = self.get_cursor_line_col()
-        if current_line > 0:
-            line_start = self.get_line_start_position(current_line - 1)
-            return min(line_start + current_col, self.get_line_end_position(current_line - 1))
-        return self.cursor_pos
-
-    def get_next_line_position(self):
-        current_line, current_col = self.get_cursor_line_col()
-        if current_line < self.get_total_lines() - 1:
-            line_start = self.get_line_start_position(current_line + 1)
-            return min(line_start + current_col, self.get_line_end_position(current_line + 1))
-        return self.cursor_pos
-
     def get_cursor_line_col(self) -> tuple[int, int]:
         paragraphs = self.text[:self.cursor_pos].split('\n')
         line = sum(max(1, (len(paragraph) + self.content_width) // self.content_width) for paragraph in paragraphs[:-1])
