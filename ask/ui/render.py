@@ -7,6 +7,7 @@ import termios
 import tty
 from contextlib import contextmanager
 from itertools import zip_longest
+from types import MethodType
 from uuid import UUID
 
 from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children, threads
@@ -51,11 +52,12 @@ def unmount(component):
     del parents[component.uuid]
 
 # Update a component's subtree
-def update(uuid, component):
+def update(uuid, component, new_to_old):
     new_contents = component.contents()
     old_contents = children.get(uuid, [])
 
     for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents)):
+        new_to_old[new_child] = old_child
         if not old_child and not new_child:
             continue
         elif not old_child:
@@ -79,9 +81,13 @@ def update(uuid, component):
             # Same class but props changed, update the props and re-render
             old_child.handle_update(new_child.props)
             old_child.props = new_child.props.copy()
-            update(old_child.uuid, new_child)
+            # Since the new nodes will be discarded after the update, we need to rebind all methods to the original nodes
+            for k, v in old_child.props.items():
+                if callable(v) and hasattr(v, '__self__') and v.__self__ in new_to_old:
+                    old_child.props[k] = MethodType(v.__func__, new_to_old[v.__self__])
+            update(old_child.uuid, new_child, new_to_old)
         else:
-            update(old_child.uuid, new_child)
+            update(old_child.uuid, new_child, new_to_old)
 
     # Remove trailing None children
     while children[uuid] and not children[uuid][-1]:
@@ -166,7 +172,7 @@ def render_root(root: Component) -> None:
                 continue
             for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards
                 if uuid in nodes:
-                    update(uuid, nodes[uuid])
+                    update(uuid, nodes[uuid], {})
             dirty.clear()
 
             # Re-render the tree
@@ -196,3 +202,5 @@ def render_root(root: Component) -> None:
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         show_cursor()
+        sys.stdout.write('\n')
+        sys.stdout.flush()

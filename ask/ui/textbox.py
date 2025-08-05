@@ -48,18 +48,20 @@ class TextBox(Box):
         self.state['history'] = [*history[:history_idx], text, *history[history_idx + 1:]]
 
     def handle_update(self, new_props: dict[str, Any]) -> None:
+        if 'text' in new_props and len(new_props['text']) > len(self.props['text']):
+            self.state['cursor_pos'] = len(new_props['text'])
         if 'history' in new_props and new_props['history'] != self.props['history']:
             self.state['history'] = [*(new_props['history'] or []), new_props['text'] if new_props['text'] is not None else self.state['text']]
             self.state['history_idx'] = len(self.state['history']) - 1
 
     def handle_raw_input(self, ch: str) -> None:
-        text = self.text
-        cursor_pos = self.cursor_pos
-        history_idx = self.state['history_idx']
-
         if self.props.get('handle_input'):
             if not self.props['handle_input'](ch):
                 return
+
+        text = self.text
+        cursor_pos = self.cursor_pos
+        history_idx = self.state['history_idx']
 
         if ch == '\r':  # Enter, submit
             if self.props['handle_submit']:

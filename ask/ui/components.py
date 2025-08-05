@@ -1,6 +1,6 @@
 from functools import wraps
 from threading import Thread
-from typing import Any, Callable, Literal, Optional, Self, Union, get_args
+from typing import Any, Callable, Literal, Iterable, Optional, Self, Union, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
@@ -116,7 +116,7 @@ class Component:
         self.mounted = False
         self.rendered_width = 0
 
-    def __getitem__(self, args: Union['Component', tuple['Component', ...]]) -> Self:
+    def __getitem__(self, args: Union['Component', tuple['Component', ...], Iterable['Component']]) -> Self:
         if self.leaf:
             raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
         self.children = [args] if isinstance(args, Component) else list(args)
