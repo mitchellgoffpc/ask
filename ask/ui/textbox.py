@@ -41,7 +41,7 @@ class TextBox(Box):
     def text(self, text: str) -> None:
         if self.props['text'] is None:
             self.state['text'] = text
-        elif self.props['handle_change'] is not None:
+        if self.props['handle_change'] is not None:
             self.props['handle_change'](text)
         history = self.state['history']
         history_idx = self.state['history_idx']

@@ -26,63 +26,63 @@ class TestText(unittest.TestCase):
         """Test Text component rendering with various margin configurations."""
         # No margin
         text_comp = Text("Hello World")
-        rendered = text_comp.render([])
+        rendered = text_comp.render([], max_width=100)
         self.assertEqual(rendered, "Hello World")
 
         # Integer margin
         text_comp = Text("Hello", margin=1)
-        rendered = text_comp.render([])
-        expected = "\n Hello \n"
+        rendered = text_comp.render([], max_width=100)
+        expected = "       \n Hello \n       "
         self.assertEqual(rendered, expected)
 
         # Dictionary margin
         margin: Spacing = {'top': 1, 'bottom': 0, 'left': 2, 'right': 1}
         text_comp = Text("Hello", margin=margin)
-        rendered = text_comp.render([])
-        expected = "\n  Hello "
+        rendered = text_comp.render([], max_width=100)
+        expected = "        \n  Hello "
         self.assertEqual(rendered, expected)
 
         # Partial margin dictionary
         margin = {'top': 1, 'left': 2}
         text_comp = Text("Hello", margin=margin)
-        rendered = text_comp.render([])
-        expected = "\n  Hello"
+        rendered = text_comp.render([], max_width=100)
+        expected = "       \n  Hello"
         self.assertEqual(rendered, expected)
 
         # Zero margin
         text_comp = Text("Hello", margin=0)
-        rendered = text_comp.render([])
+        rendered = text_comp.render([], max_width=100)
         self.assertEqual(rendered, "Hello")
 
     def test_text_multiline(self):
         """Test Text component rendering with multiline text."""
         # Multiline without margin
         text_comp = Text("Line 1\nLine 2\nLine 3")
-        rendered = text_comp.render([])
+        rendered = text_comp.render([], max_width=100)
         self.assertEqual(rendered, "Line 1\nLine 2\nLine 3")
 
         # Multiline with margin
         text_comp = Text("Line 1\nLine 2", margin=1)
-        rendered = text_comp.render([])
-        expected = "\n Line 1 \n Line 2 \n"
+        rendered = text_comp.render([], max_width=100)
+        expected = "        \n Line 1 \n Line 2 \n        "
         self.assertEqual(rendered, expected)
 
     def test_text_empty_string(self):
         """Test Text component with empty string."""
         text_comp = Text("")
-        rendered = text_comp.render([])
+        rendered = text_comp.render([], max_width=100)
         self.assertEqual(rendered, "")
 
     def test_text_special_characters(self):
         """Test Text component with special and unicode characters."""
         # Special characters
         text_comp = Text("Hello\tWorld\n\rTest")
-        rendered = text_comp.render([])
-        self.assertEqual(rendered, "Hello\tWorld\n\rTest")
+        rendered = text_comp.render([], max_width=100)
+        self.assertEqual(rendered, "Hello\tWorld\n\rTest      ")
 
         # Unicode characters
         text_comp = Text("Hello 🌍 World ñáéíóú")
-        rendered = text_comp.render([])
+        rendered = text_comp.render([], max_width=100)
         self.assertEqual(rendered, "Hello 🌍 World ñáéíóú")
 
     def test_text_is_leaf_component(self):

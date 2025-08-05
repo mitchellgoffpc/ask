@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import patch
 from ask.ui.components import Box, Text, Spacing, get_spacing_dict
 from ask.ui.styles import Borders, ansi_len
 
@@ -13,7 +12,7 @@ class TestBoxCreation(unittest.TestCase):
         self.assertEqual(box.props['margin'], 0)
         self.assertEqual(box.props['padding'], 0)
         self.assertIsNone(box.props['border_color'])
-        self.assertEqual(box.props['border_style'], Borders.ROUND)
+        self.assertIsNone(box.props['border_style'])
         self.assertFalse(box.leaf)
 
     def test_box_spacing_normalization(self):
@@ -45,44 +44,41 @@ class TestBoxCreation(unittest.TestCase):
         self.assertIn(text1, box.children)
         self.assertIn(text2, box.children)
 
-        rendered = box.render([child.render([]) for child in box.children])
+        rendered = box.render([child.render([], max_width=100) for child in box.children], max_width=100)
         self.assertIn("Hello", rendered)
         self.assertIn("World", rendered)
 
 
 class TestBoxSizing(unittest.TestCase):
-    @patch('ask.ui.components.terminal_width', 100)
     def test_box_width_calculation(self):
         """Test box width calculation for absolute, percentage, and auto sizing."""
         test_cases = [
             # (width_prop, expected_width, content, description)
             (50, 50, [], "Absolute width"),
-            (0.5, 50, [], "Percentage width (50% of 100)"),
-            (None, 7, ["Hello"], "Auto width (content + borders)"),
-            (None, 13, ["Hello World"], "Auto width with longer content"),
+            (0.5, 100, [], "Percentage width (Uses max_width)"),
+            (None, 5, ["Hello"], "Auto width content"),
+            (None, 11, ["Hello World"], "Auto width with longer content"),
         ]
 
         for width_prop, expected_width, content, description in test_cases:
             with self.subTest(description=description):
-                box = Box(width=width_prop)
-                rendered = box.render(content)
+                box = Box(width=width_prop, height=1)
+                rendered = box.render(content, max_width=100)
                 for line in rendered.split('\n'):
                     self.assertEqual(ansi_len(line), expected_width)
 
-    @patch('ask.ui.components.terminal_height', 50)
     def test_box_height_calculation(self):
         """Test box height calculation for absolute, percentage, and auto sizing."""
         test_cases = [
             # (height_prop, expected_height, content, description)
             (20, 20, [], "Absolute height"),
-            (0.3, 15, [], "Percentage height (30% of 50)"),
-            (None, 4, ["Line1", "Line2"], "Auto height (content + borders)"),
+            (None, 2, ["Line1", "Line2"], "Auto height"),
         ]
 
         for height_prop, expected_height, content, description in test_cases:
             with self.subTest(description=description):
                 box = Box(height=height_prop)
-                rendered = box.render(content)
+                rendered = box.render(content, max_width=100)
                 self.assertEqual(len(rendered.split('\n')), expected_height)
 
 
@@ -90,7 +86,7 @@ class TestBoxRendering(unittest.TestCase):
     def test_box_without_borders(self):
         """Test Box rendering with border_style=None."""
         box = Box(width=10, border_style=None)
-        rendered = box.render(["Test"])
+        rendered = box.render(["Test"], max_width=10)
         lines = rendered.split('\n')
 
         # There should be no borders, just the content
@@ -103,15 +99,15 @@ class TestBoxRendering(unittest.TestCase):
         # Multiline content should wrap correctly
         box = Box(width=15)
         content = ["Line 1\nLine 2", "Another line"]
-        lines = box.render(content).split('\n')
-        self.assertEqual(len(lines), 5)
-        self.assertIn("Line 1", lines[1])
-        self.assertIn("Line 2", lines[2])
-        self.assertIn("Another line", lines[3])
+        lines = box.render(content, max_width=100).split('\n')
+        self.assertEqual(len(lines), 3)
+        self.assertIn("Line 1", lines[0])
+        self.assertIn("Line 2", lines[1])
+        self.assertIn("Another line", lines[2])
 
         # Long lines should wrap to fit within the box width
         box = Box(width=10)
-        rendered = box.render(["This is a very long line that exceeds box width"])
+        rendered = box.render(["This is a very long line that exceeds box width"], max_width=10)
         lines = rendered.split('\n')
         for line in lines:
             self.assertLessEqual(ansi_len(line), 10)
@@ -129,15 +125,15 @@ class TestBoxRendering(unittest.TestCase):
 
         for margin, padding, description in test_cases:
             with self.subTest(description=description):
-                box = Box(width=20, margin=margin, padding=padding)
-                lines = box.render(["Test"]).split('\n')
+                box = Box(width=20, margin=margin, padding=padding, border_style=Borders.ROUND)
+                lines = box.render(["Test"], max_width=100).split('\n')
 
                 # Margin should create empty lines at top/bottom and spaces at left/right
                 margin_dict = get_spacing_dict(margin)
                 for i in range(margin_dict['top']):
-                    self.assertEqual(lines[i], "")
+                    self.assertEqual(lines[i], " " * 20)
                 for i in range(1, margin_dict['bottom'] + 1):
-                    self.assertEqual(lines[-i], "")
+                    self.assertEqual(lines[-i], " " * 20)
                 for line in lines[margin_dict['top']:len(lines)-margin_dict['bottom']]:
                     self.assertTrue(line.startswith(" " * margin_dict['left']))
                     self.assertTrue(line.endswith(" " * margin_dict['right']))

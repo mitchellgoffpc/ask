@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock
 from ask.ui.components import Spacing
-from ask.ui.styles import ansi_len, ansi_strip
+from ask.ui.styles import Borders, ansi_len, ansi_strip
 from ask.ui.textbox import TextBox
 
 
@@ -15,7 +15,7 @@ class TestTextBoxCreation(unittest.TestCase):
         self.assertIsNone(textbox.props['handle_submit'])
         self.assertEqual(textbox.props['placeholder'], "")
         self.assertTrue(textbox.leaf)
-        self.assertEqual(textbox.state['content'], '')
+        self.assertEqual(textbox.state['text'], '')
         self.assertEqual(textbox.state['cursor_pos'], 0)
 
         # With callbacks
@@ -30,13 +30,14 @@ class TestTextBoxCreation(unittest.TestCase):
     def test_textbox_line_wrapping_methods(self):
         """Test line wrapping and cursor position calculation methods."""
         textbox = TextBox(width=5)  # Small width for testing
-        textbox.state['content'] = 'Hello World'
+        textbox.state['text'] = 'Hello World'
         textbox.state['cursor_pos'] = 8
+        textbox.rendered_width = 5
 
         # Test cursor line/col calculation
         line, col = textbox.get_cursor_line_col()
-        self.assertEqual(line, 2)
-        self.assertEqual(col, 2)
+        self.assertEqual(line, 1)
+        self.assertEqual(col, 3)
 
         # Test total lines calculation
         total_lines = textbox.get_total_lines()
@@ -54,207 +55,208 @@ class TestTextBoxInputHandling(unittest.TestCase):
         textbox = TextBox(width=20)
 
         # Insert at end
-        textbox.handle_input('A')
-        textbox.handle_input('B')
-        self.assertEqual(textbox.state['content'], 'AB')
+        textbox.handle_raw_input('A')
+        textbox.handle_raw_input('B')
+        self.assertEqual(textbox.state['text'], 'AB')
         self.assertEqual(textbox.state['cursor_pos'], 2)
 
         # Insert in the middle
         textbox.state['cursor_pos'] = 1
-        textbox.handle_input('X')
-        self.assertEqual(textbox.state['content'], 'AXB')
+        textbox.handle_raw_input('X')
+        self.assertEqual(textbox.state['text'], 'AXB')
         self.assertEqual(textbox.state['cursor_pos'], 2)
 
     def test_textbox_backspace_handling(self):
         """Test backspace handling."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello'
+        textbox.state['text'] = 'Hello'
         textbox.state['cursor_pos'] = 5
 
         # Backspace removes character before cursor
-        textbox.handle_input('\x7f')
-        self.assertEqual(textbox.state['content'], 'Hell')
+        textbox.handle_raw_input('\x7f')
+        self.assertEqual(textbox.state['text'], 'Hell')
         self.assertEqual(textbox.state['cursor_pos'], 4)
 
         # Backspace in the middle removes character before cursor
         textbox.state['cursor_pos'] = 2
-        textbox.handle_input('\x7f')
-        self.assertEqual(textbox.state['content'], 'Hll')
+        textbox.handle_raw_input('\x7f')
+        self.assertEqual(textbox.state['text'], 'Hll')
         self.assertEqual(textbox.state['cursor_pos'], 1)
 
         # Backspace at beginning does nothing
         textbox.state['cursor_pos'] = 0
-        textbox.handle_input('\x7f')
-        self.assertEqual(textbox.state['content'], 'Hll')
+        textbox.handle_raw_input('\x7f')
+        self.assertEqual(textbox.state['text'], 'Hll')
         self.assertEqual(textbox.state['cursor_pos'], 0)
 
     def test_textbox_enter_and_submit_handling(self):
         """Test enter key and submit handling."""
         handle_submit = Mock()
         textbox = TextBox(width=20, handle_submit=handle_submit)
-        textbox.state['content'] = 'Test content'
+        textbox.state['text'] = 'Test content'
 
         # Enter key calls submit handler
-        textbox.handle_input('\r')
+        textbox.handle_raw_input('\r')
         handle_submit.assert_called_once_with('Test content')
 
         # Content remains unchanged after submit
-        self.assertEqual(textbox.state['content'], 'Test content')
+        self.assertEqual(textbox.state['text'], 'Test content')
 
     def test_textbox_emacs_navigation_keybindings(self):
         """Test Emacs-style navigation keybindings."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello World'
+        textbox.state['text'] = 'Hello World'
         textbox.state['cursor_pos'] = 5
 
         # Ctrl+B - move backward one character
-        textbox.handle_input('\x02')
+        textbox.handle_raw_input('\x02')
         self.assertEqual(textbox.state['cursor_pos'], 4)
 
         # Ctrl+F - move forward one character
-        textbox.handle_input('\x06')
+        textbox.handle_raw_input('\x06')
         self.assertEqual(textbox.state['cursor_pos'], 5)
 
         # Ctrl+A - move to beginning of line
-        textbox.handle_input('\x01')
+        textbox.handle_raw_input('\x01')
         self.assertEqual(textbox.state['cursor_pos'], 0)
 
         # Ctrl+E - move to end of line
-        textbox.handle_input('\x05')
+        textbox.handle_raw_input('\x05')
         self.assertEqual(textbox.state['cursor_pos'], 11)
 
         # Ctrl+B at beginning does nothing
         textbox.state['cursor_pos'] = 0
-        textbox.handle_input('\x02')
+        textbox.handle_raw_input('\x02')
         self.assertEqual(textbox.state['cursor_pos'], 0)
 
         # Ctrl+F at end does nothing
         textbox.state['cursor_pos'] = 11
-        textbox.handle_input('\x06')
+        textbox.handle_raw_input('\x06')
         self.assertEqual(textbox.state['cursor_pos'], 11)
 
     def test_textbox_delete_keybinding(self):
         """Test delete keybinding (Ctrl+D)."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello'
+        textbox.state['text'] = 'Hello'
         textbox.state['cursor_pos'] = 2
 
         # Ctrl+D - delete character at cursor
-        textbox.handle_input('\x04')
-        self.assertEqual(textbox.state['content'], 'Helo')
+        textbox.handle_raw_input('\x04')
+        self.assertEqual(textbox.state['text'], 'Helo')
         self.assertEqual(textbox.state['cursor_pos'], 2)
 
         # Ctrl+D at end does nothing
-        textbox.state['content'] = 'Hello'
+        textbox.state['text'] = 'Hello'
         textbox.state['cursor_pos'] = 5
-        textbox.handle_input('\x04')
-        self.assertEqual(textbox.state['content'], 'Hello')
+        textbox.handle_raw_input('\x04')
+        self.assertEqual(textbox.state['text'], 'Hello')
 
     def test_textbox_transpose_keybinding(self):
         """Test transpose keybinding (Ctrl+T)."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello'
+        textbox.state['text'] = 'Hello'
         textbox.state['cursor_pos'] = 2
 
         # Ctrl+T - transpose characters
-        textbox.handle_input('\x14')
-        self.assertEqual(textbox.state['content'], 'Hlelo')
+        textbox.handle_raw_input('\x14')
+        self.assertEqual(textbox.state['text'], 'Hlelo')
         self.assertEqual(textbox.state['cursor_pos'], 3)
 
     def test_textbox_kill_line_keybinding(self):
         """Test Ctrl+K kill to end of line."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello World'
+        textbox.state['text'] = 'Hello World'
         textbox.state['cursor_pos'] = 5
 
         # Ctrl+K - kill to end of line
-        textbox.handle_input('\x0b')
-        self.assertEqual(textbox.state['content'], 'Hello')
+        textbox.handle_raw_input('\x0b')
+        self.assertEqual(textbox.state['text'], 'Hello')
         self.assertEqual(textbox.state['cursor_pos'], 5)
 
     def test_textbox_multiline_navigation(self):
         """Test multiline navigation with Ctrl+N and Ctrl+P."""
         textbox = TextBox(width=5)  # Small width to test line wrapping
-        textbox.state['content'] = 'Hello\nWorld\nTest'
-        textbox.state['cursor_pos'] = 0
+        textbox.state['text'] = 'Hello\nWorld\nTest'
+        textbox.rendered_width = 5
 
         # Ctrl+N - move to next line
-        textbox.handle_input('\x0e')
+        textbox.handle_raw_input('\x0e')
         line, col = textbox.get_cursor_line_col()
         self.assertEqual(line, 1)
 
         # Ctrl+P - move to previous line
-        textbox.handle_input('\x10')
+        textbox.handle_raw_input('\x10')
         line, col = textbox.get_cursor_line_col()
         self.assertEqual(line, 0)
 
     def test_textbox_arrow_key_navigation(self):
         """Test arrow key navigation."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello\nWorld'
+        textbox.state['text'] = 'Hello\nWorld'
         textbox.state['cursor_pos'] = 5
+        textbox.rendered_width = 20
 
         # Left arrow
-        textbox.handle_input('\x1b[D')
+        textbox.handle_raw_input('\x1b[D')
         self.assertEqual(textbox.state['cursor_pos'], 4)
 
         # Right arrow
-        textbox.handle_input('\x1b[C')
+        textbox.handle_raw_input('\x1b[C')
         self.assertEqual(textbox.state['cursor_pos'], 5)
 
         # Down arrow
-        textbox.handle_input('\x1b[B')
+        textbox.handle_raw_input('\x1b[B')
         self.assertEqual(textbox.state['cursor_pos'], 11)
 
         # Up arrow
-        textbox.handle_input('\x1b[A')
+        textbox.handle_raw_input('\x1b[A')
         self.assertEqual(textbox.state['cursor_pos'], 5)
 
     def test_textbox_word_navigation(self):
         """Test word navigation with Alt+F and Alt+B."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello World Test'
+        textbox.state['text'] = 'Hello World Test'
         textbox.state['cursor_pos'] = 0
 
         # Alt+F - move forward one word
-        textbox.handle_input('\x1bf')
+        textbox.handle_raw_input('\x1bf')
         self.assertEqual(textbox.state['cursor_pos'], 6)
 
         # Alt+B - move backward one word
-        textbox.handle_input('\x1bb')
+        textbox.handle_raw_input('\x1bb')
         self.assertEqual(textbox.state['cursor_pos'], 0)
 
     def test_textbox_alt_backspace_word_deletion(self):
         """Test Alt+Backspace for word deletion."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello World Test'
+        textbox.state['text'] = 'Hello World Test'
         textbox.state['cursor_pos'] = 12
 
         # Alt+Backspace - delete word
-        textbox.handle_input('\x1b\x7f')
-        self.assertEqual(textbox.state['content'], 'Hello Test')
+        textbox.handle_raw_input('\x1b\x7f')
+        self.assertEqual(textbox.state['text'], 'Hello Test')
         self.assertEqual(textbox.state['cursor_pos'], 6)
 
     def test_textbox_alt_enter_newline(self):
         """Test Alt+Enter for inserting newline."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello World'
+        textbox.state['text'] = 'Hello World'
         textbox.state['cursor_pos'] = 5
 
         # Alt+Enter - insert newline
-        textbox.handle_input('\x1b\r')
-        self.assertEqual(textbox.state['content'], 'Hello\n World')
+        textbox.handle_raw_input('\x1b\r')
+        self.assertEqual(textbox.state['text'], 'Hello\n World')
         self.assertEqual(textbox.state['cursor_pos'], 6)
 
     def test_textbox_ctrl_o_insert_newline(self):
         """Test Ctrl+O for inserting newline after cursor."""
         textbox = TextBox(width=20)
-        textbox.state['content'] = 'Hello'
+        textbox.state['text'] = 'Hello'
         textbox.state['cursor_pos'] = 2
 
         # Ctrl+O - insert newline after cursor
-        textbox.handle_input('\x0f')
-        self.assertEqual(textbox.state['content'], 'Hel\nlo')
+        textbox.handle_raw_input('\x0f')
+        self.assertEqual(textbox.state['text'], 'He\nllo')
 
     def test_textbox_change_callback(self):
         """Test change callback is called when content changes."""
@@ -262,19 +264,19 @@ class TestTextBoxInputHandling(unittest.TestCase):
         textbox = TextBox(width=20, handle_change=handle_change)
 
         # Change callback called on character input
-        textbox.handle_input('H')
+        textbox.handle_raw_input('H')
         handle_change.assert_called_once_with('H')
         handle_change.reset_mock()
 
         # Change callback called on backspace
-        textbox.handle_input('\x7f')
+        textbox.handle_raw_input('\x7f')
         handle_change.assert_called_once_with('')
         handle_change.reset_mock()
 
         # Change callback not called when content doesn't change
-        textbox.state['content'] = ''
+        textbox.state['text'] = ''
         textbox.state['cursor_pos'] = 0
-        textbox.handle_input('\x7f')  # Backspace at beginning
+        textbox.handle_raw_input('\x7f')  # Backspace at beginning
         handle_change.assert_not_called()
 
 
@@ -291,10 +293,10 @@ class TestTextBoxRendering(unittest.TestCase):
         ]
         for width, padding, content, placeholder, description in test_cases:
             with self.subTest(msg=description):
-                textbox = TextBox(width=width, padding=padding, placeholder=placeholder)
-                textbox.state['content'] = content
+                textbox = TextBox(width=width, padding=padding, placeholder=placeholder, border_style=Borders.ROUND)
+                textbox.state['text'] = content
                 textbox.state['cursor_pos'] = len(content)
-                rendered = textbox.render([])
+                rendered = textbox.render([], max_width=100)
                 lines = rendered.split('\n')
                 if isinstance(padding, int):
                     expected_lines = 3 + padding * 2  # Uniform padding adds to top and bottom

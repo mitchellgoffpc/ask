@@ -50,6 +50,8 @@ def apply_borders(content: str, width: int, border_style: BorderStyle | None, bo
     return content
 
 def apply_boxing(content: str, max_width: int, component: 'Component') -> str:
+    if isinstance(component.props.get('width'), int):
+        max_width = component.props['width']
     content_width = component.get_content_width(max_width) if component.props.get('width') is not None else get_rendered_width(content)
     content_height: int = component.props['height'] if component.props.get('height') is not None else content.count('\n') + 1 if content else 0
     padded_width = content_width + component.padding['left'] + component.padding['right']
@@ -116,7 +118,7 @@ class Component:
         self.mounted = False
         self.rendered_width = 0
 
-    def __getitem__(self, args: Union['Component', tuple['Component', ...], Iterable['Component']]) -> Self:
+    def __getitem__(self, args: Union['Component', Iterable['Component']]) -> Self:
         if self.leaf:
             raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
         self.children = [args] if isinstance(args, Component) else list(args)
