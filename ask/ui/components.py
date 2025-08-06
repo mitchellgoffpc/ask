@@ -179,9 +179,11 @@ class Text(Component):
         height: Size = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
+        border_color: str | None = None,
+        border_style: BorderStyle | None = None,
         **props: Any
     ) -> None:
-        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding, **props)
+        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style, **props)
 
     def render(self, _: list[str], max_width: int) -> str:
         wrapped = wrap_lines(self.props['text'], max_width)
