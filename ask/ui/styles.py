@@ -1,8 +1,8 @@
 import os
 import re
+from dataclasses import dataclass
 from enum import Enum
 from functools import partial
-from dataclasses import dataclass
 
 ANSI_BACKGROUND_OFFSET = 10
 ANSI_256_SUPPORT = '256color' in os.getenv("TERM", '')

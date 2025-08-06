@@ -1,7 +1,7 @@
-import os
-import sys
 import atexit
+import os
 import platform
+import sys
 from typing import TextIO
 
 ESC = '\u001B['

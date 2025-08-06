@@ -1,7 +1,8 @@
 import json
 from typing import Any
-from ask.models.openai import OpenAIAPI
+
 from ask.models.base import Model, Content, Text, Reasoning, ToolRequest
+from ask.models.openai import OpenAIAPI
 
 class DeepseekAPI(OpenAIAPI):
     def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:

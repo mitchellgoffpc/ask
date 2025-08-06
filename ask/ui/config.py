@@ -5,6 +5,7 @@ CONFIG_PATH = Path('~/.ask.json').expanduser()
 
 class Config:
     def __init__(self):
+        self.data = {}
         if CONFIG_PATH.is_file():
             self.data = json.loads(CONFIG_PATH.read_text() or '{}')
         if not self.data:

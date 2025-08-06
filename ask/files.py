@@ -1,9 +1,10 @@
-import re
 import glob
-import requests
 import itertools
-from pathlib import Path
+import re
+import requests
 from bs4 import BeautifulSoup, NavigableString, Tag, PageElement
+from pathlib import Path
+
 from ask.models import Text, Image
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}

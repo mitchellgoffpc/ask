@@ -1,7 +1,7 @@
-import re
 import difflib
-from pathlib import Path
+import re
 from collections import defaultdict
+from pathlib import Path
 from typing import Iterator
 
 RED = '\033[91m'
