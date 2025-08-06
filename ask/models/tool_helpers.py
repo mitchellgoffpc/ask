@@ -1,7 +1,8 @@
 import re
 import json
 import uuid
-from ask.tools.base import Tool, Parameter
+
+from ask.tools import Tool
 from ask.models.base import Text, ToolRequest, ToolResponse
 
 # Since not all models support tool use directly, we also need to be able render the tools as a normal user message.
@@ -54,20 +55,15 @@ response:
 ```
 """.strip()
 
-def get_tool_schema(params: list[Parameter]) -> str:
-    return json.dumps({
-        "type": "object",
-        "properties": {p.name: {"type": p.type, "description": p.description} for p in params},
-        "required": [p.name for p in params if p.required],
-        "additionalProperties": False,
-        "$schema": "http://json-schema.org/draft-07/schema#",
-    }, indent=2)
+def render_tool_definition(tool: Tool) -> str:
+    schema = json.dumps(tool.get_input_schema(), indent=2)
+    return TOOL_DEFINITION.format(name=tool.name, description=tool.description, schema=schema)
 
 def render_tools_prompt(tools: list[Tool]) -> str:
     if not tools:
         return ''
-    tool_defs = '\n\n'.join(TOOL_DEFINITION.format(name=tool.name, description=tool.description, schema=get_tool_schema(tool.parameters)) for tool in tools)
-    return f"{TOOL_PREFIX}\n\n{tool_defs}\n\n{TOOL_USE}"
+    tool_definitions = '\n\n'.join(render_tool_definition(tool) for tool in tools)
+    return f"{TOOL_PREFIX}\n\n{tool_definitions}\n\n{TOOL_USE}"
 
 def render_tool_request(request: ToolRequest) -> str:
     return TOOL_REQUEST.format(call_id=request.call_id, name=request.tool, arguments=json.dumps(request.arguments))

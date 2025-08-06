@@ -1,12 +1,12 @@
 from ask.tools.base import Tool, Parameter
-from ask.tools.bash import BashTool
-from ask.tools.grep import GrepTool
-from ask.tools.globb import GlobTool
-from ask.tools.view import ViewTool
-from ask.tools.replace import ReplaceTool
-from ask.tools.ls import LSTool
+# from ask.tools.bash import BashTool
+# from ask.tools.grep import GrepTool
+# from ask.tools.globb import GlobTool
+from ask.tools.read import ReadTool
+# from ask.tools.replace import ReplaceTool
+# from ask.tools.ls import LSTool
 
-TOOL_LIST = [BashTool(), GlobTool(), GrepTool(), LSTool(), ViewTool(), ReplaceTool()]
+TOOL_LIST = [ReadTool()]
 TOOLS = {tool.name: tool for tool in TOOL_LIST}
 
 __all__ = ["TOOLS", "Tool", "Parameter"]

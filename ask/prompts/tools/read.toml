@@ -1,6 +1,4 @@
-name = "read"
-
-description = """
+prompt = """
 Reads a file from the local filesystem. You can access any file directly by using this tool.
 Assume this tool is able to read all files on the machine. If the User provides a path to a file assume that path is valid. It is okay to read a file that does not exist; an error will be returned.
 
@@ -16,29 +14,4 @@ Usage:
 - You have the capability to call multiple tools in a single response. It is always better to speculatively read multiple files as a batch that are potentially useful.
 - You will regularly be asked to read screenshots. If the user provides a path to a screenshot ALWAYS use this tool to view the file at the path. This tool will work with all temporary file paths like /var/folders/123/abc/T/TemporaryItems/NSIRD_screencaptureui_ZfB1tD/Screenshot.png
 - If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.
-"""
-
-schema = """
-{
-  "type": "object",
-  "properties": {
-    "file_path": {
-      "type": "string",
-      "description": "The absolute path to the file to read"
-    },
-    "offset": {
-      "type": "number",
-      "description": "The line number to start reading from. Only provide if the file is too large to read at once"
-    },
-    "limit": {
-      "type": "number",
-      "description": "The number of lines to read. Only provide if the file is too large to read at once."
-    }
-  },
-  "required": [
-    "file_path"
-  ],
-  "additionalProperties": false,
-  "$schema": "http://json-schema.org/draft-07/schema#"
-}
 """

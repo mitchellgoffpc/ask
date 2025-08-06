@@ -1,5 +1,8 @@
-from typing import Any
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from typing import Any
+
+class ToolError(Exception): ...
 
 @dataclass
 class Parameter:
@@ -9,7 +12,7 @@ class Parameter:
     required: bool = True
     enum: list[str] | None = None
 
-class Tool:
+class Tool(metaclass=ABCMeta):
     name: str
     description: str
     parameters: list[Parameter]
@@ -28,5 +31,20 @@ class Tool:
 
         return self.run(args)
 
-    def run(self, args: dict[str, Any]) -> str:
-        raise NotImplementedError("Subclasses should implement this method.")
+    def get_input_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {p.name: {"type": p.type, "description": p.description} for p in self.parameters},
+            "required": [p.name for p in self.parameters if p.required],
+            "additionalProperties": False,
+            "$schema": "http://json-schema.org/draft-07/schema#",
+        }
+
+    @abstractmethod
+    def render_args(self, args: dict[str, Any]) -> str: ...
+
+    @abstractmethod
+    def render_response(self, response: str) -> str: ...
+
+    @abstractmethod
+    def run(self, args: dict[str, Any]) -> str: ...

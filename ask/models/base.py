@@ -1,8 +1,9 @@
 import json
 from abc import ABCMeta, abstractmethod
-from typing import Any, Iterator, Union
 from dataclasses import dataclass, field
-from ask.tools import Tool, Parameter
+from typing import Any, Iterator, Union
+
+from ask.tools import Tool
 
 Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse']
 
@@ -85,14 +86,6 @@ class API(metaclass=ABCMeta):
 
     @abstractmethod
     def render_tool(self, tool: Tool) -> dict[str, Any]: ...
-
-    def render_tool_param(self, param: Parameter) -> dict[str, Any]:
-        rendered: dict[str, Any] = {'type': param.type}
-        if param.description:
-            rendered['description'] = param.description
-        if param.enum:
-            rendered['enum'] = param.enum
-        return rendered
 
     # Request / Response
 

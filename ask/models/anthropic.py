@@ -1,6 +1,7 @@
-import json
 import base64
+import json
 from typing import Any
+
 from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
 
 class AnthropicAPI(API):
@@ -14,9 +15,7 @@ class AnthropicAPI(API):
         return {'type': 'tool_result', 'tool_use_id': response.call_id, 'content': response.response}
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
-        params = {p.name: self.render_tool_param(p) for p in tool.parameters}
-        required = [p.name for p in tool.parameters if p.required]
-        return {"name": tool.name, "description": tool.description, "input_schema": {'type': 'object', 'properties': params, 'required': required}}
+        return {"name": tool.name, "description": tool.description, "input_schema": tool.get_input_schema()}
 
     def render_message(self, message: Message, model: Model) -> dict[str, Any]:
         return {'role': message.role, 'content': [self.render_content(x, model) for x in message.content]}

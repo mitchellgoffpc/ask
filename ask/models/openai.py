@@ -1,6 +1,7 @@
-import json
 import base64
+import json
 from typing import Any
+
 from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
 from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
 
@@ -39,14 +40,9 @@ class OpenAIAPI(API):
             return [self.render_message(message.role, message.content, [], model)]
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
-        params = {p.name: self.render_tool_param(p) for p in tool.parameters}
-        required = [p.name for p in tool.parameters if p.required]
         return {
             'type': 'function',
-            'function': {
-                'name': tool.name,
-                'description': tool.description,
-                'parameters': {'type': 'object', 'properties': params, 'required': required}}}
+            'function': {'name': tool.name, 'description': tool.description, 'parameters': tool.get_input_schema()}}
 
     def render_system_prompt(self, system_prompt: str, model: Model) -> list[dict[str, str]]:
         if not system_prompt:
