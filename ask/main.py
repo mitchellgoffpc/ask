@@ -54,7 +54,7 @@ def main() -> None:
 
     # Launch the UI, or run the query and exit
     images = [content for content in files.values() if isinstance(content, Image)]
-    messages = [Message(role='user', content=[*images, Text(question)])]
+    messages = [Message(role='user', content=[*images, Text(question)])] if question else []
     if args.print:
         act(model, messages, tools, args.system)
     else:

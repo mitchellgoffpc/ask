@@ -31,7 +31,9 @@ def apply_sizing(content: str, width: int, height: int) -> str:
 
 def apply_spacing(content: str, spacing: dict[Side, int]) -> str:
     lines = content.split('\n')
-    width = (ansi_len(lines[0]) if lines else 0) + spacing['left'] + spacing['right']
+    line_width = ansi_len(lines[0]) if lines else 0
+    assert all(ansi_len(line) == line_width for line in lines), "All lines must have the same width for spacing to be applied"
+    width = line_width + spacing['left'] + spacing['right']
     top_spacing = (' ' * width + '\n') * spacing.get('top', 0)
     bottom_spacing = ('\n' + ' ' * width) * spacing.get('bottom', 0)
     left_spacing = ' ' * spacing.get('left', 0)
@@ -39,20 +41,25 @@ def apply_spacing(content: str, spacing: dict[Side, int]) -> str:
     return top_spacing + '\n'.join(left_spacing + line + right_spacing for line in lines) + bottom_spacing
 
 def apply_borders(content: str, width: int, border_style: BorderStyle | None, border_color: str | None) -> str:
-    if border_style is not None:
-        color_code = border_color or ''
-        lines = content.split('\n') if content else []
-        top_border = Colors.ansi(border_style.top_left + border_style.top * width + border_style.top_right, color_code)
-        bottom_border = Colors.ansi(border_style.bottom_left + border_style.bottom * width + border_style.bottom_right, color_code)
-        left_border = Colors.ansi(border_style.left, color_code)
-        right_border = Colors.ansi(border_style.right, color_code)
-        content = '\n'.join([top_border] + [left_border + line + right_border for line in lines] + [bottom_border])
-    return content
+    if border_style is None:
+        return content
+    color_code = border_color or ''
+    lines = content.split('\n') if content else []
+    assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for borders to be applied"
+    top_border = Colors.ansi(border_style.top_left + border_style.top * width + border_style.top_right, color_code)
+    bottom_border = Colors.ansi(border_style.bottom_left + border_style.bottom * width + border_style.bottom_right, color_code)
+    left_border = Colors.ansi(border_style.left, color_code)
+    right_border = Colors.ansi(border_style.right, color_code)
+    return '\n'.join([top_border] + [left_border + line + right_border for line in lines] + [bottom_border])
 
 def apply_boxing(content: str, max_width: int, component: 'Component') -> str:
+    max_content_width = component.get_content_width(max_width)
     if isinstance(component.props.get('width'), int):
-        max_width = component.props['width']
-    content_width = component.get_content_width(max_width) if component.props.get('width') is not None else get_rendered_width(content)
+        content_width = min(max_content_width, component.get_content_width(component.props['width'] + component.margin['left'] + component.margin['right']))
+    elif isinstance(component.props.get('width'), float):
+        content_width = max_content_width
+    else:
+        content_width = min(max_content_width, get_rendered_width(content))
     content_height: int = component.props['height'] if component.props.get('height') is not None else content.count('\n') + 1 if content else 0
     padded_width = content_width + component.padding['left'] + component.padding['right']
 
