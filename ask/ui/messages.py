@@ -1,6 +1,6 @@
+from ask.tools import TOOLS
 from ask.ui.components import Component, Box, Text
 from ask.ui.styles import Flex, Colors, Styles, Theme
-
 
 def Prompt(text: str, errors: list[str] | None = None) -> Component:
     return Box(margin={'top': 1})[
@@ -16,13 +16,19 @@ def Prompt(text: str, errors: list[str] | None = None) -> Component:
 
 def TextResponse(text: str) -> Component:
     return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
-        Text("⏺ "),
+        Text("● "),
         Text(text)
     ]
 
-def ToolResponse(tool: str, args: list[str], result: list[str], finished: bool = True) -> Component:
-    args_str = ', '.join(args)
-    args_str = f"({args_str})" if args_str else ""
-    bullet = Colors.ansi("⏺", Colors.GREEN) if finished else "⏺"
-    tool_str = f"{bullet} {Styles.bold(tool)}{args_str}…"
-    return Text('\n'.join([tool_str] + ['⎿  ' + line for line in result]))
+def ToolCall(tool: str, args: dict[str, str], result: str | None) -> Component:
+    args_str = TOOLS[tool].render_args(args)
+    return Box(margin={'top': 1})[
+        Box(flex=Flex.HORIZONTAL)[
+            Text(Colors.ansi("● ", Colors.GREEN) if result is not None else "● "),
+            Text(Styles.bold(tool) + (f"({args_str})" if args_str else ''))
+        ],
+        *([Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(TOOLS[tool].render_response(result))
+        ]] if result is not None else [])
+    ]

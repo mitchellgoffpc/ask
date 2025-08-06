@@ -1,18 +1,19 @@
 import sys
 import time
-from typing import Any
 from dataclasses import replace
 from requests import ConnectionError
+from typing import Any
 
-from ask.models import MODEL_SHORTCUTS, Message, Text as TextContent
+from ask.models import Model, Message, Content, Text as TextContent, ToolRequest, ToolResponse
 from ask.query import query
+from ask.tools import TOOLS, Tool
 from ask.ui.components import Component, Box, Text, TextCallback, BoolCallback, asyncronous
 from ask.ui.config import Config
-from ask.ui.messages import Prompt, TextResponse
+from ask.ui.messages import Prompt, TextResponse, ToolCall
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.textbox import TextBox
 
-MAX_RETRIES = 10
+MAX_RETRIES = 5
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
     '/exit': 'Exit the REPL',
@@ -115,33 +116,58 @@ class Spinner(Box):
 
 
 class App(Box):
-    initial_state = {'messages': [], 'text': '', 'loading': False, 'bash_mode': False}
-    config = Config()
+    initial_state = {'text': '', 'loading': False, 'bash_mode': False}
+
+    def __init__(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, **props: Any) -> None:
+        super().__init__(model=model, tools=tools, system_prompt=system_prompt, **props)
+        self.state['messages'] = messages
+        self.config = Config()
+        self.tool_responses: dict[str, ToolResponse] = {}
+
+        if self.state['messages'] and self.state['messages'][-1].role == 'user':
+            user_messages = [content.text for content in self.state['messages'][-1].content if isinstance(content, TextContent)]
+            self.config['history'] = self.config['history'] + user_messages
+            self.query()
 
     @asyncronous
-    def query(self, value: str) -> None:
-        self.state['messages'] = [*self.state['messages'], Message(role='user', content=[TextContent(value)])]
+    def query(self) -> None:
         self.state['loading'] = True
         try:
             backoff = 1
             for i in range(MAX_RETRIES):
                 try:
                     text = ''
-                    response = Message(role='assistant', content=[])
+                    contents = []
                     history = self.state['messages'][:]
-                    for delta, content in query(MODEL_SHORTCUTS['sonnet'], self.state['messages'], [], "You are a helpful assistant."):
+                    for delta, content in query(self.props['model'], self.state['messages'], self.props['tools'], self.props['system_prompt']):
                         text = text + delta
-                        response = replace(response, content=[TextContent(text)])
-                        if content:
-                            response = replace(response, content=[content])
-                        self.state['messages'] = [*history, response]
-                    return
+                        contents.extend([content] if content else [])
+                        text_content = [TextContent(text)] if text and not any(isinstance(c, TextContent) for c in contents) else []
+                        if text or contents:
+                            message = Message(role='assistant', content=[*text_content, *contents], errors=[])
+                            self.state['messages'] = [*history, message]
+
+                    tool_responses: list[Content] = []
+                    for content in contents:
+                        if isinstance(content, ToolRequest):
+                            tool = TOOLS[content.tool]
+                            response = tool.run(content.arguments)
+                            tool_response = ToolResponse(call_id=content.call_id, tool=content.tool, response=response)
+                            tool_responses.append(tool_response)
+                            self.tool_responses[content.call_id] = tool_response
+
+                    if tool_responses:
+                        self.state['messages'] = [*self.state['messages'], Message(role='user', content=tool_responses)]
+                    else:
+                        return
+
                 except ConnectionError:
                     last_message = self.state['messages'][-1]
                     error_message = f'Connection Error - Retrying in {backoff} seconds (attempt {i} / {MAX_RETRIES})'
                     self.state['messages'] = [*self.state['messages'][:-1], replace(last_message, errors=[*last_message.errors, error_message])]
                     time.sleep(backoff)
                     backoff *= 2
+
         finally:
             self.state['loading'] = False
 
@@ -153,7 +179,8 @@ class App(Box):
         elif value == '/clear':
             self.state['messages'] = []
         else:
-            self.query(value)
+            self.state['messages'] = [*self.state['messages'], Message(role='user', content=[TextContent(value)])]
+            self.query()
 
     def handle_set_text(self, value: str) -> None:
         self.state['text'] = value
@@ -166,18 +193,25 @@ class App(Box):
             return False
         return True
 
-    def render_message(self, message: Message) -> Component:
+    def render_message(self, message: Message) -> list[Component]:
+        components = []
         if message.role == 'user':
-            assert isinstance(message.content[0], TextContent)
-            return Prompt(message.content[0].text, errors=message.errors)
+            for content in message.content:
+                if isinstance(content, TextContent):
+                    components.append(Prompt(content.text, errors=message.errors))
         elif message.role == 'assistant':
-            if isinstance(message.content[0], TextContent):
-                return TextResponse(message.content[0].text)
-        raise NotImplementedError(f"Unsupported message content type: {type(message.content[0])}")
+            for content in message.content:
+                if isinstance(content, TextContent):
+                    components.append(TextResponse(content.text))
+                elif isinstance(content, ToolRequest):
+                    response = self.tool_responses.get(content.call_id)
+                    result = response.response if response else None
+                    components.append(ToolCall(tool=content.tool, args=content.arguments, result=result))
+        return components
 
     def contents(self) -> list[Component]:
         return [
-            *[self.render_message(message) for message in self.state['messages']],
+            *[component for message in self.state['messages'] for component in self.render_message(message)],
             *([Spinner()] if self.state['loading'] else []),
             PromptTextBox(
                 text=self.state['text'],
