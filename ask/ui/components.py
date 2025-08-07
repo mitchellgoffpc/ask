@@ -9,7 +9,6 @@ Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Size = int | float | None
 TextCallback = Callable[[str], None]
-BoolCallback = Callable[[bool], None]
 
 dirty: set[UUID] = set()
 nodes: dict[UUID, 'Component'] = {}
@@ -118,17 +117,17 @@ class Component:
     initial_state: dict[str, Any] = {}
 
     def __init__(self, **props: Any) -> None:
-        self.children: list['Component'] = []
+        self.children: list[Optional['Component']] = []
         self.uuid = uuid4()
         self.props = props
         self.state = State(self.uuid, self.initial_state)
         self.mounted = False
         self.rendered_width = 0
 
-    def __getitem__(self, args: Union['Component', Iterable['Component']]) -> Self:
+    def __getitem__(self, args: Union['Component', Iterable[Optional['Component']], None]) -> Self:
         if self.leaf:
             raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
-        self.children = [args] if isinstance(args, Component) else list(args)
+        self.children = [args] if isinstance(args, Component) else list(args) if args else []
         return self
 
     @property
@@ -148,7 +147,7 @@ class Component:
         horizontal_margin = self.margin['left'] + self.margin['right']
         return max(0, width - horizontal_padding - horizontal_margin - self.border_thickness * 2)
 
-    def contents(self) -> list['Component']:
+    def contents(self) -> list[Optional['Component']]:
         if self.leaf:
             return []
         raise NotImplementedError(f"{self.__class__.__name__} component must implement `contents` method")
@@ -169,6 +168,18 @@ class Component:
         pass
 
 
+class Line(Component):
+    leaf = True
+
+    def __init__(self, width: Size = None, color: str | None = None, margin: Spacing = 0, **props: Any) -> None:
+        super().__init__(width=width, color=color, margin=margin, **props)
+
+    def render(self, _: list[str], max_width: int) -> str:
+        width = self.get_content_width(max_width)
+        line = Colors.ansi('─' * width, self.props['color'] or '') if width > 0 else ''
+        return apply_spacing(line, self.margin) if line else ''
+
+
 class Text(Component):
     leaf = True
 
@@ -181,9 +192,8 @@ class Text(Component):
         padding: Spacing = 0,
         border_color: str | None = None,
         border_style: BorderStyle | None = None,
-        **props: Any
     ) -> None:
-        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style, **props)
+        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style)
 
     def render(self, _: list[str], max_width: int) -> str:
         wrapped = wrap_lines(self.props['text'], max_width)
@@ -204,7 +214,7 @@ class Box(Component):
     ) -> None:
         super().__init__(flex=flex, width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style, **props)
 
-    def contents(self) -> list[Component]:
+    def contents(self) -> list[Component | None]:
         return self.children
 
     def render(self, contents: list[str], max_width: int) -> str:
