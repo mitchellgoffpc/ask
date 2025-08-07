@@ -1,16 +1,17 @@
 import sys
 import time
+import subprocess
 from dataclasses import replace
 from requests import ConnectionError
 
-from ask.models import Model, Message, Content, Text as TextContent, ToolRequest, ToolResponse
+from ask.models import Model, Message, Content, Text as TextContent, ToolRequest, ToolResponse, ShellCommand
 from ask.query import query
 from ask.tools import TOOLS, Tool
-from ask.ui.components import Component, Box, Text, Line, TextCallback, asyncronous
+from ask.ui.components import Component, Box, Text, Line, asyncronous
 from ask.ui.config import Config
 from ask.ui.messages import Prompt, TextResponse, ToolCall
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
-from ask.ui.textbox import TextBox
+from ask.ui.textbox import TextBox, TextCallback
 
 MAX_RETRIES = 5
 COMMANDS = {
@@ -45,12 +46,14 @@ class PromptTextBox(Box):
         return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text'])}
 
     def handle_input(self, ch: str) -> bool:
+        # Bash mode
         if self.state['bash_mode'] and not self.state['text'] and ch == '\x7f':
             self.state['bash_mode'] = False
         elif not self.state['bash_mode'] and not self.state['text'] and ch == '!':
             self.state['bash_mode'] = True
             return False
 
+        # Command selection
         matching_commands = self.get_matching_commands()
         selected_idx = self.state['selected_idx']
         if not self.state['text'] or not matching_commands:
@@ -71,14 +74,21 @@ class PromptTextBox(Box):
             return False
         return True
 
+    def handle_page(self, _: int) -> None:
+        self.state['bash_mode'] = False
+
     def handle_change(self, value: str) -> None:
+        if value.startswith('!'):
+            value = value.removeprefix('!')
+            self.state['bash_mode'] = True
         if value != self.state['text']:
             self.state['selected_idx'] = 0
         self.state['text'] = value
 
     def handle_submit(self, value: str) -> None:
+        self.props['handle_submit'](f"{'!' if self.state['bash_mode'] else ''}{value}")
         self.state['text'] = ''
-        self.props['handle_submit'](value)
+        self.state['bash_mode'] = False
 
     def contents(self) -> list[Component | None]:
         border_color = Theme.DARK_PINK if self.state['bash_mode'] else Theme.DARK_GRAY
@@ -93,6 +103,7 @@ class PromptTextBox(Box):
                     history=self.props['history'],
                     placeholder="Try 'how do I log an error?'",
                     handle_input=self.handle_input,
+                    handle_page=self.handle_page,
                     handle_change=self.handle_change,
                     handle_submit=self.handle_submit)
             ],
@@ -179,7 +190,17 @@ class App(Box):
 
     def handle_submit(self, value: str) -> None:
         self.config['history'] = [*self.config['history'], value]
-        if value in ('/exit', '/quit'):
+        if value.startswith('!'):
+            try:
+                result = subprocess.run(value.removeprefix('!'), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+                output = result.stdout
+            except subprocess.TimeoutExpired:
+                output = "Command timed out after 30 seconds"
+            except Exception as e:
+                output = f"Error running command: {str(e)}"
+            self.state['messages'] = [*self.state['messages'], Message(role='user', content=[ShellCommand(command=value, result=output)])]
+
+        elif value in ('/exit', '/quit'):
             sys.exit()
         elif value == '/clear':
             self.state['messages'] = []

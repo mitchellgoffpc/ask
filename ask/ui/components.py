@@ -1,6 +1,6 @@
 from functools import wraps
 from threading import Thread
-from typing import Any, Callable, Literal, Iterable, Optional, Self, Union, get_args
+from typing import Any, Literal, Iterable, Optional, Self, Union, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
@@ -8,7 +8,6 @@ from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Size = int | float | None
-TextCallback = Callable[[str], None]
 
 dirty: set[UUID] = set()
 nodes: dict[UUID, 'Component'] = {}

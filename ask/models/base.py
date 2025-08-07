@@ -5,7 +5,7 @@ from typing import Any, Iterator, Union
 
 from ask.tools import Tool
 
-Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse']
+Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'ShellCommand']
 
 @dataclass
 class Text:
@@ -31,6 +31,11 @@ class ToolResponse:
     call_id: str
     tool: str
     response: str
+
+@dataclass
+class ShellCommand:
+    command: str
+    result: str
 
 @dataclass
 class Message:

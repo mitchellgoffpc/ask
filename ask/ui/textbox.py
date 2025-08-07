@@ -1,10 +1,12 @@
 from typing import Any, Callable, cast
 
-from ask.ui.components import Box, Size, TextCallback, wrap_lines
+from ask.ui.components import Box, Size, wrap_lines
 from ask.ui.styles import Styles, Colors
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
+IntCallback = Callable[[int], None]
+TextCallback = Callable[[str], None]
 InputCallback = Callable[[str], bool]
 
 class TextBox(Box):
@@ -17,13 +19,14 @@ class TextBox(Box):
         text: str | None = None,
         placeholder: str = "",
         handle_input: InputCallback | None = None,
-        handle_submit: TextCallback | None = None,
+        handle_page: IntCallback | None = None,
         handle_change: TextCallback | None = None,
+        handle_submit: TextCallback | None = None,
         history: list[str] | None = None,
         **props: Any
     ) -> None:
         super().__init__(width=width, text=text, placeholder=placeholder, history=history,
-                         handle_input=handle_input, handle_change=handle_change, handle_submit=handle_submit, **props)
+                         handle_input=handle_input, handle_page=handle_page, handle_change=handle_change, handle_submit=handle_submit, **props)
         assert width is not None, "TextBox width must be specified"
         self.state['history'] = [*(history or []), text or '']
         self.state['history_idx'] = len(self.state['history']) - 1
@@ -93,11 +96,11 @@ class TextBox(Box):
             next_newline = text.find('\n', cursor_pos)
             text = text[:cursor_pos] if next_newline == -1 else text[:cursor_pos] + text[next_newline:]
         elif ch == '\x0e':  # Ctrl+N - move to next line
-            text, cursor_pos, history_idx = self.navigate_line(1)
+            text, cursor_pos, history_idx = self.change_line(1)
         elif ch == '\x0f':  # Ctrl+O - insert newline after cursor
             text = text[:cursor_pos] + '\n' + text[cursor_pos:]
         elif ch == '\x10':  # Ctrl+P - move to previous line
-            text, cursor_pos, history_idx = self.navigate_line(-1)
+            text, cursor_pos, history_idx = self.change_line(-1)
         elif ch == '\x14':  # Ctrl+T - transpose characters
             if cursor_pos > 0 and cursor_pos < len(text):
                 text = text[:cursor_pos - 1] + text[cursor_pos] + text[cursor_pos - 1] + text[cursor_pos + 1:]
@@ -127,13 +130,13 @@ class TextBox(Box):
             elif direction == 'C' and cursor_pos < len(text):  # Right arrow
                 cursor_pos += 1
             elif direction == 'A':  # Up arrow
-                text, cursor_pos, history_idx = self.navigate_line(-1)
+                text, cursor_pos, history_idx = self.change_line(-1)
             elif direction == 'B':  # Down arrow
-                text, cursor_pos, history_idx = self.navigate_line(1)
+                text, cursor_pos, history_idx = self.change_line(1)
             elif direction == '5~':  # Page Down
-                text, cursor_pos, history_idx = self.navigate_history(-1)
+                text, cursor_pos, history_idx = self.change_history_idx(-1)
             elif direction == '6~':  # Page Up
-                text, cursor_pos, history_idx = self.navigate_history(1)
+                text, cursor_pos, history_idx = self.change_history_idx(1)
         elif ch == '\x7f' and cursor_pos > 0:  # Alt+Backspace, delete word
             pos = cursor_pos - 1
             while pos >= 0 and text[pos].isspace():
@@ -162,22 +165,24 @@ class TextBox(Box):
 
         return text, cursor_pos, history_idx
 
-    def navigate_history(self, direction: int) -> tuple[str, int, int]:
+    def change_history_idx(self, direction: int) -> tuple[str, int, int]:
         history = self.state['history']
         history_idx = self.state['history_idx']
         new_history_idx = max(0, min(len(history) - 1, history_idx + direction))
         if new_history_idx != history_idx:
+            if self.props.get('handle_page'):
+                self.props['handle_page'](new_history_idx)
             history_idx = new_history_idx
             cursor_pos = len(history[new_history_idx])
             text = history[new_history_idx]
             return text, cursor_pos, history_idx
         return self.text, self.cursor_pos, history_idx
 
-    def navigate_line(self, direction: int) -> tuple[str, int, int]:
+    def change_line(self, direction: int) -> tuple[str, int, int]:
         current_line, current_col = self.get_cursor_line_col()
         if ((direction < 0 and current_line == 0) or
             (direction > 0 and current_line == self.get_total_lines() - 1)):
-            return self.navigate_history(direction)
+            return self.change_history_idx(direction)
 
         new_line = max(0, min(self.get_total_lines() - 1, current_line + direction))
         if new_line != current_line:
