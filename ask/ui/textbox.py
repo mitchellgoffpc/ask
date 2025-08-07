@@ -3,6 +3,8 @@ from typing import Any, Callable, cast
 from ask.ui.components import Box, Size, TextCallback, wrap_lines
 from ask.ui.styles import Styles, Colors
 
+REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
+
 InputCallback = Callable[[str], bool]
 
 class TextBox(Box):
@@ -40,8 +42,7 @@ class TextBox(Box):
 
     @text.setter
     def text(self, text: str) -> None:
-        if self.props['text'] is None:
-            self.state['text'] = text
+        self.state['text'] = text
         if self.props['handle_change'] is not None:
             self.props['handle_change'](text)
         history = self.state['history']
@@ -49,8 +50,9 @@ class TextBox(Box):
         self.state['history'] = [*history[:history_idx], text, *history[history_idx + 1:]]
 
     def handle_update(self, new_props: dict[str, Any]) -> None:
-        if 'text' in new_props and len(new_props['text']) > len(self.props['text']):
+        if 'text' in new_props and new_props['text'] != self.state['text']:
             self.state['cursor_pos'] = len(new_props['text'])
+            self.state['text'] = new_props['text']
         if 'history' in new_props and new_props['history'] != self.props['history']:
             self.state['history'] = [*(new_props['history'] or []), new_props['text'] if new_props['text'] is not None else self.state['text']]
             self.state['history_idx'] = len(self.state['history']) - 1
@@ -105,6 +107,7 @@ class TextBox(Box):
         elif ch.startswith('\x1b'):  # Escape sequence
             text, cursor_pos, history_idx = self.handle_escape_input(ch[1:])
         else:  # Regular character(s)
+            ch = ch.translate(REMOVE_CONTROL_CHARS)
             text = text[:cursor_pos] + ch + text[cursor_pos:]
             cursor_pos += len(ch)
 
