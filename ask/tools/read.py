@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Any
 
-from ask.tools.base import ToolError, Tool, Parameter
 from ask.prompts import load_tool_prompt
+from ask.tools.base import ToolError, Tool, Parameter
+from ask.ui.styles import Styles
 
 class ReadTool(Tool):
     name = "Read"
@@ -16,7 +17,14 @@ class ReadTool(Tool):
         self.add_line_numbers = add_line_numbers
 
     def render_args(self, args: dict[str, str]) -> str:
-        return Path(args['file_path']).name
+        try:
+            return str(Path(args['file_path']).relative_to(Path.cwd()))
+        except ValueError:
+            return args['file_path']
+
+    def render_short_response(self, response: str) -> str:
+        line_count = response.count('\n') + 1
+        return f"Read {Styles.bold(line_count)} lines"
 
     def render_response(self, response: str) -> str:
         return '\n'.join(line.split('→')[-1] for line in response.split('\n'))

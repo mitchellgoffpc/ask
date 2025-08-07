@@ -13,6 +13,6 @@ class TestBox(unittest.TestCase):
         self.assertIn(text1, box.children)
         self.assertIn(text2, box.children)
 
-        rendered = box.render([child.render([], max_width=100) for child in box.children], max_width=100)
+        rendered = box.render([child.render([], max_width=100) for child in box.children if child], max_width=100)
         self.assertIn("Hello", rendered)
         self.assertIn("World", rendered)
