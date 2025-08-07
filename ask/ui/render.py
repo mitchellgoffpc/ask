@@ -39,13 +39,15 @@ def mount(component):
     children[component.uuid] = contents
     component.handle_mount()
     for child in contents:
-        parents[child.uuid] = component
-        mount(child)
+        if child:
+            parents[child.uuid] = component
+            mount(child)
 
 # Remove a component and all its children from the tree
 def unmount(component):
     for child in children[component.uuid]:
-        unmount(child)
+        if child:
+            unmount(child)
     component.handle_unmount()
     del children[component.uuid]
     del nodes[component.uuid]
@@ -57,12 +59,16 @@ def update(uuid, component, new_to_old):
     old_contents = children.get(uuid, [])
 
     for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents)):
-        new_to_old[new_child] = old_child
+        if new_child:
+            new_to_old[new_child] = old_child
         if not old_child and not new_child:
             continue
         elif not old_child:
             # New child added
-            children[uuid].append(new_child)
+            if i >= len(children[uuid]):
+                children[uuid].append(new_child)
+            else:
+                children[uuid][i] = new_child
             parents[new_child.uuid] = component
             nodes[new_child.uuid] = new_child
             mount(new_child)
@@ -77,21 +83,21 @@ def update(uuid, component, new_to_old):
             parents[new_child.uuid] = component
             nodes[new_child.uuid] = new_child
             mount(new_child)
-        elif old_child.props != new_child.props:
-            # Same class but props changed, update the props and re-render
-            old_child.handle_update(new_child.props)
-            old_child.props = new_child.props.copy()
-            # Since the new nodes will be discarded after the update, we need to rebind all methods to the original nodes
-            for k, v in old_child.props.items():
-                if callable(v) and hasattr(v, '__self__') and v.__self__ in new_to_old:
-                    old_child.props[k] = MethodType(v.__func__, new_to_old[v.__self__])
-            update(old_child.uuid, new_child, new_to_old)
         else:
+            if old_child.props != new_child.props:
+                # Same class but props changed, update the props and re-render
+                old_child.handle_update(new_child.props)
+                old_child.props = new_child.props.copy()
+                # Since the new nodes will be discarded after the update, we need to rebind all methods to the original nodes
+                # This is really janky and probably doesn't work for things like decorators, but I don't have any better ideas atm
+                for k, v in old_child.props.items():
+                    if callable(v) and hasattr(v, '__self__') and v.__self__ in new_to_old:
+                        old_child.props[k] = MethodType(v.__func__, new_to_old[v.__self__])
+
+            # TODO: Avoid updating parts of the tree that haven't changed
+            new_child.state.state = old_child.state.state.copy()
             update(old_child.uuid, new_child, new_to_old)
 
-    # Remove trailing None children
-    while children[uuid] and not children[uuid][-1]:
-        children[uuid].pop()
 
 # Render a component and its subtree to a string
 def render(component, width):
