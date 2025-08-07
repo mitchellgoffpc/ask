@@ -4,6 +4,18 @@ from ask.tools import TOOLS, Tool
 from ask.ui.components import Component, Box, Text
 from ask.ui.styles import Flex, Colors, Styles, Theme
 
+NUM_PREVIEW_LINES = 5
+
+def get_shell_output(result: str, expanded: bool) -> str:
+    if not result:
+        return Colors.hex("(No content)", Theme.GRAY)
+    elif expanded:
+        return result
+    else:
+        lines = result.rstrip('\n').split('\n')
+        expand_text = Colors.hex(f"… +{len(lines) - NUM_PREVIEW_LINES} lines (ctrl+r to expand)", Theme.GRAY)
+        return '\n'.join(lines[:NUM_PREVIEW_LINES]) + (f'\n{expand_text}' if len(lines) > NUM_PREVIEW_LINES else '')
+
 def get_tool_result(tool: Tool, result: str, expanded: bool) -> str:
     if expanded:
         return tool.render_response(result)
@@ -36,6 +48,22 @@ def Prompt(text: str, errors: list[str] | None = None) -> Component:
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
             Text(Colors.ansi(error, Colors.RED))
         ] for error in (errors or [])]
+    ]
+
+def ShellCall(command: str, output: str, error: str, expanded: bool = True) -> Component:
+    return Box(margin={'top': 1})[
+        Box(flex=Flex.HORIZONTAL)[
+            Text(Colors.hex("! ", Theme.PINK)),
+            Text(Colors.hex(command, Theme.GRAY))
+        ],
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(get_shell_output(output, expanded))
+        ] if output else None,
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(Colors.ansi(error, Colors.RED))
+        ] if error else None
     ]
 
 def TextResponse(text: str) -> Component:

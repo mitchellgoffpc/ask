@@ -35,7 +35,8 @@ class ToolResponse:
 @dataclass
 class ShellCommand:
     command: str
-    result: str
+    output: str
+    error: str
 
 @dataclass
 class Message:
