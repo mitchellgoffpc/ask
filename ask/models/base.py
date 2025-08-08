@@ -11,6 +11,7 @@ Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'Sh
 @dataclass
 class Text:
     text: str
+    hidden: bool = False
 
 @dataclass
 class Reasoning:

@@ -55,9 +55,9 @@ def main() -> None:
 
     # Launch the UI, or run the query and exit
     images = {uuid4(): content for content in files.values() if isinstance(content, Image)}
-    messages = [Message(role='user', content={**images, uuid4(): Text(question)})] if question else []
+    messages = {uuid4(): Message(role='user', content={**images, uuid4(): Text(question)})} if question else {}
     if args.print:
-        act(model, messages, tools, args.system)
+        act(model, list(messages.values()), tools, args.system)
     else:
         render_root(App(model=model, messages=messages, tools=tools, system_prompt=args.system))
 
