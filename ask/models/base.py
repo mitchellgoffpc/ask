@@ -2,6 +2,7 @@ import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Iterator, Union
+from uuid import UUID
 
 from ask.tools import Tool
 
@@ -41,7 +42,7 @@ class ShellCommand:
 @dataclass
 class Message:
     role: str
-    content: list[Content]
+    content: dict[UUID, Content]
     errors: list[str] = field(default_factory=list)
 
 @dataclass

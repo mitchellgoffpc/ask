@@ -32,12 +32,12 @@ class OpenAIAPI(API):
         # OpenAI's API has tools as a separate role, so we need to split them out into a separate message for each tool call
         if model.supports_tools:
             tool_response_msgs = [self.render_tool_message(x) for x in message.content if isinstance(x, ToolResponse)]
-            tool_requests = [x for x in message.content if isinstance(x, ToolRequest)]
-            other_content: list[Content] = [x for x in message.content if not isinstance(x, (ToolRequest, ToolResponse))]
-            other_msgs = [self.render_message(message.role, other_content, tool_requests, model)] if other_content or tool_requests else []
-            return tool_response_msgs + other_msgs
+            tool_requests = [x for x in message.content.values() if isinstance(x, ToolRequest)]
+            content: list[Content] = [x for x in message.content.values() if not isinstance(x, (ToolRequest, ToolResponse))]
+            content_msgs = [self.render_message(message.role, content, tool_requests, model)] if content or tool_requests else []
+            return tool_response_msgs + content_msgs
         else:
-            return [self.render_message(message.role, message.content, [], model)]
+            return [self.render_message(message.role, list(message.content.values()), [], model)]
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         return {

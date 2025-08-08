@@ -3,6 +3,7 @@ import time
 import subprocess
 from dataclasses import replace
 from requests import ConnectionError
+from uuid import UUID, uuid4
 
 from ask.models import Model, Message, Content, Text as TextContent, ToolRequest, ToolResponse, ShellCommand
 from ask.query import query
@@ -145,7 +146,7 @@ class App(Box):
         self.tool_responses: dict[str, ToolResponse] = {}
 
         if self.state['messages'] and self.state['messages'][-1].role == 'user':
-            user_messages = [content.text for content in self.state['messages'][-1].content if isinstance(content, TextContent)]
+            user_messages = [content.text for content in self.state['messages'][-1].content.values() if isinstance(content, TextContent)]
             self.config['history'] = self.config['history'] + user_messages
             self.query()
 
@@ -156,23 +157,24 @@ class App(Box):
         while True:
             try:
                 text = ''
-                contents = []
+                contents = {}
                 history = self.state['messages'][:]
                 for delta, content in query(self.props['model'], self.state['messages'], self.props['tools'], self.props['system_prompt']):
                     text = text + delta
-                    contents.extend([content] if content else [])
-                    text_content = [TextContent(text)] if text and not any(isinstance(c, TextContent) for c in contents) else []
+                    if content:
+                        contents[uuid4()] = content
+                    text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                     if text or contents:
-                        message = Message(role='assistant', content=[*text_content, *contents], errors=[])
+                        message = Message(role='assistant', content=contents | text_content)
                         self.state['messages'] = [*history, message]
 
-                tool_responses: list[Content] = []
-                for content in contents:
+                tool_responses: dict[UUID, Content] = {}
+                for content in contents.values():
                     if isinstance(content, ToolRequest):
                         tool = TOOLS[content.tool]
                         response = tool.run(content.arguments)
                         tool_response = ToolResponse(call_id=content.call_id, tool=content.tool, response=response)
-                        tool_responses.append(tool_response)
+                        tool_responses[uuid4()] = tool_response
                         self.tool_responses[content.call_id] = tool_response
 
                 if tool_responses:
@@ -205,7 +207,7 @@ class App(Box):
                 error = "Command timed out after 30 seconds"
             except Exception as e:
                 error = f"Error running command: {str(e)}"
-            content: list[Content] = [TextContent(SHELL_PROMPT), ShellCommand(command=value, output=output, error=error)]
+            content: dict[UUID, Content] = {uuid4(): TextContent(SHELL_PROMPT), uuid4(): ShellCommand(command=value, output=output, error=error)}
             self.state['messages'] = [*self.state['messages'], Message(role='user', content=content)]
 
         elif value in ('/exit', '/quit'):
@@ -213,7 +215,7 @@ class App(Box):
         elif value == '/clear':
             self.state['messages'] = []
         else:
-            self.state['messages'] = [*self.state['messages'], Message(role='user', content=[TextContent(value)])]
+            self.state['messages'] = [*self.state['messages'], Message(role='user', content={uuid4(): TextContent(value)})]
             self.query()
 
     def handle_raw_input(self, ch: str) -> None:
@@ -223,13 +225,13 @@ class App(Box):
     def render_message(self, message: Message) -> list[Component]:
         components = []
         if message.role == 'user':
-            for content in message.content:
+            for content in message.content.values():
                 if isinstance(content, TextContent):
                     components.append(Prompt(content.text, errors=message.errors))
                 elif isinstance(content, ShellCommand):
                     components.append(ShellCall(command=content.command, output=content.output, error=content.error, expanded=self.state['expanded']))
         elif message.role == 'assistant':
-            for content in message.content:
+            for content in message.content.values():
                 if isinstance(content, TextContent):
                     components.append(TextResponse(content.text))
                 elif isinstance(content, ToolRequest):

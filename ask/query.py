@@ -2,6 +2,7 @@ import json
 import os
 import requests
 from typing import Iterator
+from uuid import UUID, uuid4
 
 from ask.tools import TOOLS, Tool
 from ask.edit import apply_edits
@@ -10,16 +11,16 @@ from ask.models.tool_helpers import parse_tool_block
 
 # High-level ask/act functions
 
-def ask(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> list[Content]:
-    contents = []
+def ask(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> dict[UUID, Content]:
+    contents = {}
     for chunk, content in query(model, messages, tools, system_prompt):
         print(chunk, end='', flush=True)
         if content:
-            contents.append(content)
+            contents[uuid4()] = content
     if model.stream:
         print()  # trailing newline
     else:
-        for content in contents:
+        for content in contents.values():
             if isinstance(content, Text):
                 print(content.text)
             elif isinstance(content, Reasoning):
@@ -33,14 +34,14 @@ def act(model: Model, messages: list[Message], tools: list[Tool], system_prompt:
             response_text = '\n\n'.join(item.text for item in response if isinstance(item, Text))
             apply_edits(response_text)
 
-            tool_results: list[Content] = []
-            for item in response:
+            tool_results: dict[UUID, Content] = {}
+            for item in response.values():
                 if isinstance(item, ToolRequest):
                     if item.tool in TOOLS:
                         result = TOOLS[item.tool](item.arguments)
                     else:
                         result = f"Tool {item.tool} not found"
-                    tool_results.append(ToolResponse(call_id=item.call_id, tool=item.tool, response=result))
+                    tool_results[uuid4()] = ToolResponse(call_id=item.call_id, tool=item.tool, response=result)
 
             if tool_results:
                 messages.append(Message(role="assistant", content=response))

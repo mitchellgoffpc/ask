@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+from uuid import uuid4
 
 from ask.files import read_files
 from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image
@@ -53,8 +54,8 @@ def main() -> None:
     tools: list[Tool] = list(TOOLS.values())
 
     # Launch the UI, or run the query and exit
-    images = [content for content in files.values() if isinstance(content, Image)]
-    messages = [Message(role='user', content=[*images, Text(question)])] if question else []
+    images = {uuid4(): content for content in files.values() if isinstance(content, Image)}
+    messages = [Message(role='user', content={**images, uuid4(): Text(question)})] if question else []
     if args.print:
         act(model, messages, tools, args.system)
     else:
