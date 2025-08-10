@@ -76,19 +76,22 @@ class API(metaclass=ABCMeta):
     @abstractmethod
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]: ...
 
-    def render_content(self, content: Content, model: Model) -> dict[str, Any]:
+    def render_content(self, content: Content, model: Model) -> list[dict[str, Any]]:
         if isinstance(content, Text):
-            return self.render_text(content)
+            return [self.render_text(content)]
         elif isinstance(content, Reasoning):
-            return {}  # Don't render reasoning for now
+            return []  # Don't render reasoning for now
         elif isinstance(content, Image):
             if not model.supports_images:
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
-            return self.render_image(content)
+            return [self.render_image(content)]
         elif isinstance(content, ToolRequest):
-            return self.render_tool_request(content)
+            return [self.render_tool_request(content)]
         elif isinstance(content, ToolResponse):
-            return self.render_tool_response(content)
+            return [self.render_tool_response(content)]
+        elif isinstance(content, ShellCommand):
+            return [self.render_text(Text(f"<bash-stdin>{content.command}</bash-stdin>")),
+                    self.render_text(Text(f"<bash-stdout>{content.output}</bash-stdout><bash-stderr>{content.error}</bash-stderr>"))]
         else:
             raise TypeError(f"Unsupported message content: {type(content)}")
 

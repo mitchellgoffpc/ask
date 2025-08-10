@@ -5,7 +5,7 @@ from dataclasses import replace
 from requests import ConnectionError
 from uuid import UUID, uuid4
 
-from ask.helpers import lastvalue, lastitem
+from ask.helpers import lastkey, lastvalue, lastitem
 from ask.models import Model, Message, Content, Text as TextContent, ToolRequest, ToolResponse, ShellCommand
 from ask.query import query
 from ask.tools import TOOLS, Tool
@@ -52,11 +52,11 @@ class PromptTextBox(Box):
     def get_matching_commands(self) -> dict[str, str]:
         return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text'])}
 
-    def handle_input(self, ch: str) -> bool:
+    def handle_input(self, ch: str, cursor_pos: int) -> bool:
         # Bash mode
-        if self.state['bash_mode'] and not self.state['text'] and ch == '\x7f':
+        if cursor_pos == 0 and ch in ('\x7f', '\x1b\x7f'):
             self.state['bash_mode'] = False
-        elif not self.state['bash_mode'] and not self.state['text'] and ch == '!':
+        elif cursor_pos == 0 and ch == '!':
             self.state['bash_mode'] = True
             return False
 
@@ -146,10 +146,18 @@ class App(Box):
         self.config = Config()
         self.tool_responses: dict[str, ToolResponse] = {}
 
-        if self.state['messages'] and lastvalue(self.state['messages']).role == 'user':
-            user_messages = [content.text for content in lastvalue(self.state['messages']).content.values() if isinstance(content, TextContent)]
+        last_message = lastvalue(self.state['messages'])
+        if last_message and last_message.role == 'user':
+            user_messages = [content.text for content in last_message.content.values() if isinstance(content, TextContent)]
             self.config['history'] = self.config['history'] + user_messages
             self.query()
+
+    @asyncronous
+    def shell(self, message_uuid: UUID, content_uuid: UUID, command: str) -> None:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        shell_command = ShellCommand(command=command, output=result.stdout, error=result.stderr)
+        message = self.state['messages'][message_uuid]
+        self.state['messages'] = self.state['messages'] | {message_uuid: replace(message, content=message.content | {content_uuid: shell_command})}
 
     @asyncronous
     def query(self) -> None:
@@ -198,18 +206,17 @@ class App(Box):
     def handle_submit(self, value: str) -> None:
         self.config['history'] = [*self.config['history'], value]
         if value.startswith('!'):
-            output = ''
-            value = value.removeprefix('!')
-            try:
-                result = subprocess.run(value, shell=True, capture_output=True, text=True, timeout=30)
-                output, error = result.stdout, result.stderr
-            except subprocess.TimeoutExpired:
-                error = "Command timed out after 30 seconds"
-            except Exception as e:
-                error = f"Error running command: {str(e)}"
-            shell_prompt = TextContent(SHELL_PROMPT, hidden=True)
-            shell_cmd = ShellCommand(command=value, output=output, error=error)
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content={uuid4(): shell_prompt, uuid4(): shell_cmd})}
+            last_message_uuid = lastkey(self.state['messages'], uuid4())
+            last_message = self.state['messages'].get(last_message_uuid)
+            if not last_message or last_message.role != 'user':
+                last_message_uuid = uuid4()
+                last_message = Message(role='user', content={uuid4(): TextContent(SHELL_PROMPT, hidden=True)})
+
+            shell_cmd_uuid = uuid4()
+            shell_cmd = ShellCommand(command=value, output='', error='') # , timestamp=time.time())
+            last_message = replace(last_message, content=last_message.content | {shell_cmd_uuid: shell_cmd})
+            self.state['messages'] = self.state['messages'] | {last_message_uuid: last_message}
+            self.shell(last_message_uuid, shell_cmd_uuid, value.removeprefix('!'))
 
         elif value in ('/exit', '/quit'):
             sys.exit()
@@ -227,7 +234,7 @@ class App(Box):
         components = []
         if message.role == 'user':
             for content in message.content.values():
-                if isinstance(content, TextContent):
+                if isinstance(content, TextContent) and not content.hidden:
                     components.append(Prompt(content.text, errors=message.errors))
                 elif isinstance(content, ShellCommand):
                     components.append(ShellCall(command=content.command, output=content.output, error=content.error, expanded=self.state['expanded']))

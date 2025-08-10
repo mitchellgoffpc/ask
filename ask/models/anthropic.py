@@ -18,7 +18,7 @@ class AnthropicAPI(API):
         return {"name": tool.name, "description": tool.description, "input_schema": tool.get_input_schema()}
 
     def render_message(self, message: Message, model: Model) -> dict[str, Any]:
-        return {'role': message.role, 'content': [self.render_content(x, model) for x in message.content.values()]}
+        return {'role': message.role, 'content': [x for c in message.content.values() for x in self.render_content(c, model)]}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}

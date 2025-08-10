@@ -24,9 +24,8 @@ class OpenAIAPI(API):
         return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
 
     def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
-        rendered_content = [self.render_content(x, model) for x in content]
         tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
-        return {'role': role, 'content': [x for x in rendered_content if x]} | tool_call_dict
+        return {'role': role, 'content': [x for c in content for x in self.render_content(c, model)]} | tool_call_dict
 
     def render_multi_message(self, message: Message, model: Model) -> list[dict[str, str]]:
         # OpenAI's API has tools as a separate role, so we need to split them out into a separate message for each tool call

@@ -2,12 +2,14 @@ from typing import TypeVar
 K = TypeVar('K')
 V = TypeVar('V')
 
-def lastkey(data: dict[K, V]) -> K:
-    return list(data.keys())[-1]
+def lastkey(data: dict[K, V], default: K | None = None) -> K | None:
+    keys = list(data.keys())
+    return keys[-1] if keys else default
 
-def lastvalue(data: dict[K, V]) -> V:
-    return data[lastkey(data)]
+def lastvalue(data: dict[K, V], default: V | None = None) -> V | None:
+    keys = list(data.keys())
+    return data[keys[-1]] if keys else default
 
 def lastitem(data: dict[K, V]) -> tuple[K, V]:
-    key = lastkey(data)
-    return key, data[key]
+    keys = list(data.keys())
+    return keys[-1], data[keys[-1]]

@@ -7,7 +7,7 @@ REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
 IntCallback = Callable[[int], None]
 TextCallback = Callable[[str], None]
-InputCallback = Callable[[str], bool]
+InputCallback = Callable[[str, int], bool]
 
 class TextBox(Box):
     leaf = True
@@ -62,7 +62,7 @@ class TextBox(Box):
 
     def handle_raw_input(self, ch: str) -> None:
         if self.props.get('handle_input'):
-            if not self.props['handle_input'](ch):
+            if not self.props['handle_input'](ch, self.cursor_pos):
                 return
 
         text = self.text
