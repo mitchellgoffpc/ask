@@ -1,7 +1,7 @@
 import sys
 import time
 import subprocess
-from dataclasses import replace
+from dataclasses import replace, astuple
 from requests import ConnectionError
 from uuid import UUID, uuid4
 
@@ -155,8 +155,8 @@ class App(Box):
     @asyncronous
     def shell(self, message_uuid: UUID, content_uuid: UUID, command: str) -> None:
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        shell_command = ShellCommand(command=command, output=result.stdout, error=result.stderr)
         message = self.state['messages'][message_uuid]
+        shell_command = replace(message.content[content_uuid], output=result.stdout, error=result.stderr)
         self.state['messages'] = self.state['messages'] | {message_uuid: replace(message, content=message.content | {content_uuid: shell_command})}
 
     @asyncronous
@@ -213,7 +213,7 @@ class App(Box):
                 last_message = Message(role='user', content={uuid4(): TextContent(SHELL_PROMPT, hidden=True)})
 
             shell_cmd_uuid = uuid4()
-            shell_cmd = ShellCommand(command=value, output='', error='') # , timestamp=time.time())
+            shell_cmd = ShellCommand(command=value, output=None, error=None, start_time=time.time())
             last_message = replace(last_message, content=last_message.content | {shell_cmd_uuid: shell_cmd})
             self.state['messages'] = self.state['messages'] | {last_message_uuid: last_message}
             self.shell(last_message_uuid, shell_cmd_uuid, value.removeprefix('!'))
@@ -237,7 +237,8 @@ class App(Box):
                 if isinstance(content, TextContent) and not content.hidden:
                     components.append(Prompt(content.text, errors=message.errors))
                 elif isinstance(content, ShellCommand):
-                    components.append(ShellCall(command=content.command, output=content.output, error=content.error, expanded=self.state['expanded']))
+                    command, output, error, start_time = astuple(content)
+                    components.append(ShellCall(command=command, output=output, error=error, start_time=start_time, expanded=self.state['expanded']))
         elif message.role == 'assistant':
             for content in message.content.values():
                 if isinstance(content, TextContent):

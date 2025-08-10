@@ -37,8 +37,9 @@ class ToolResponse:
 @dataclass
 class ShellCommand:
     command: str
-    output: str
-    error: str
+    output: str | None
+    error: str | None
+    start_time: float
 
 @dataclass
 class Message:

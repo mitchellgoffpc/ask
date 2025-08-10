@@ -1,5 +1,5 @@
 import re
-
+import time
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
@@ -79,7 +79,7 @@ def Prompt(text: str, errors: list[str] | None = None) -> Component:
         ] for error in (errors or [])]
     ]
 
-def ShellCall(command: str, output: str, error: str, expanded: bool = True) -> Component:
+def ShellCall(command: str, output: str | None, error: str | None, start_time: float, expanded: bool = True) -> Component:
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),
@@ -87,12 +87,16 @@ def ShellCall(command: str, output: str, error: str, expanded: bool = True) -> C
         ],
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
+            Text(Colors.hex(f"({int(time.time() - start_time)})", Theme.GRAY)),
+        ] if output is None else None,
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
             Text(get_shell_output(output, expanded))
-        ] if output else None,
+        ] if output is not None else None,
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
             Text(Colors.ansi(error, Colors.RED))
-        ] if error else None
+        ] if output is not None and error else None,
     ]
 
 def TextResponse(text: str) -> Component:
