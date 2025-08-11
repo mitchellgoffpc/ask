@@ -154,6 +154,9 @@ class Component:
     def render(self, contents: list[str], max_width: int) -> str:
         raise NotImplementedError(f"{self.__class__.__name__} component must implement `render` method")
 
+    def rerender(self) -> None:
+        dirty.add(self.uuid)
+
     def handle_mount(self):
         self.mounted = True
 

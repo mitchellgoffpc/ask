@@ -1,5 +1,6 @@
 import re
 import time
+from typing import Any
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
@@ -46,6 +47,7 @@ def render_code_block(code_block: str) -> str:
         return code_block
 
     language, code = match.groups()
+    formatter: Any
     if ANSI_16M_SUPPORT:
         formatter = TerminalTrueColorFormatter()
     elif ANSI_256_SUPPORT:
@@ -80,6 +82,7 @@ def Prompt(text: str, errors: list[str] | None = None) -> Component:
     ]
 
 def ShellCall(command: str, output: str | None, error: str | None, start_time: float, expanded: bool = True) -> Component:
+    elapsed = int(time.time() - start_time)
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),
@@ -87,8 +90,8 @@ def ShellCall(command: str, output: str | None, error: str | None, start_time: f
         ],
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
-            Text(Colors.hex(f"({int(time.time() - start_time)})", Theme.GRAY)),
-        ] if output is None else None,
+            Text(Colors.hex(f"({elapsed}s)", Theme.GRAY)),
+        ] if output is None and elapsed >= 1 else None,
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
             Text(get_shell_output(output, expanded))

@@ -1,6 +1,7 @@
 import sys
 import time
 import subprocess
+from concurrent.futures import Future
 from dataclasses import replace, astuple
 from requests import ConnectionError
 from uuid import UUID, uuid4
@@ -144,6 +145,7 @@ class App(Box):
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
         self.state['messages'] = messages
         self.config = Config()
+        self.pending: dict[tuple[UUID, UUID], Future] = {}
         self.tool_responses: dict[str, ToolResponse] = {}
 
         last_message = lastvalue(self.state['messages'])
@@ -153,11 +155,18 @@ class App(Box):
             self.query()
 
     @asyncronous
+    def interval(self, future: Future, interval: float) -> None:
+        while not future.done():
+            self.rerender()
+            time.sleep(interval)
+
+    @asyncronous
     def shell(self, message_uuid: UUID, content_uuid: UUID, command: str) -> None:
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
         message = self.state['messages'][message_uuid]
         shell_command = replace(message.content[content_uuid], output=result.stdout, error=result.stderr)
         self.state['messages'] = self.state['messages'] | {message_uuid: replace(message, content=message.content | {content_uuid: shell_command})}
+        self.pending.pop((message_uuid, content_uuid)).set_result(None)
 
     @asyncronous
     def query(self) -> None:
@@ -206,7 +215,8 @@ class App(Box):
     def handle_submit(self, value: str) -> None:
         self.config['history'] = [*self.config['history'], value]
         if value.startswith('!'):
-            last_message_uuid = lastkey(self.state['messages'], uuid4())
+            value = value.removeprefix('!')
+            last_message_uuid: UUID = lastkey(self.state['messages'], uuid4())
             last_message = self.state['messages'].get(last_message_uuid)
             if not last_message or last_message.role != 'user':
                 last_message_uuid = uuid4()
@@ -216,7 +226,9 @@ class App(Box):
             shell_cmd = ShellCommand(command=value, output=None, error=None, start_time=time.time())
             last_message = replace(last_message, content=last_message.content | {shell_cmd_uuid: shell_cmd})
             self.state['messages'] = self.state['messages'] | {last_message_uuid: last_message}
-            self.shell(last_message_uuid, shell_cmd_uuid, value.removeprefix('!'))
+            self.pending[last_message_uuid, shell_cmd_uuid] = Future()
+            self.shell(last_message_uuid, shell_cmd_uuid, value)
+            self.interval(self.pending[last_message_uuid, shell_cmd_uuid], interval=1.0)
 
         elif value in ('/exit', '/quit'):
             sys.exit()
