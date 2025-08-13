@@ -1,5 +1,4 @@
 import re
-import time
 from typing import Any
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, guess_lexer
@@ -7,13 +6,18 @@ from pygments.formatters import TerminalFormatter, Terminal256Formatter, Termina
 from pygments.util import ClassNotFound
 
 from ask.tools import TOOLS, Tool
+from ask.models import Status
 from ask.ui.components import Component, Box, Text
 from ask.ui.styles import Flex, Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
 
 NUM_PREVIEW_LINES = 5
 
-def get_shell_output(result: str, expanded: bool) -> str:
-    if not result:
+def get_shell_output(result: str, status: Status, elapsed: int, expanded: bool) -> str:
+    if status is Status.PENDING:
+        return Colors.hex("Running…" + (f" ({elapsed}s)" if elapsed >= 1 else ""), Theme.GRAY)
+    elif status is Status.CANCELLED:
+        return Colors.ansi("Interrupted by user", Colors.RED)
+    elif not result:
         return Colors.hex("(No content)", Theme.GRAY)
     elif expanded:
         return result
@@ -81,8 +85,7 @@ def Prompt(text: str, errors: list[str] | None = None) -> Component:
         ] for error in (errors or [])]
     ]
 
-def ShellCall(command: str, output: str | None, error: str | None, start_time: float, expanded: bool = True) -> Component:
-    elapsed = int(time.time() - start_time)
+def ShellCall(command: str, output: str, error: str, status: Status, elapsed: int, expanded: bool = True) -> Component:
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),
@@ -90,16 +93,12 @@ def ShellCall(command: str, output: str | None, error: str | None, start_time: f
         ],
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
-            Text(Colors.hex(f"({elapsed}s)", Theme.GRAY)),
-        ] if output is None and elapsed >= 1 else None,
-        Box(flex=Flex.HORIZONTAL)[
-            Text("  ⎿  "),
-            Text(get_shell_output(output, expanded))
-        ] if output is not None else None,
+            Text(get_shell_output(output, status, elapsed, expanded))
+        ],
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
             Text(Colors.ansi(error, Colors.RED))
-        ] if output is not None and error else None,
+        ] if status is Status.COMPLETED and error else None,
     ]
 
 def TextResponse(text: str) -> Component:

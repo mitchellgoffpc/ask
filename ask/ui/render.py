@@ -1,3 +1,4 @@
+import asyncio
 import fcntl
 import os
 import select
@@ -10,7 +11,7 @@ from itertools import zip_longest
 from types import MethodType
 from uuid import UUID
 
-from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children, threads
+from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children
 from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.styles import Flex
 
@@ -145,7 +146,7 @@ def propogate(node, value, handler='handle_raw_input'):
 
 # Main render loop
 
-def render_root(root: Component) -> None:
+async def render_root(root: Component) -> None:
     hide_cursor()
 
     mount(root)
@@ -158,7 +159,7 @@ def render_root(root: Component) -> None:
     try:
         tty.setraw(fd)
         while True:
-            ready, _, _ = select.select([sys.stdin], [], [], 0.1)
+            ready, _, _ = select.select([sys.stdin], [], [], 0.05)
             if ready:
                 with nonblocking(fd):
                     sequence = ''
@@ -168,13 +169,9 @@ def render_root(root: Component) -> None:
                     sys.exit()
                 propogate(root, sequence, 'handle_raw_input')
 
-            # Check for completed threads
-            for uuid in list(threads.keys()):
-                if not threads[uuid].is_alive():
-                    del threads[uuid]
-
             # Check for dirty components
             if not dirty:
+                await asyncio.sleep(0.01)
                 continue
             for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards
                 if uuid in nodes:
@@ -192,6 +189,7 @@ def render_root(root: Component) -> None:
             line_diffs = zip_longest(previous_render_lines, new_render_lines, fillvalue='')
             first_diff_idx = next((i for i, (prev, new) in enumerate(line_diffs) if prev != new), None)
             if first_diff_idx is None:
+                await asyncio.sleep(0.01)
                 continue
 
             output = cursor_up(len(previous_render_lines) - first_diff_idx)
@@ -204,6 +202,7 @@ def render_root(root: Component) -> None:
             sys.stdout.write(output)
             sys.stdout.flush()
             previous_render_lines = new_render_lines
+            await asyncio.sleep(0.01)
 
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import asyncio
 import sys
 from uuid import uuid4
 
@@ -57,9 +58,9 @@ def main() -> None:
     images = {uuid4(): content for content in files.values() if isinstance(content, Image)}
     messages = {uuid4(): Message(role='user', content={**images, uuid4(): Text(question)})} if question else {}
     if args.print:
-        act(model, list(messages.values()), tools, args.system)
+        asyncio.run(act(model, list(messages.values()), tools, args.system))
     else:
-        render_root(App(model=model, messages=messages, tools=tools, system_prompt=args.system))
+        asyncio.run(render_root(App(model=model, messages=messages, tools=tools, system_prompt=args.system)))
 
 
 if __name__ == '__main__':

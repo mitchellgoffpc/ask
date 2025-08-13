@@ -1,12 +1,19 @@
 import json
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Iterator, Union
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, AsyncIterator, Union
 from uuid import UUID
 
 from ask.tools import Tool
 
 Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'ShellCommand']
+
+class Status(Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
 
 @dataclass
 class Text:
@@ -33,19 +40,19 @@ class ToolResponse:
     call_id: str
     tool: str
     response: str
+    status: Status
 
 @dataclass
 class ShellCommand:
     command: str
-    output: str | None
-    error: str | None
-    start_time: float
+    output: str
+    error: str
+    status: Status
 
 @dataclass
 class Message:
     role: str
     content: dict[UUID, Content]
-    errors: list[str] = field(default_factory=list)
 
 @dataclass
 class Model:
@@ -91,8 +98,11 @@ class API(metaclass=ABCMeta):
         elif isinstance(content, ToolResponse):
             return [self.render_tool_response(content)]
         elif isinstance(content, ShellCommand):
-            return [self.render_text(Text(f"<bash-stdin>{content.command}</bash-stdin>")),
-                    self.render_text(Text(f"<bash-stdout>{content.output}</bash-stdout><bash-stderr>{content.error}</bash-stderr>"))]
+            if content.status is Status.CANCELLED:
+                output = "[Request interrupted by user]"
+            else:
+                output = f"<bash-stdout>{content.output}</bash-stdout><bash-stderr>{content.error}</bash-stderr>"
+            return [self.render_text(Text(f"<bash-stdin>{content.command}</bash-stdin>")), self.render_text(Text(output))]
         else:
             raise TypeError(f"Unsupported message content: {type(content)}")
 
@@ -110,10 +120,10 @@ class API(metaclass=ABCMeta):
     @abstractmethod
     def result(self, response: dict[str, Any]) -> list[Content]: ...
 
-    def decode(self, chunks: Iterator[str]) -> Iterator[tuple[str, Content | None]]:
+    async def decode(self, chunks: AsyncIterator[str]) -> AsyncIterator[tuple[str, Content | None]]:
         current_idx, current_tool = '', ''
         current_data: list[str] = []
-        for chunk in chunks:
+        async for chunk in chunks:
             idx, tool, data = self.decode_chunk(chunk)
             if idx and idx != current_idx:
                 yield self.flush_content(current_idx, idx, current_tool, ''.join(current_data))

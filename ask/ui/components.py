@@ -1,5 +1,3 @@
-from functools import wraps
-from threading import Thread
 from typing import Any, Literal, Iterable, Optional, Self, Union, get_args
 from uuid import UUID, uuid4
 
@@ -13,7 +11,6 @@ dirty: set[UUID] = set()
 nodes: dict[UUID, 'Component'] = {}
 parents: dict[UUID, 'Component'] = {}
 children: dict[UUID, list[Optional['Component']]] = {}
-threads: dict[UUID, Thread] = {}
 
 def get_rendered_width(contents: str) -> int:
     return max(ansi_len(line) for line in contents.split('\n'))
@@ -81,14 +78,6 @@ def wrap_lines(content: str, max_width: int) -> str:
                 start = end
     return '\n'.join(lines)
 
-def asyncronous(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        uuid = uuid4()
-        threads[uuid] = Thread(target=func, args=args, kwargs=kwargs, daemon=True)
-        threads[uuid].start()
-    return wrapper
-
 
 class State:
     def __init__(self, uuid: UUID, state: dict[str, Any]) -> None:
@@ -153,9 +142,6 @@ class Component:
 
     def render(self, contents: list[str], max_width: int) -> str:
         raise NotImplementedError(f"{self.__class__.__name__} component must implement `render` method")
-
-    def rerender(self) -> None:
-        dirty.add(self.uuid)
 
     def handle_mount(self):
         self.mounted = True
