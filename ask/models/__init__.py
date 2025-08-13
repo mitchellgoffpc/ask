@@ -2,7 +2,6 @@ from ask.models.base import API, Model, Message, Content, Text, Reasoning, Image
 from ask.models.openai import OpenAIAPI, O1API
 from ask.models.anthropic import AnthropicAPI
 from ask.models.deepseek import DeepseekAPI
-from ask.models.black_forest_labs import BlackForestLabsAPI
 
 APIS = {
     'openai': OpenAIAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
@@ -12,7 +11,6 @@ APIS = {
     'xai': OpenAIAPI(url='https://api.x.ai/v1/chat/completions', key='XAI_API_KEY'),
     'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY'),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY'),
-    'bfl': BlackForestLabsAPI(url='https://api.bfl.ml/v1/flux-pro-1.1', job_url='https://api.bfl.ml/v1/get_result', key='BFL_API_KEY'),
 }
 
 MODELS = [
@@ -42,7 +40,6 @@ MODELS = [
     Model(name='claude-opus-4-20250514', api=APIS['anthropic'], shortcuts=['opus', 'o']),
     Model(name='grok-2-1212', api=APIS['xai'], shortcuts=['grok', 'g'], supports_images=False),
     Model(name='grok-2-vision-1212', api=APIS['xai'], shortcuts=['grok-vision', 'gv']),
-    Model(name='flux-pro-1.1', api=APIS['bfl'], shortcuts=['flux', 'f'], stream=False, supports_images=False, supports_tools=False, supports_system_prompt=False),  # noqa: E501
 ]
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}

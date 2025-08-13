@@ -17,13 +17,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
+    "aiohttp",
     "beautifulsoup4",
     "pygments",
-    "requests",
     "tqdm",
     "types-beautifulsoup4",
     "types-pygments",
-    "types-requests",
 ]
 
 [project.scripts]
