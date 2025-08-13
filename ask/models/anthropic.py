@@ -2,7 +2,7 @@ import base64
 import json
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups
 
 class AnthropicAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
@@ -17,15 +17,15 @@ class AnthropicAPI(API):
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         return {"name": tool.name, "description": tool.description, "input_schema": tool.get_input_schema()}
 
-    def render_message(self, message: Message, model: Model) -> dict[str, Any]:
-        return {'role': message.role, 'content': [x for c in message.content.values() for x in self.render_content(c, model)]}
+    def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
+        return {'role': role, 'content': [x for c in content for x in self.render_content(c, model)]}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
         assert model.supports_system_prompt and model.supports_tools, "Wtf? All anthropic models support system prompts and tools."
-        chat_msgs = [self.render_message(msg, model) for msg in messages]
+        chat_msgs = [self.render_message(role, content, model) for role, content in get_message_groups(messages)]
         system_dict = {'system': system_prompt} if system_prompt else {}
         tools_dict = {'tools': [self.render_tool(tool) for tool in tools]} if tools else {}
         msg_dict = {"model": model.name, "messages": chat_msgs, "temperature": temperature, 'max_tokens': 4096, 'stream': model.stream}

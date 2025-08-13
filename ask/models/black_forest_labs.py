@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Tuple
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups
 
 @dataclass
 class BlackForestLabsAPI(API):
@@ -29,8 +29,10 @@ class BlackForestLabsAPI(API):
         return {"x-key": api_key, "accept": "application/json", "Content-Type": "application/json"}
 
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
-        assert len(messages) > 0, "You must specify a prompt for image generation"
-        text_prompt = [msg for msg in messages[-1].content if isinstance(msg, Text)]
+        groups = get_message_groups(messages)
+        assert len(groups) > 0, "You must specify a prompt for image generation"
+        _, prompt = groups[-1]
+        text_prompt = [msg for msg in prompt if isinstance(msg, Text)]
         assert len(text_prompt) > 0, "You must specify a prompt for image generation"
         return {"prompt": text_prompt[-1].text, "width": 1024, "height": 1024}
 

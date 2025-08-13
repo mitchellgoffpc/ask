@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups
 
 class OpenAIAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
@@ -27,16 +27,16 @@ class OpenAIAPI(API):
         tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
         return {'role': role, 'content': [x for c in content for x in self.render_content(c, model)]} | tool_call_dict
 
-    def render_multi_message(self, message: Message, model: Model) -> list[dict[str, str]]:
+    def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
         # OpenAI's API has tools as a separate role, so we need to split them out into a separate message for each tool call
         if model.supports_tools:
-            tool_response_msgs = [self.render_tool_message(x) for x in message.content if isinstance(x, ToolResponse)]
-            tool_requests = [x for x in message.content.values() if isinstance(x, ToolRequest)]
-            content: list[Content] = [x for x in message.content.values() if not isinstance(x, (ToolRequest, ToolResponse))]
-            content_msgs = [self.render_message(message.role, content, tool_requests, model)] if content or tool_requests else []
-            return tool_response_msgs + content_msgs
+            tool_response_msgs = [self.render_tool_message(c) for c in content if isinstance(c, ToolResponse)]
+            tool_requests = [c for c in content if isinstance(c, ToolRequest)]
+            other_content: list[Content] = [c for c in content if not isinstance(c, (ToolRequest, ToolResponse))]
+            other_messages = [self.render_message(role, other_content, tool_requests, model)] if other_content or tool_requests else []
+            return tool_response_msgs + other_messages
         else:
-            return [self.render_message(message.role, list(message.content.values()), [], model)]
+            return [self.render_message(role, content, [], model)]
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         return {
@@ -58,7 +58,7 @@ class OpenAIAPI(API):
         if not model.supports_tools:
             system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
         system_msgs = self.render_system_prompt(system_prompt, model)
-        chat_msgs = [m for msg in messages for m in self.render_multi_message(msg, model)]
+        chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
         msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": temperature, 'stream': model.stream}
         tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
         return msg_dict | tools_dict
