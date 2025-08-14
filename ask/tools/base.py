@@ -46,8 +46,8 @@ class Tool(metaclass=ABCMeta):
     @abstractmethod
     def render_short_response(self, response: str) -> str: ...
 
-    @abstractmethod
-    def render_response(self, response: str) -> str: ...
+    def render_response(self, response: str) -> str:
+        return response
 
     @abstractmethod
     def run(self, args: dict[str, Any]) -> str: ...
