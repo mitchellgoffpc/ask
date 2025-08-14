@@ -30,4 +30,4 @@ def load_tool_prompt(tool_name: str) -> str:
         raise FileNotFoundError(f"Tool prompt file for '{tool_name}' not found.")
     with open(prompt_file, "rb") as f:
         data = tomllib.load(f)
-    return cast(str, data['prompt'])
+    return cast(str, data['prompt']).strip()
