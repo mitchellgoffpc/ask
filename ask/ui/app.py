@@ -222,7 +222,7 @@ class App(Box):
             return False
 
         self.config['history'] = [*self.config['history'], value]
-        if value in ('/exit', '/quit'):
+        if value in ('/exit', '/quit', 'exit', 'quit'):
             sys.exit()
         elif value == '/clear':
             self.state['messages'] = {}
