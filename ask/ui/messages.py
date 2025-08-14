@@ -12,9 +12,9 @@ from ask.ui.styles import Flex, Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16
 
 NUM_PREVIEW_LINES = 5
 
-def get_shell_output(result: str, status: Status, elapsed: int, expanded: bool) -> str:
+def get_shell_output(result: str, status: Status, elapsed: float, expanded: bool) -> str:
     if status is Status.PENDING:
-        return Colors.hex("Running…" + (f" ({elapsed}s)" if elapsed >= 1 else ""), Theme.GRAY)
+        return Colors.hex("Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), Theme.GRAY)
     elif status is Status.CANCELLED:
         return Colors.ansi("Interrupted by user", Colors.RED)
     elif not result:
@@ -73,19 +73,19 @@ def render_markdown(text: str) -> str:
 
 # Components
 
-def Prompt(text: str, errors: list[str] | None = None) -> Component:
+def Prompt(text: str, error: str | None) -> Component:
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("> ", Theme.GRAY)),
             Text(Colors.hex(text, Theme.GRAY))
         ],
-        *[Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
             Text(Colors.ansi(error, Colors.RED))
-        ] for error in (errors or [])]
+        ] if error else None,
     ]
 
-def ShellCall(command: str, output: str, error: str, status: Status, elapsed: int, expanded: bool = True) -> Component:
+def ShellCall(command: str, output: str, error: str, status: Status, elapsed: float, expanded: bool = True) -> Component:
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),

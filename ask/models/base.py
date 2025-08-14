@@ -16,7 +16,6 @@ Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'Sh
 def get_message_groups(messages: list['Message']) -> list[tuple[str, list[Content]]]:
     if not messages:
         return []
-
     groups = []
     current_role = messages[0].role
     current_group = [messages[0].content]
@@ -27,7 +26,6 @@ def get_message_groups(messages: list['Message']) -> list[tuple[str, list[Conten
             groups.append((current_role, current_group))
             current_role = message.role
             current_group = [message.content]
-
     return groups + [(current_role, current_group)]
 
 
@@ -40,6 +38,11 @@ class Status(Enum):
 @dataclass
 class Text:
     text: str
+
+@dataclass
+class TextPrompt(Text):
+    status: Status = Status.PENDING
+    error: str | None = None
 
 @dataclass
 class Reasoning:

@@ -5,7 +5,7 @@ import sys
 from uuid import uuid4
 
 from ask.files import read_files
-from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image
+from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, TextPrompt, Image
 from ask.prompts import load_system_prompt
 from ask.tools import TOOLS, Tool
 from ask.ui.app import App
@@ -53,7 +53,7 @@ def main() -> None:
     messages = {}
     if question:
         image_messages = {uuid4(): Message(role='user', content=content) for content in files.values() if isinstance(content, Image)}
-        messages = {**image_messages, uuid4(): Message(role='user', content=Text(question))}
+        messages = {**image_messages, uuid4(): Message(role='user', content=TextPrompt(question))}
 
     asyncio.run(render_root(App(model=model, messages=messages, tools=tools, system_prompt=args.system)))
 
