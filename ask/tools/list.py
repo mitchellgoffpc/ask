@@ -17,13 +17,13 @@ def build_tree(path: Path, ignore_patterns: list[str], prefix: str = "") -> str:
 
     result = f"{prefix}- {path if not prefix else path.name}/\n"  # Show the full path on the top-level directory
     try:
-        for item in path.iterdir():
+        for item in sorted(path.iterdir()):
             if item.name.startswith('.') or item in items_to_ignore:
                 continue
             elif item.is_dir() and item.name not in IGNORED_PATHS:
                 result += build_tree(item, ignore_patterns, prefix + "  ")
             else:
-                result += f"{prefix}  - {item.name}\n"
+                result += f"{prefix}  - {item.name}{'/' if item.is_dir() else ''}\n"
     except PermissionError:
         pass
 
