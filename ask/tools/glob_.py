@@ -14,12 +14,12 @@ class GlobTool(Tool):
         Parameter("path", "string", "The absolute path of the directory to search in (must be absolute, not relative)"),
         Parameter("pattern", "string", "The glob pattern to match files against")]
 
-    def render_args(self, args: dict[str, Any]) -> str:
+    def render_args(self, args: dict[str, str]) -> str:
         try:
-            relative_path = Path(args['path']).relative_to(Path.cwd())
-            return f'pattern: "{args["pattern"]}", path: "{relative_path}"'
+            path = str(Path(args['path']).relative_to(Path.cwd()))
         except ValueError:
-            return f'pattern: "{args["pattern"]}", path: "{args["path"]}"'
+            path = args['path']
+        return f'pattern: "{args["pattern"]}", path: "{path}"'
 
     def render_short_response(self, response: str) -> str:
         file_count = len(response.strip().split('\n'))
