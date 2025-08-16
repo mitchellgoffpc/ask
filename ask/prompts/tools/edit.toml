@@ -1,6 +1,4 @@
-name = "edit"
-
-description = """
+prompt = """
 Performs exact string replacements in files.
 
 Usage:
@@ -10,36 +8,4 @@ Usage:
 - Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.
 - The edit will FAIL if `old_string` is not unique in the file. Either provide a larger string with more surrounding context to make it unique or use `replace_all` to change every instance of `old_string`.
 - Use `replace_all` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.
-"""
-
-schema = """
-{
-  "type": "object",
-  "properties": {
-    "file_path": {
-      "type": "string",
-      "description": "The absolute path to the file to modify"
-    },
-    "old_string": {
-      "type": "string",
-      "description": "The text to replace"
-    },
-    "new_string": {
-      "type": "string",
-      "description": "The text to replace it with (must be different from old_string)"
-    },
-    "replace_all": {
-      "type": "boolean",
-      "default": false,
-      "description": "Replace all occurences of old_string (default false)"
-    }
-  },
-  "required": [
-    "file_path",
-    "old_string",
-    "new_string"
-  ],
-  "additionalProperties": false,
-  "$schema": "http://json-schema.org/draft-07/schema#"
-}
 """
