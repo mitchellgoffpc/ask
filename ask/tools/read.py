@@ -56,7 +56,7 @@ class ReadTool(Tool):
                 lines = [f'{str(offset+1).rjust(6)}→'] if self.add_line_numbers else []
                 for i, line in enumerate(f):
                     if i >= limit:
-                        lines.append(f"... [truncated, file contains more than {offset + limit} lines]")
+                        lines = lines[:-1] + [f"... [truncated, file contains more than {offset + limit} lines]"]
                         break
                     if len(line) > 2000:
                         line = line[:2000] + "... [truncated]\n"
@@ -64,8 +64,6 @@ class ReadTool(Tool):
                     if line.endswith('\n') and self.add_line_numbers:
                         lines.append(f'{str(offset+i+2).rjust(6)}→')
 
-                if not lines:
-                    return "File is empty."
                 return ''.join(lines)
 
         except UnicodeDecodeError as e:
