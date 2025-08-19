@@ -10,12 +10,9 @@ from typing import Any
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter
 
-Command = list[ast.stmt] | None
-Result = tuple[str, str, str | None]
-
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
-def repl_worker(command_queue: Queue[Command], result_queue: Queue[Result]) -> None:
+def repl_worker(command_queue: Queue, result_queue: Queue) -> None:
     globals_dict: dict[str, Any] = {}
     while (nodes := command_queue.get()) is not None:
         try:
@@ -53,8 +50,8 @@ class PythonTool(Tool):
         Parameter("description", "string", "Clear, concise description of what this code does in 5-10 words", required=False)]
 
     def __init__(self) -> None:
-        self.command_queue: Queue[Command] = Queue()
-        self.result_queue: Queue[Result] = Queue()
+        self.command_queue: Queue = Queue()
+        self.result_queue: Queue = Queue()
         self.worker_process: Process | None = None
 
     def _cleanup_worker(self) -> None:
