@@ -42,7 +42,7 @@ def render_markdown_text(text: str) -> str:
     text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', lambda m: Styles.italic(m.group(1)), text)
     text = re.sub(r'(?<!_)_([^_]+)_(?!_)', lambda m: Styles.italic(m.group(1)), text)
     # Headers
-    text = re.sub(r'[^\S\n]*#{1,6}[^\S\n]*(.+)', lambda m: Styles.bold(m.group(1)) + '\n', text, flags=re.MULTILINE)
+    text = re.sub(r'^[^\S\n]*#{1,6}[^\S\n]*(.+)', lambda m: Styles.bold(m.group(1)) + '\n', text, flags=re.MULTILINE)
     return text
 
 def render_code_block(code_block: str) -> str:
