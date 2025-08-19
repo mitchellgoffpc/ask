@@ -53,7 +53,7 @@ class GrepTool(Tool):
         else:
             return "Search completed"
 
-    def run(self, args: dict[str, Any]) -> str:
+    async def run(self, args: dict[str, Any]) -> str:
         path = Path(args.get("path", Path.cwd()))
         if not path.is_absolute():
             raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")

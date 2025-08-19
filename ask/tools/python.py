@@ -37,7 +37,7 @@ class PythonTool(Tool):
             return response.strip()
         return f"Python output ({len(lines)} lines)"
 
-    def run(self, args: dict[str, Any]) -> str:
+    async def run(self, args: dict[str, Any]) -> str:
         try:
             module = ast.parse(args['code'], '<string>')
             nodes = list(module.body)

@@ -3,43 +3,43 @@ import unittest
 from ask.tools.read import ReadTool
 
 
-class TestReadTool(unittest.TestCase):
+class TestReadTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tool = ReadTool()
 
-    def test_basic_read(self):
+    async def test_basic_read(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("line 1\nline 2\nline 3\n")
             f.flush()
 
-            lines = self.tool.run({"file_path": f.name}).split('\n')
+            lines = (await self.tool.run({"file_path": f.name})).split('\n')
             self.assertEqual(len(lines), 4)
             self.assertEqual(lines[0], "     1→line 1")
             self.assertEqual(lines[1], "     2→line 2")
             self.assertEqual(lines[2], "     3→line 3")
             self.assertEqual(lines[3], "     4→")
 
-    def test_offset_and_limit(self):
+    async def test_offset_and_limit(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5")
             f.flush()
 
-            lines = self.tool.run({"file_path": f.name, "offset": 2, "limit": 2}).split('\n')
+            lines = (await self.tool.run({"file_path": f.name, "offset": 2, "limit": 2})).split('\n')
             self.assertEqual(len(lines), 3)
             self.assertEqual(lines[0], "     3→line 3")
             self.assertEqual(lines[1], "     4→line 4")
             self.assertEqual(lines[2], "... [truncated, file contains more than 4 lines]")
 
-    def test_line_truncation(self):
+    async def test_line_truncation(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write(f"{'x' * 2500}\nshort line\n")
             f.flush()
 
-            lines = self.tool.run({"file_path": f.name}).split('\n')
+            lines = (await self.tool.run({"file_path": f.name})).split('\n')
             self.assertTrue(lines[0].endswith("... [truncated]"))
             self.assertEqual(lines[1], "     2→short line")
 
-    def test_empty_file(self):
+    async def test_empty_file(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
-            result = self.tool.run({"file_path": f.name})
+            result = await self.tool.run({"file_path": f.name})
             self.assertEqual(result, "     1→")

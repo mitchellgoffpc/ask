@@ -47,7 +47,7 @@ class ListTool(Tool):
         item_count = response.count('\n') + 1
         return f"Listed {Styles.bold(item_count)} paths"
 
-    def run(self, args: dict[str, Any]) -> str:
+    async def run(self, args: dict[str, Any]) -> str:
         path = Path(args["path"])
         if not path.is_absolute():
             raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")

@@ -25,7 +25,7 @@ class GlobTool(Tool):
         file_count = len(response.strip().split('\n'))
         return f"Found {Styles.bold(file_count - 1)} files"
 
-    def run(self, args: dict[str, Any]) -> str:
+    async def run(self, args: dict[str, Any]) -> str:
         path = Path(args['path'])
         if not path.is_absolute():
             raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")

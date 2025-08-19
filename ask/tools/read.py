@@ -29,7 +29,7 @@ class ReadTool(Tool):
     def render_response(self, response: str) -> str:
         return '\n'.join(line.split('→')[-1] for line in response.split('\n'))
 
-    def run(self, args: dict[str, Any]) -> str:
+    async def run(self, args: dict[str, Any]) -> str:
         file_path = Path(args["file_path"])
         if not file_path.is_absolute():
             raise ToolError(f"Path '{file_path}' is not an absolute path. Please provide an absolute path.")

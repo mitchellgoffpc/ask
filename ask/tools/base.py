@@ -17,19 +17,19 @@ class Tool(metaclass=ABCMeta):
     description: str
     parameters: list[Parameter]
 
-    def __call__(self, args: dict[str, Any]) -> str:
+    async def __call__(self, args: dict[str, Any]) -> str:
         for param in self.parameters:
             if param.required and param.name not in args:
-                return f"Error: Missing required parameter: {param.name}"
+                raise ToolError(f"Missing required parameter: {param.name}")
             if param.name in args and param.enum:
                 if args[param.name] not in param.enum:
-                    return f"Error: Invalid value for {param.name}. Must be one of: {', '.join(param.enum)}"
+                    raise ToolError(f"Invalid value for {param.name}. Must be one of: {', '.join(param.enum)}")
 
         unexpected_args = set(args) - {param.name for param in self.parameters}
         if unexpected_args:
-            return f"Error: Unexpected arguments: {', '.join(unexpected_args)}"
+            raise ToolError(f"Unexpected arguments: {', '.join(unexpected_args)}")
 
-        return self.run(args)
+        return await self.run(args)
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -50,4 +50,4 @@ class Tool(metaclass=ABCMeta):
         return response
 
     @abstractmethod
-    def run(self, args: dict[str, Any]) -> str: ...
+    async def run(self, args: dict[str, Any]) -> str: ...

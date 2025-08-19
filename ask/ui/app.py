@@ -193,7 +193,7 @@ class App(Box):
 
     async def tool_call(self, request: ToolRequest, response_uuid: UUID) -> None:
         try:
-            output = TOOLS[request.tool].run(request.arguments)
+            output = await TOOLS[request.tool](request.arguments)
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=Status.COMPLETED)
         except asyncio.CancelledError:
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response='', status=Status.CANCELLED)
