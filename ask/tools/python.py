@@ -2,6 +2,9 @@ import ast
 import asyncio
 import atexit
 import io
+import os
+import queue
+import signal
 import traceback
 from contextlib import redirect_stdout, redirect_stderr
 from multiprocessing import Queue, Process
@@ -13,6 +16,10 @@ from ask.tools.base import ToolError, Tool, Parameter
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
 def repl_worker(command_queue: Queue, result_queue: Queue) -> None:
+    def signal_handler(signum, frame):
+        raise KeyboardInterrupt()
+
+    signal.signal(signal.SIGINT, signal_handler)
     globals_dict: dict[str, Any] = {}
     while (nodes := command_queue.get()) is not None:
         try:
@@ -29,6 +36,8 @@ def repl_worker(command_queue: Queue, result_queue: Queue) -> None:
 
                     try:
                         exec(code, globals_dict)
+                    except KeyboardInterrupt:
+                        break
                     except SystemExit:
                         globals_dict.clear()
                         break
@@ -53,6 +62,13 @@ class PythonTool(Tool):
         self.command_queue: Queue = Queue()
         self.result_queue: Queue = Queue()
         self.worker_process: Process | None = None
+
+    def _interrupt_worker(self) -> None:
+        if self.worker_process and self.worker_process.pid:
+            try:
+                os.kill(self.worker_process.pid, signal.SIGINT)
+            except ProcessLookupError:
+                pass
 
     def _cleanup_worker(self) -> None:
         try:
@@ -83,6 +99,10 @@ class PythonTool(Tool):
             self.worker_process.start()
             atexit.register(self._cleanup_worker)
 
+        while True:  # Drain the result queue
+            try: self.result_queue.get_nowait()
+            except queue.Empty: break
+
         try:
             module = ast.parse(args['code'], '<string>')
             nodes = list(module.body)
@@ -97,9 +117,13 @@ class PythonTool(Tool):
 
         self.command_queue.put(nodes)
         try:
-            stdout, stderr, traceback = await asyncio.wait_for(asyncio.to_thread(self.result_queue.get), timeout=timeout)
-        except asyncio.TimeoutError:
+            stdout, stderr, traceback = await asyncio.to_thread(self.result_queue.get, timeout=timeout)
+        except queue.Empty:
+            self._interrupt_worker()
             raise ToolError(f"Code execution timed out after {timeout}s") from None
+        except asyncio.CancelledError:
+            self._interrupt_worker()
+            raise
 
         stdout_formatted = f'<python-stdout>\n{stdout}</python-stdout>'
         stderr_formatted = f'<python-stderr>\n{stderr}{traceback or ""}</python-stderr>'
