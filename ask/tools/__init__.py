@@ -18,6 +18,7 @@ if __name__ == "__main__":
     import sys
     import json
     import argparse
+    import asyncio
 
     parser = argparse.ArgumentParser(description="Run a specified tool with given arguments.")
     parser.add_argument("tool_name", type=str, choices=TOOLS.keys(), help="The name of the tool to run")
@@ -26,7 +27,7 @@ if __name__ == "__main__":
 
     try:
         tool = TOOLS[args.tool_name]
-        print(tool(json.loads(args.json_args)))
+        print(asyncio.run(tool(json.loads(args.json_args))))
     except json.JSONDecodeError:
         print(f"Error: Arguments must be valid JSON: {args.json_args}")
         sys.exit(1)
