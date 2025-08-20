@@ -115,7 +115,7 @@ class ANSIExtension(Extension):
         md.set_output_format = lambda x: x
 
 
-md = Markdown(extensions=[FencedCodeExtension()])
+md = Markdown(tab_length=2, extensions=[FencedCodeExtension(), ANSIExtension()])
 
 def render_markdown(text: str) -> str:
     return md.convert(text)
