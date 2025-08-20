@@ -1,14 +1,8 @@
-import re
-from typing import Any
-from pygments import highlight
-from pygments.lexers import get_lexer_by_name, guess_lexer
-from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
-from pygments.util import ClassNotFound
-
 from ask.tools import TOOLS, Tool
 from ask.models import Status
 from ask.ui.components import Component, Box, Text
-from ask.ui.styles import Flex, Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
+from ask.ui.markdown_ import render_markdown
+from ask.ui.styles import Flex, Colors, Styles, Theme
 
 NUM_PREVIEW_LINES = 5
 
@@ -31,44 +25,6 @@ def get_tool_result(tool: Tool, result: str, expanded: bool) -> str:
         return tool.render_response(result)
     else:
         return f"{tool.render_short_response(result)} {Colors.hex('(ctrl+r to expand)', Theme.GRAY)}"
-
-def render_markdown_text(text: str) -> str:
-    # Code spans
-    text = re.sub(r'`([^`]+)`', lambda m: Colors.hex(m.group(1), Theme.BLUE), text)
-    # Bold
-    text = re.sub(r'\*\*([^*]+)\*\*', lambda m: Styles.bold(m.group(1)), text)
-    text = re.sub(r'__([^_]+)__', lambda m: Styles.bold(m.group(1)), text)
-    # Italic
-    text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', lambda m: Styles.italic(m.group(1)), text)
-    text = re.sub(r'(?<!_)_([^_]+)_(?!_)', lambda m: Styles.italic(m.group(1)), text)
-    # Headers
-    text = re.sub(r'^[^\S\n]*#{1,6}[^\S\n]*(.+)', lambda m: Styles.bold(m.group(1)) + '\n', text, flags=re.MULTILINE)
-    return text
-
-def render_code_block(code_block: str) -> str:
-    match = re.match(r'```(\w+)?\n?(.*?)```', code_block, re.DOTALL)
-    if not match:
-        return code_block
-
-    language, code = match.groups()
-    formatter: Any
-    if ANSI_16M_SUPPORT:
-        formatter = TerminalTrueColorFormatter()
-    elif ANSI_256_SUPPORT:
-        formatter = Terminal256Formatter()
-    else:
-        formatter = TerminalFormatter()
-
-    try:
-        lexer = get_lexer_by_name(language)
-    except ClassNotFound:
-        lexer = guess_lexer(code)
-    highlighted: str = highlight(code, lexer, formatter).rstrip('\n')
-    return highlighted + '\n\n'
-
-def render_markdown(text: str) -> str:
-    parts = re.split(r'(```[^`]*```)', text)  # Split on code blocks (```...```)
-    return ''.join(render_markdown_text(part) if i % 2 == 0 else render_code_block(part) for i, part in enumerate(parts))
 
 
 # Components
