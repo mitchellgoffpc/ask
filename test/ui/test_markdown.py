@@ -25,5 +25,5 @@ class TestRenderMarkdown(unittest.TestCase):
         self.assertEqual(result, f"{Styles.BOLD}bold {Styles.ITALIC}italic{Styles.ITALIC_END} text{Styles.BOLD_END}")
 
     def test_nested_lists(self):
-        result = render_markdown("* Item 1\n    * Subitem 1.1\n    Another item\n* Item 2")
-        self.assertEqual(result, "• Item 1\n    • Subitem 1.1\n    Another item\n• Item 2")
+        result = render_markdown("* Item 1\n  * Subitem 1.1\n  Another item\n* Item 2")
+        self.assertEqual(result, "• Item 1\n  • Subitem 1.1\n  Another item\n• Item 2")

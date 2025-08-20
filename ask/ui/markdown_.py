@@ -13,10 +13,7 @@ from xml.etree.ElementTree import Element, SubElement
 from ask.ui.styles import Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
 
 
-# Render markdown to ANSI
-
-
-# Extension for rendering codeblocks
+# Codeblock parsing extension
 
 class FencedCodeExtension(Extension):
     def extendMarkdown(self, md):
@@ -47,6 +44,8 @@ class FencedCodeBlockProcessor(BlockProcessor):
 
         return False
 
+
+# ANSI rendering extension
 
 class ANSIExtension(Extension):
     HTML_TO_ANSI = {
@@ -99,7 +98,7 @@ class ANSIExtension(Extension):
             liststream = StringIO()
             self.render_basic_element(element, liststream, indent + 1)
             lines = liststream.getvalue().splitlines(keepends=True)
-            result = ''.join('    ' * min(1, indent) + line if line.strip() else line for line in lines)
+            result = ''.join(' ' * self.tab_length * min(1, indent) + line if line.strip() else line for line in lines)
             stream.write(result)
         else:
             self.render_basic_element(element, stream, indent)
@@ -110,10 +109,13 @@ class ANSIExtension(Extension):
         return stream.getvalue()
 
     def extendMarkdown(self, md):
+        self.tab_length = md.tab_length
         md.serializer = self.render_root
         md.stripTopLevelTags = False
         md.set_output_format = lambda x: x
 
+
+# Markdown renderer
 
 md = Markdown(tab_length=2, extensions=[FencedCodeExtension(), ANSIExtension()])
 
