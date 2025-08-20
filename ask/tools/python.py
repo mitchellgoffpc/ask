@@ -7,7 +7,8 @@ import queue
 import signal
 import traceback
 from contextlib import redirect_stdout, redirect_stderr
-from multiprocessing import Queue, Process
+from multiprocessing import Event, Queue, Process
+from multiprocessing.synchronize import Event as SyncEvent
 from typing import Any
 
 from ask.prompts import load_tool_prompt
@@ -15,14 +16,17 @@ from ask.tools.base import ToolError, Tool, Parameter
 
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
-def repl_worker(command_queue: Queue, result_queue: Queue) -> None:
+def repl_worker(ready: SyncEvent, command_queue: Queue, result_queue: Queue) -> None:
     def signal_handler(signum, frame):
         raise KeyboardInterrupt()
 
     signal.signal(signal.SIGINT, signal_handler)
     globals_dict: dict[str, Any] = {}
-    while (nodes := command_queue.get()) is not None:
+    while True:
         try:
+            ready.set()
+            if (nodes := command_queue.get()) is None:
+                break
             captured_output = io.StringIO()
             captured_error = io.StringIO()
             captured_traceback = None
@@ -46,7 +50,7 @@ def repl_worker(command_queue: Queue, result_queue: Queue) -> None:
                         break
 
             result_queue.put((captured_output.getvalue(), captured_error.getvalue(), captured_traceback))
-        except Exception as e:
+        except BaseException as e:
             result_queue.put(("", str(e), None))
 
 
@@ -59,6 +63,7 @@ class PythonTool(Tool):
         Parameter("description", "string", "Clear, concise description of what this code does in 5-10 words", required=False)]
 
     def __init__(self) -> None:
+        self.ready = Event()
         self.command_queue: Queue = Queue()
         self.result_queue: Queue = Queue()
         self.worker_process: Process | None = None
@@ -95,10 +100,12 @@ class PythonTool(Tool):
 
     async def run(self, args: dict[str, Any]) -> str:
         if not self.worker_process:
-            self.worker_process = Process(target=repl_worker, args=(self.command_queue, self.result_queue), daemon=True)
+            self.worker_process = Process(target=repl_worker, args=(self.ready, self.command_queue, self.result_queue), daemon=True)
             self.worker_process.start()
             atexit.register(self._cleanup_worker)
 
+        while not self.ready.is_set():
+            await asyncio.sleep(0.01)
         while True:  # Drain the result queue
             try: self.result_queue.get_nowait()
             except queue.Empty: break
@@ -106,24 +113,30 @@ class PythonTool(Tool):
         try:
             module = ast.parse(args['code'], '<string>')
             nodes = list(module.body)
-        except SyntaxError as e:
-            raise ToolError(f"Failed to compile code: {e}") from e
-        except (ValueError, OverflowError) as e:
-            raise ToolError(f"Code contains invalid literal: {e}") from e
+        except (SyntaxError, ValueError, OverflowError) as e:
+            raise ToolError("Failed to compile code") from e
 
-        timeout = int(args.get("timeout", 120000)) / 1000.0  # Convert to seconds
-        if timeout > 600:
+        timeout_seconds = int(args.get("timeout", 120000)) / 1000.0  # Convert to seconds
+        if timeout_seconds > 600:
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
 
+        self.ready.clear()
         self.command_queue.put(nodes)
-        try:
-            stdout, stderr, traceback = await asyncio.to_thread(self.result_queue.get, timeout=timeout)
-        except queue.Empty:
-            self._interrupt_worker()
-            raise ToolError(f"Code execution timed out after {timeout}s") from None
-        except asyncio.CancelledError:
-            self._interrupt_worker()
-            raise
+
+        start_time = asyncio.get_event_loop().time()
+        while True:
+            try:
+                try:
+                    stdout, stderr, traceback = self.result_queue.get_nowait()
+                    break
+                except queue.Empty:
+                    if asyncio.get_event_loop().time() - start_time >= timeout_seconds:
+                        self._interrupt_worker()
+                        raise ToolError(f"Code execution timed out after {timeout_seconds} seconds") from None
+                await asyncio.sleep(0.01)
+            except asyncio.CancelledError:
+                self._interrupt_worker()
+                raise
 
         stdout_formatted = f'<python-stdout>\n{stdout}</python-stdout>'
         stderr_formatted = f'<python-stderr>\n{stderr}{traceback or ""}</python-stderr>'
