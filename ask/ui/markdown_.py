@@ -20,20 +20,25 @@ class FencedCodeExtension(Extension):
         md.parser.blockprocessors.register(FencedCodeBlockProcessor(md.parser), 'fenced_code', 175)
 
 class FencedCodeBlockProcessor(BlockProcessor):
-    RE_FENCE_START = r'^```(?P<lang>[\w#.+-]*) *\n'
+    RE_FENCE_START = r'(?:^|\n)```(?P<lang>[\w#.+-]*) *(?=\n)'
     RE_FENCE_END = r'\n```\s*$'
 
     def test(self, parent, block):
-        return re.match(self.RE_FENCE_START, block)
+        return re.search(self.RE_FENCE_START, block)
 
     def run(self, parent, blocks):
-        match = re.match(self.RE_FENCE_START, blocks[0])
+        match = re.search(self.RE_FENCE_START, blocks[0])
         assert match is not None
+
+        # Handle text before code fence if it exists
+        fence_start = match.start()
+        if fence_start > 0:
+            self.parser.parseBlocks(parent, [blocks[0][:fence_start]])
 
         # Find block with ending fence
         for block_num, block in enumerate(blocks):
             if re.search(self.RE_FENCE_END, block):
-                blocks[0] = re.sub(self.RE_FENCE_START, '', blocks[0])
+                blocks[0] = blocks[0][fence_start + len(match.group()):]
                 blocks[block_num] = re.sub(self.RE_FENCE_END, '', blocks[block_num])
                 e = SubElement(parent, 'pre')
                 e.set('language', match.group('lang'))
@@ -71,7 +76,7 @@ class ANSIExtension(Extension):
             lexer = get_lexer_by_name(language)
         except ClassNotFound:
             lexer = guess_lexer(code)
-        return cast(str, highlight(code, lexer, formatter))
+        return cast(str, highlight(code, lexer, formatter)) + (element.tail or '')
 
     def render_basic_element(self, element: Element, stream: StringIO, indent: int) -> None:
         start, end = self.HTML_TO_ANSI.get(element.tag, ('', ''))

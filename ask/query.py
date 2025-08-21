@@ -23,7 +23,7 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
     headers = api.headers(api_key)
     assert api_key, f"{api.key!r} environment variable isn't set!"
 
-    if int(os.getenv("DEBUG", "0")):
+    if int(os.getenv("ASK_DEBUG", "0")):
         with open('/tmp/ask.json', 'w') as f:
             json.dump(params, f, indent=2)
 
