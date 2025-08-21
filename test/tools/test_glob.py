@@ -15,7 +15,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "file2.py").touch()
             (temp_path / "test.txt").touch()
 
-            lines = (await self.tool.run({"path": str(temp_path), "pattern": "*.txt"})).split('\n')
+            lines = (await self.tool.run(path=temp_path, pattern="*.txt")).split('\n')
             results = sorted(lines[1:])
             self.assertEqual(len(lines), 3)
             self.assertEqual(lines[0], "Found 2 files")
@@ -30,7 +30,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "subdir" / "sub.py").touch()
             (temp_path / "subdir" / "other.txt").touch()
 
-            result = await self.tool.run({"path": str(temp_path), "pattern": "**/*.py"})
+            result = await self.tool.run(path=temp_path, pattern="**/*.py")
             self.assertTrue(result.startswith("Found 2 files"))
             self.assertIn("root.py", result)
             self.assertIn("sub.py", result)
@@ -41,7 +41,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             temp_path = Path(temp_dir)
             (temp_path / "file.txt").touch()
 
-            result = await self.tool.run({"path": str(temp_path), "pattern": "*.nonexistent"})
+            result = await self.tool.run(path=temp_path, pattern="*.nonexistent")
             self.assertEqual(result, "Found 0 files")
 
     async def test_directory_ignored(self):
@@ -50,7 +50,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "file.txt").touch()
             (temp_path / "somedir").mkdir()
 
-            result = await self.tool.run({"path": str(temp_path), "pattern": "*"})
+            result = await self.tool.run(path=temp_path, pattern="*")
             self.assertTrue(result.startswith("Found 1 files"))
             self.assertIn("file.txt", result)
             self.assertNotIn("somedir", result)

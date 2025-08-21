@@ -16,7 +16,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "subdir").mkdir()
             (temp_path / "subdir" / "nested.txt").touch()
 
-            result = await self.tool.run({"path": str(temp_path)})
+            result = await self.tool.run(path=temp_path, ignore=[])
             lines = result.split('\n')
             self.assertEqual(lines[0], f"- {temp_path}/")
             self.assertEqual(lines[1], "  - file1.txt")
@@ -31,7 +31,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "ignore.txt").touch()
             (temp_path / "test.py").touch()
 
-            result = await self.tool.run({"path": str(temp_path), "ignore": ["*.txt"]})
+            result = await self.tool.run(path=temp_path, ignore=["*.txt"])
             self.assertIn("- test.py", result)
             self.assertNotIn("- keep.txt", result)
             self.assertNotIn("- ignore.txt", result)
@@ -46,7 +46,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / ".git" / "config").touch()
             (temp_path / '.hidden').touch()
 
-            result = await self.tool.run({"path": str(temp_path)})
+            result = await self.tool.run(path=temp_path, ignore=[])
             self.assertIn("- file.txt", result)
             self.assertIn("- node_modules/", result)
             self.assertNotIn("- package.txt", result)
