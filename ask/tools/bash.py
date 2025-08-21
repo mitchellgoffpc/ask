@@ -7,6 +7,7 @@ from ask.tools.base import ToolError, Tool, Parameter
 class BashTool(Tool):
     name = "Bash"
     description = load_tool_prompt('bash')
+    needs_approval = True
     parameters = [
         Parameter("command", "string", "The command to execute"),
         Parameter("timeout", "number", "Optional timeout in milliseconds (max 600000)", required=False),
@@ -29,12 +30,14 @@ class BashTool(Tool):
             return "Command executed successfully"
         return f"Command executed ({len(lines)} lines output)"
 
-    async def run(self, args: dict[str, Any]) -> str:
-        command = args["command"]
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
         timeout_seconds = args.get("timeout", 120000) / 1000.0  # Default 2 minutes
         if timeout_seconds > 600:
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
+        return {'command': args["command"], 'timeout_seconds': timeout_seconds}
 
+    async def run(self, command: str, timeout_seconds: float) -> str:
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)

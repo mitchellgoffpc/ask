@@ -25,21 +25,24 @@ class GlobTool(Tool):
         file_count = len(response.strip().split('\n'))
         return f"Found {Styles.bold(file_count - 1)} files"
 
-    async def run(self, args: dict[str, Any]) -> str:
-        path = Path(args['path'])
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
+        path = Path(args["path"])
         if not path.is_absolute():
             raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
         if not path.exists():
             raise ToolError(f"Path '{path}' does not exist.")
         if not path.is_dir():
             raise ToolError(f"Path '{path}' is not a directory.")
+        return {'path': path, 'pattern': args['pattern']}
 
+    async def run(self, path: Path, pattern: str) -> str:
         try:
-            matches = glob.glob(str(path / args["pattern"]), recursive=True)
+            matches = glob.glob(str(path / pattern), recursive=True)
             matches = [m for m in matches if Path(m).is_file()]
             matches.sort(key=lambda x: Path(x).stat().st_mtime, reverse=True)
             return f"Found {len(matches)} files" + ''.join(f'\n- {m}' for m in matches)
         except PermissionError:
             return "Found 0 files"
         except Exception as e:
-            raise ToolError(f"An error occurred while searching for pattern '{args['pattern']}' in '{path}': {str(e)}") from e
+            raise ToolError(f"An error occurred while searching for pattern '{pattern}' in '{path}': {str(e)}") from e

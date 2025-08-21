@@ -27,7 +27,8 @@ if __name__ == "__main__":
 
     try:
         tool = TOOLS[args.tool_name]
-        print(asyncio.run(tool(json.loads(args.json_args))))
+        tool_args = tool.check(json.loads(args.json_args))
+        print(asyncio.run(tool.run(**tool_args)))
     except json.JSONDecodeError:
         print(f"Error: Arguments must be valid JSON: {args.json_args}")
         sys.exit(1)

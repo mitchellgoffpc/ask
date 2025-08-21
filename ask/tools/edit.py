@@ -11,6 +11,7 @@ def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
 class EditTool(Tool):
     name = "Edit"
     description = load_tool_prompt('edit')
+    needs_approval = True
     parameters = [
         Parameter("file_path", "string", "The absolute path of the file to modify"),
         Parameter("old_string", "string", "The text to replace"),
@@ -29,7 +30,8 @@ class EditTool(Tool):
     def render_response(self, response: str) -> str:
         return response
 
-    async def run(self, args: dict[str, Any]) -> str:
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
         file_path = Path(args["file_path"])
         if not file_path.is_absolute():
             raise ToolError(f"Path '{file_path}' is not an absolute path. Please provide an absolute path.")
@@ -43,6 +45,10 @@ class EditTool(Tool):
         if old_string == new_string:
             raise ToolError("old_string and new_string must be different.")
 
+        replace_all = args.get("replace_all", False)
+        return {'file_path': file_path, 'old_string': old_string, 'new_string': new_string, 'replace_all': replace_all}
+
+    async def run(self, file_path: Path, old_string: str, new_string: str, replace_all: bool) -> str:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -51,7 +57,6 @@ class EditTool(Tool):
         except PermissionError as e:
             raise ToolError(f"Permission denied for file '{file_path}'.") from e
 
-        replace_all = args.get("replace_all", False)
         occurrences = content.count(old_string)
         if occurrences == 0:
             raise ToolError(f"String '{old_string}' not found in file '{file_path}'.")

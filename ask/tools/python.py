@@ -57,6 +57,7 @@ def repl_worker(ready: SyncEvent, command_queue: Queue, result_queue: Queue) -> 
 class PythonTool(Tool):
     name = "Python"
     description = load_tool_prompt('python')
+    needs_approval = True
     parameters = [
         Parameter("code", "string", "The Python code to execute"),
         Parameter("timeout", "number", "Optional timeout in milliseconds (max 600000)", required=False),
@@ -98,7 +99,19 @@ class PythonTool(Tool):
             return response.strip()
         return f"Python output ({len(lines)} lines)"
 
-    async def run(self, args: dict[str, Any]) -> str:
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
+        try:
+            module = ast.parse(args['code'], '<string>')
+        except (SyntaxError, ValueError, OverflowError) as e:
+            raise ToolError("Failed to compile code") from e
+
+        timeout_seconds = int(args.get("timeout", 120000)) / 1000.0  # Convert to seconds
+        if timeout_seconds > 600:
+            raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
+        return {'nodes': list(module.body), 'timeout_seconds': timeout_seconds}
+
+    async def run(self, nodes: list[ast.AST], timeout_seconds: float) -> str:
         if not self.worker_process:
             self.worker_process = Process(target=repl_worker, args=(self.ready, self.command_queue, self.result_queue), daemon=True)
             self.worker_process.start()
@@ -109,16 +122,6 @@ class PythonTool(Tool):
         while True:  # Drain the result queue
             try: self.result_queue.get_nowait()
             except queue.Empty: break
-
-        try:
-            module = ast.parse(args['code'], '<string>')
-            nodes = list(module.body)
-        except (SyntaxError, ValueError, OverflowError) as e:
-            raise ToolError("Failed to compile code") from e
-
-        timeout_seconds = int(args.get("timeout", 120000)) / 1000.0  # Convert to seconds
-        if timeout_seconds > 600:
-            raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
 
         self.ready.clear()
         self.command_queue.put(nodes)

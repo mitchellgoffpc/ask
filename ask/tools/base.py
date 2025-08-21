@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 class ToolError(Exception): ...
 
@@ -16,20 +16,8 @@ class Tool(metaclass=ABCMeta):
     name: str
     description: str
     parameters: list[Parameter]
-
-    async def __call__(self, args: dict[str, Any]) -> str:
-        for param in self.parameters:
-            if param.required and param.name not in args:
-                raise ToolError(f"Missing required parameter: {param.name}")
-            if param.name in args and param.enum:
-                if args[param.name] not in param.enum:
-                    raise ToolError(f"Invalid value for {param.name}. Must be one of: {', '.join(param.enum)}")
-
-        unexpected_args = set(args) - {param.name for param in self.parameters}
-        if unexpected_args:
-            raise ToolError(f"Unexpected arguments: {', '.join(unexpected_args)}")
-
-        return await self.run(args)
+    needs_approval: bool = False
+    run: Callable[..., Any]
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -49,5 +37,16 @@ class Tool(metaclass=ABCMeta):
     def render_response(self, response: str) -> str:
         return response
 
-    @abstractmethod
-    async def run(self, args: dict[str, Any]) -> str: ...
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        for param in self.parameters:
+            if param.required and param.name not in args:
+                raise ToolError(f"Missing required parameter: {param.name}")
+            if param.name in args and param.enum:
+                if args[param.name] not in param.enum:
+                    raise ToolError(f"Invalid value for {param.name}. Must be one of: {', '.join(param.enum)}")
+
+        unexpected_args = set(args) - {param.name for param in self.parameters}
+        if unexpected_args:
+            raise ToolError(f"Unexpected arguments: {', '.join(unexpected_args)}")
+
+        return args

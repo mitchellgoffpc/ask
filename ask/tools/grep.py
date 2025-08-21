@@ -53,7 +53,8 @@ class GrepTool(Tool):
         else:
             return "Search completed"
 
-    async def run(self, args: dict[str, Any]) -> str:
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
         path = Path(args.get("path", Path.cwd()))
         if not path.is_absolute():
             raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
@@ -63,15 +64,22 @@ class GrepTool(Tool):
             raise ToolError(f"Path '{path}' is not a directory.")
 
         try:
-            pattern = args["pattern"].encode('utf-8')
             flags = 0
             if args.get("-i", False):
                 flags |= re.IGNORECASE
             if args.get("multiline", False):
                 flags |= re.MULTILINE | re.DOTALL
-            regex = re.compile(pattern, flags)
+            regex = re.compile(args["pattern"].encode('utf-8'), flags)
+        except re.error as e:
+            raise ToolError(f"Invalid regular expression pattern: {str(e)}") from e
+
+        glob_pattern = args.get("glob", "**/*")
+        return {'path': path, 'glob_pattern': glob_pattern, 'regex': regex}
+
+    async def run(self, path: Path, glob_pattern: str, regex: re.Pattern) -> str:
+        try:
             matches = []
-            for file_path in glob.glob(str(path / args.get("glob", "**/*")), recursive=True):
+            for file_path in glob.glob(str(path / glob_pattern), recursive=True):
                 if Path(file_path).is_file():
                     try:
                         with io.open(file_path, 'r') as f:
@@ -84,8 +92,6 @@ class GrepTool(Tool):
                 return f"Found {len(matches)} files\n" + '\n'.join(matches)
             else:
                 return "No matches found"
-        except re.error as e:
-            raise ToolError(f"Invalid regular expression pattern: {str(e)}") from e
         except PermissionError as e:
             raise ToolError(f"Permission denied for path '{path}'.") from e
         except Exception as e:

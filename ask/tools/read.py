@@ -29,7 +29,8 @@ class ReadTool(Tool):
     def render_response(self, response: str) -> str:
         return '\n'.join(line.split('→')[-1] for line in response.split('\n'))
 
-    async def run(self, args: dict[str, Any]) -> str:
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
         file_path = Path(args["file_path"])
         if not file_path.is_absolute():
             raise ToolError(f"Path '{file_path}' is not an absolute path. Please provide an absolute path.")
@@ -38,13 +39,16 @@ class ReadTool(Tool):
         if not file_path.is_file():
             raise ToolError(f"Path '{file_path}' is not a file.")
 
+        file_path = Path(args["file_path"])
         image_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']
         if file_path.suffix.lower() in image_extensions:
             raise ToolError("Image files not supported yet")
 
         offset = int(args.get("offset", 0))
         limit = int(args.get("limit", 2000))
+        return {'file_path': file_path, 'offset': offset, 'limit': limit}
 
+    async def run(self, file_path: Path, offset: int, limit: int) -> str:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 for i in range(offset):
@@ -67,6 +71,6 @@ class ReadTool(Tool):
                 return ''.join(lines)
 
         except UnicodeDecodeError as e:
-            raise ToolError("File '{file_path}' is not a text file or contains invalid Unicode characters.") from e
+            raise ToolError(f"File '{file_path}' is not a text file or contains invalid Unicode characters.") from e
         except PermissionError as e:
             raise ToolError(f"Permission denied for file '{file_path}'.") from e

@@ -47,7 +47,8 @@ class ListTool(Tool):
         item_count = response.count('\n') + 1
         return f"Listed {Styles.bold(item_count)} paths"
 
-    async def run(self, args: dict[str, Any]) -> str:
+    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+        args = super().check(args)
         path = Path(args["path"])
         if not path.is_absolute():
             raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
@@ -55,9 +56,11 @@ class ListTool(Tool):
             raise ToolError(f"Path '{path}' does not exist.")
         if not path.is_dir():
             raise ToolError(f"Path '{path}' is not a directory.")
+        return {'path': path, 'ignore': args.get("ignore", [])}
 
+    async def run(self, path: Path, ignore: list[str]) -> str:
         try:
-            return build_tree(path, args.get("ignore", []))
+            return build_tree(path, ignore)
         except PermissionError as e:
             raise ToolError(f"Permission denied for path '{path}'.") from e
         except Exception as e:
