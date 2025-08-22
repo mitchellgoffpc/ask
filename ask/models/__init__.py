@@ -10,7 +10,7 @@ APIS = {
     'groq': OpenAIAPI(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY'),
     'xai': OpenAIAPI(url='https://api.x.ai/v1/chat/completions', key='XAI_API_KEY'),
     'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY'),
-    'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='ANTHROPIC_API_KEY'),
+    'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='_ANTHROPIC_API_KEY'),
 }
 
 MODELS = [
