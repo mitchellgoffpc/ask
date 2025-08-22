@@ -40,7 +40,7 @@ class BashTool(Tool):
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
             stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
-            output = stdout.decode('utf-8')
+            output = stdout.decode('utf-8').rstrip('\n')
             if process.returncode != 0:
                 raise ToolError(output)
             return output
