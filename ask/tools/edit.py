@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from ask.prompts import load_tool_prompt, dedent
+from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter
 
 def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
@@ -11,7 +11,6 @@ def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
 class EditTool(Tool):
     name = "Edit"
     description = load_tool_prompt('edit')
-    needs_approval = True
     parameters = [
         Parameter("file_path", "string", "The absolute path of the file to modify"),
         Parameter("old_string", "string", "The text to replace"),
@@ -46,9 +45,7 @@ class EditTool(Tool):
             raise ToolError("old_string and new_string must be different.")
 
         replace_all = args.get("replace_all", False)
-        return {'file_path': file_path, 'old_string': old_string, 'new_string': new_string, 'replace_all': replace_all}
 
-    async def run(self, file_path: Path, old_string: str, new_string: str, replace_all: bool) -> str:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -61,13 +58,17 @@ class EditTool(Tool):
         if occurrences == 0:
             raise ToolError(f"String '{old_string}' not found in file '{file_path}'.")
         if occurrences > 1 and not replace_all:
-            raise ToolError(dedent(f"""
-                Found {occurrences} matches of the string to replace, but replace_all is false.
-                To replace all occurrences, set replace_all to true. To replace only one occurrence,
-                please provide more context to uniquely identify the instance.
-            """) + f'\nString: {old_string}')
+            raise ToolError(
+                f"Found {occurrences} matches of the string to replace, but replace_all is false. "
+                 "To replace all occurrences, set replace_all to true. To replace only one occurrence, "
+                f"please provide more context to uniquely identify the instance.\nString: {old_string}")
 
         new_content = content.replace(old_string, new_string)
+        return {
+            'file_path': file_path, 'old_string': old_string, 'new_string': new_string,
+            'old_content': content, 'new_content': new_content, 'replace_all': replace_all}
+
+    async def run(self, file_path: Path, old_string: str, new_string: str, old_content: str, new_content: str, replace_all: bool) -> str:
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
@@ -78,7 +79,7 @@ class EditTool(Tool):
             return f"The file {file_path} has been updated, all occurrences of '{old_string}' have been replaced with '{new_string}'."
         else:
             lines = new_content.split('\n')
-            start_line = content[:content.find(old_string)].count('\n')
+            start_line = old_content[:old_content.find(old_string)].count('\n')
             end_line = start_line + old_string.count('\n') + 1
             if end_line - start_line > 15:
                 start_context = get_formatted_lines(lines, start_line - 5, start_line + 5)
