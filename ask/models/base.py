@@ -108,6 +108,16 @@ class API(metaclass=ABCMeta):
     @abstractmethod
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]: ...
 
+    def render_shell_command(self, command: ShellCommand) -> list[dict[str, Any]]:
+        if command.status is Status.CANCELLED:
+            output = "[Request interrupted by user]"
+        else:
+            output = f"<bash-stdout>{command.output}</bash-stdout><bash-stderr>{command.error}</bash-stderr>"
+        return [
+            self.render_text(Text(SHELL_PROMPT)),
+            self.render_text(Text(f"<bash-stdin>{command.command}</bash-stdin>")),
+            self.render_text(Text(output))]
+
     def render_content(self, content: Content, model: Model) -> list[dict[str, Any]]:
         if isinstance(content, Text):
             return [self.render_text(content)]
@@ -122,14 +132,7 @@ class API(metaclass=ABCMeta):
         elif isinstance(content, ToolResponse):
             return [self.render_tool_response(content)]
         elif isinstance(content, ShellCommand):
-            if content.status is Status.CANCELLED:
-                output = "[Request interrupted by user]"
-            else:
-                output = f"<bash-stdout>{content.output}</bash-stdout><bash-stderr>{content.error}</bash-stderr>"
-            return [
-                self.render_text(Text(SHELL_PROMPT)),
-                self.render_text(Text(f"<bash-stdin>{content.command}</bash-stdin>")),
-                self.render_text(Text(output))]
+            return self.render_shell_command(content)
         else:
             raise TypeError(f"Unsupported message content: {type(content)}")
 
