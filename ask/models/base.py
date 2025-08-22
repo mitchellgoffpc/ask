@@ -58,6 +58,7 @@ class ToolRequest:
     call_id: str
     tool: str
     arguments: dict[str, str]
+    processed_arguments: dict[str, str] | None = None
 
 @dataclass
 class ToolResponse:
