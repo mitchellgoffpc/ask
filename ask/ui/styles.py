@@ -244,11 +244,25 @@ class Colors:
     BG_RGB = staticmethod(partial(rgb_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
 
     @staticmethod
-    def ansi(text: str, code: str) -> str: return apply_style(text, start=code, end=Colors.END if code else '')
+    def ansi(text: str, code: str) -> str:
+        return apply_style(text, start=code, end=Colors.END if code else '')
     @staticmethod
-    def hex(text: str, hex: str) -> str: return apply_style(text, start=hex_to_best_ansi(hex), end=Colors.END)
+    def hex(text: str, hex: str) -> str:
+        return apply_style(text, start=hex_to_best_ansi(hex), end=Colors.END)
     @staticmethod
-    def rgb(text: str, rgb: tuple[int, int, int]) -> str: return apply_style(text, start=rgb_to_best_ansi(*rgb), end=Colors.END)
+    def rgb(text: str, rgb: tuple[int, int, int]) -> str:
+        return apply_style(text, start=rgb_to_best_ansi(*rgb), end=Colors.END)
+
+    @staticmethod
+    def bg_ansi(text: str, code: str) -> str:
+        return apply_style(text, start=code, end=Colors.BG_END if code else '')
+    @staticmethod
+    def bg_hex(text: str, hex: str) -> str:
+        return apply_style(text, start=hex_to_best_ansi(hex, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
+    @staticmethod
+    def bg_rgb(text: str, rgb: tuple[int, int, int]) -> str:
+        return apply_style(text, start=rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
+
 
 
 class Flex(Enum):
@@ -276,9 +290,15 @@ class Borders:
     CLASSIC = BorderStyle("+", "-", "+", "|", "+", "-", "+", "|")
 
 class Theme:
-    BLUE = '#96b5f2'
-    ORANGE = '#be7003'
-    PINK = '#FF69B4'
-    DARK_PINK = '#8E2261'
-    GRAY = '#999999'
-    DARK_GRAY = '#4A4A4A'
+    RED = '#FF6B80'
+    DARK_RED = '#7A2936'
+    FADED_RED = '#69484D'
+    ORANGE = '#D77757'
+    GREEN = '#4EBA65'
+    DARK_GREEN = '#225C2B'
+    FADED_GREEN = '#47584A'
+    BLUE = '#B1B9F9'
+    PINK = '#FD5DB1'
+    GRAY = '#AAAAAA'
+    DARK_GRAY = '#888888'
+    WHITE = '#FFFFFF'
