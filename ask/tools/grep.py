@@ -5,7 +5,7 @@ import mmap
 from pathlib import Path
 from typing import Any
 
-from ask.prompts import dedent, load_tool_prompt
+from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter
 from ask.ui.styles import Styles
 
@@ -16,22 +16,22 @@ class GrepTool(Tool):
         Parameter("pattern", "string", 'The regular expression pattern to search for in file contents'),
         Parameter("path", "string", 'File or directory to search in (rg PATH). Defaults to current working directory.', required=False),
         Parameter("glob", "string", 'Glob pattern to filter files (e.g. "*.js", "*.{ts,tsx}") - maps to rg --glob', required=False),
-        Parameter("output_mode", "string", dedent("""
-            Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit),
-            "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit).
-            Defaults to "files_with_matches"."""), required=False),
+        Parameter("output_mode", "string",
+            'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), '
+            '"files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit). '
+            'Defaults to "files_with_matches".', required=False),
         Parameter("-B", "number", 'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.', required=False),
         Parameter("-A", "number", 'Number of lines to show after each match (rg -A). Requires output_mode: "content", ignored otherwise.', required=False),
-        Parameter("-C", "number", dedent("""
-            Number of lines to show before and after each match (rg -C). Requires output_mode: "content", ignored otherwise."""), required=False),
+        Parameter("-C", "number",
+            'Number of lines to show before and after each match (rg -C). Requires output_mode: "content", ignored otherwise.', required=False),
         Parameter("-n", "boolean", 'Show line numbers in output (rg -n). Requires output_mode: "content", ignored otherwise.', required=False),
         Parameter("-i", "boolean", 'Case insensitive search (rg -i)', required=False),
-        Parameter("head_limit", "number", dedent("""
-            Limit output to first N lines/entries, equivalent to "| head -N".
-            Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries).
-            When unspecified, shows all results from ripgrep."""), required=False),
-        Parameter("multiline", "boolean", dedent("""
-            Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false."""), required=False)
+        Parameter("head_limit", "number",
+            'Limit output to first N lines/entries, equivalent to "| head -N". '
+            'Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries). '
+            'When unspecified, shows all results from ripgrep.', required=False),
+        Parameter("multiline", "boolean",
+            'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.', required=False)
     ]
 
     def render_args(self, args: dict[str, str]) -> str:

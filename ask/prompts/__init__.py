@@ -4,10 +4,6 @@ from pathlib import Path
 from typing import cast
 from datetime import date
 
-def dedent(text: str, keep_newlines: bool = False) -> str:
-    join_chr = '\n' if keep_newlines else ' '
-    return join_chr.join(line.lstrip() for line in text.strip().split('\n'))
-
 def is_git_repo() -> bool:
     current = Path.cwd().resolve()
     while current != current.parent:

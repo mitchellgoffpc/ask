@@ -57,7 +57,6 @@ def repl_worker(ready: SyncEvent, command_queue: Queue, result_queue: Queue) -> 
 class PythonTool(Tool):
     name = "Python"
     description = load_tool_prompt('python')
-    needs_approval = True
     parameters = [
         Parameter("code", "string", "The Python code to execute"),
         Parameter("timeout", "number", "Optional timeout in milliseconds (max 600000)", required=False),

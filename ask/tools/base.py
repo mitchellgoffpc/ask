@@ -16,7 +16,6 @@ class Tool(metaclass=ABCMeta):
     name: str
     description: str
     parameters: list[Parameter]
-    needs_approval: bool = False
     run: Callable[..., Any]
 
     def get_input_schema(self) -> dict[str, Any]:
@@ -36,6 +35,9 @@ class Tool(metaclass=ABCMeta):
 
     def render_response(self, response: str) -> str:
         return response
+
+    def render_error(self, error: str) -> str:
+        return f"Error: {error}"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         for param in self.parameters:

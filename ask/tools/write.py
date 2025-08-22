@@ -8,7 +8,6 @@ from ask.ui.styles import Styles
 class WriteTool(Tool):
     name = "Write"
     description = load_tool_prompt('write')
-    needs_approval = True
     parameters = [
         Parameter("file_path", "string", "The absolute path to the file to write (must be absolute, not relative)"),
         Parameter("content", "string", "The content to write to the file")]
