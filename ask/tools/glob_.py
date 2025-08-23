@@ -2,8 +2,8 @@ import glob
 from pathlib import Path
 from typing import Any
 
-from ask.prompts import load_tool_prompt
-from ask.tools.base import Tool, Parameter, ToolError
+from ask.prompts import load_tool_prompt, get_relative_path
+from ask.tools.base import Tool, Parameter, ParameterType, ToolError
 from ask.ui.styles import Styles
 
 
@@ -11,30 +11,21 @@ class GlobTool(Tool):
     name = "Glob"
     description = load_tool_prompt('glob')
     parameters = [
-        Parameter("path", "string", "The absolute path of the directory to search in (must be absolute, not relative)"),
-        Parameter("pattern", "string", "The glob pattern to match files against")]
+        Parameter("path", "The absolute path of the directory to search in (must be absolute, not relative)", ParameterType.String),
+        Parameter("pattern", "The glob pattern to match files against", ParameterType.String)]
 
     def render_args(self, args: dict[str, str]) -> str:
-        try:
-            path = str(Path(args['path']).relative_to(Path.cwd()))
-        except ValueError:
-            path = args['path']
+        path = get_relative_path(args['path'])
         return f'pattern: "{args["pattern"]}", path: "{path}"'
 
-    def render_short_response(self, response: str) -> str:
+    def render_short_response(self, args: dict[str, Any], response: str) -> str:
         file_count = len(response.strip().split('\n'))
         return f"Found {Styles.bold(file_count - 1)} files"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
-        path = Path(args["path"])
-        if not path.is_absolute():
-            raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
-        if not path.exists():
-            raise ToolError(f"Path '{path}' does not exist.")
-        if not path.is_dir():
-            raise ToolError(f"Path '{path}' is not a directory.")
-        return {'path': path, 'pattern': args['pattern']}
+        self.check_absolute_path(Path(args['path']), is_file=False)
+        return {'path': Path(args['path']), 'pattern': args['pattern']}
 
     async def run(self, path: Path, pattern: str) -> str:
         try:

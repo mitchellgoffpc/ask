@@ -1,45 +1,37 @@
 from pathlib import Path
 from typing import Any
 
-from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter
+from ask.prompts import load_tool_prompt, get_relative_path
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.styles import Styles
 
 class ReadTool(Tool):
     name = "Read"
     description = load_tool_prompt('read')
     parameters = [
-        Parameter("file_path", "string", "The absolute path to the file to read"),
-        Parameter("offset", "number", "The line number to start reading from. Only provide if the file is too large to read at once.", required=False),
-        Parameter("limit", "number", "The number of lines to read. Only provide if the file is too large to read at once.", required=False)]
+        Parameter("file_path", "The absolute path to the file to read", ParameterType.String),
+        Parameter("offset", "The line number to start reading from. Only provide if the file is too large to read at once.",
+            ParameterType.Number, required=False),
+        Parameter("limit", "The number of lines to read. Only provide if the file is too large to read at once.", ParameterType.Number, required=False)]
 
     def __init__(self, add_line_numbers: bool = True):
         self.add_line_numbers = add_line_numbers
 
     def render_args(self, args: dict[str, str]) -> str:
-        try:
-            return str(Path(args['file_path']).relative_to(Path.cwd()))
-        except ValueError:
-            return args['file_path']
+        return get_relative_path(args['file_path'])
 
-    def render_short_response(self, response: str) -> str:
+    def render_short_response(self, args: dict[str, Any], response: str) -> str:
         line_count = response.count('\n') + 1
         return f"Read {Styles.bold(line_count)} lines"
 
-    def render_response(self, response: str) -> str:
+    def render_response(self, args: dict[str, Any], response: str) -> str:
         return '\n'.join(line.split('→')[-1] for line in response.split('\n'))
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
         file_path = Path(args["file_path"])
-        if not file_path.is_absolute():
-            raise ToolError(f"Path '{file_path}' is not an absolute path. Please provide an absolute path.")
-        if not file_path.exists():
-            raise ToolError(f"File '{file_path}' does not exist.")
-        if not file_path.is_file():
-            raise ToolError(f"Path '{file_path}' is not a file.")
+        self.check_absolute_path(file_path, is_file=True)
 
-        file_path = Path(args["file_path"])
         image_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']
         if file_path.suffix.lower() in image_extensions:
             raise ToolError("Image files not supported yet")

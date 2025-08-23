@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Any
 
-from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter
+from ask.prompts import load_tool_prompt, get_relative_path
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.styles import Styles
 
 IGNORED_PATHS = [
@@ -34,29 +34,20 @@ class ListTool(Tool):
     name = "List"
     description = load_tool_prompt('list')
     parameters = [
-        Parameter("path", "string", "The absolute path of the directory to list (must be absolute, not relative)"),
-        Parameter("ignore", "array", "List of glob patterns to ignore", required=False)]
+        Parameter("path", "The absolute path of the directory to list (must be absolute, not relative)", ParameterType.String),
+        Parameter("ignore", "List of glob patterns to ignore", ParameterType.Array(ParameterType.String), required=False)]
 
     def render_args(self, args: dict[str, str]) -> str:
-        try:
-            return str(Path(args['path']).relative_to(Path.cwd()))
-        except ValueError:
-            return args['path']
+        return get_relative_path(args['path'])
 
-    def render_short_response(self, response: str) -> str:
+    def render_short_response(self, args: dict[str, Any], response: str) -> str:
         item_count = response.count('\n') + 1
         return f"Listed {Styles.bold(item_count)} paths"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
-        path = Path(args["path"])
-        if not path.is_absolute():
-            raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
-        if not path.exists():
-            raise ToolError(f"Path '{path}' does not exist.")
-        if not path.is_dir():
-            raise ToolError(f"Path '{path}' is not a directory.")
-        return {'path': path, 'ignore': args.get("ignore", [])}
+        self.check_absolute_path(Path(args['path']), is_file=False)
+        return {'path': Path(args["path"]), 'ignore': args.get("ignore", [])}
 
     async def run(self, path: Path, ignore: list[str]) -> str:
         try:

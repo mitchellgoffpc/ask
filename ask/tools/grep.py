@@ -5,46 +5,45 @@ import mmap
 from pathlib import Path
 from typing import Any
 
-from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter
+from ask.prompts import load_tool_prompt, get_relative_path
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.styles import Styles
 
 class GrepTool(Tool):
     name = "Grep"
     description = load_tool_prompt('grep')
     parameters = [
-        Parameter("pattern", "string", 'The regular expression pattern to search for in file contents'),
-        Parameter("path", "string", 'File or directory to search in (rg PATH). Defaults to current working directory.', required=False),
-        Parameter("glob", "string", 'Glob pattern to filter files (e.g. "*.js", "*.{ts,tsx}") - maps to rg --glob', required=False),
-        Parameter("output_mode", "string",
+        Parameter("pattern", "The regular expression pattern to search for in file contents", ParameterType.String),
+        Parameter("path", "File or directory to search in (rg PATH). Defaults to current working directory.", ParameterType.String, required=False),
+        Parameter("glob", 'Glob pattern to filter files (e.g. "*.js", "*.{ts,tsx}") - maps to rg --glob', ParameterType.String, required=False),
+        Parameter("output_mode",
             'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), '
             '"files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit). '
-            'Defaults to "files_with_matches".', required=False),
-        Parameter("-B", "number", 'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.', required=False),
-        Parameter("-A", "number", 'Number of lines to show after each match (rg -A). Requires output_mode: "content", ignored otherwise.', required=False),
-        Parameter("-C", "number",
-            'Number of lines to show before and after each match (rg -C). Requires output_mode: "content", ignored otherwise.', required=False),
-        Parameter("-n", "boolean", 'Show line numbers in output (rg -n). Requires output_mode: "content", ignored otherwise.', required=False),
-        Parameter("-i", "boolean", 'Case insensitive search (rg -i)', required=False),
-        Parameter("head_limit", "number",
+            'Defaults to "files_with_matches".', ParameterType.String, required=False),
+        Parameter("-B", 'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.',
+            ParameterType.Number, required=False),
+        Parameter("-A", 'Number of lines to show after each match (rg -A). Requires output_mode: "content", ignored otherwise.',
+            ParameterType.Number, required=False),
+        Parameter("-C", 'Number of lines to show before and after each match (rg -C). Requires output_mode: "content", ignored otherwise.',
+            ParameterType.Number, required=False),
+        Parameter("-n", 'Show line numbers in output (rg -n). Requires output_mode: "content", ignored otherwise.', ParameterType.Boolean, required=False),
+        Parameter("-i", "Case insensitive search (rg -i)", ParameterType.Boolean, required=False),
+        Parameter("head_limit",
             'Limit output to first N lines/entries, equivalent to "| head -N". '
             'Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries). '
-            'When unspecified, shows all results from ripgrep.', required=False),
-        Parameter("multiline", "boolean",
-            'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.', required=False)
+            'When unspecified, shows all results from ripgrep.', ParameterType.Number, required=False),
+        Parameter("multiline", 'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.',
+            ParameterType.Boolean, required=False)
     ]
 
     def render_args(self, args: dict[str, str]) -> str:
         pattern = args.get('pattern', '')
         if len(pattern) > 50:
             pattern = pattern[:47] + "..."
-        try:
-            path = str(Path(args['path']).relative_to(Path.cwd()))
-        except ValueError:
-            path = args['path']
+        path = get_relative_path(args['path'])
         return f'pattern: "{pattern}", path: "{path}", output_mode: "{args["output_mode"]}"'
 
-    def render_short_response(self, response: str) -> str:
+    def render_short_response(self, args: dict[str, Any], response: str) -> str:
         if response.startswith("Found "):
             match_count = response.split()[1]
             return f"Found {Styles.bold(match_count)} matches"
@@ -56,12 +55,7 @@ class GrepTool(Tool):
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
         path = Path(args.get("path", Path.cwd()))
-        if not path.is_absolute():
-            raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
-        if not path.exists():
-            raise ToolError(f"Path '{path}' does not exist.")
-        if not path.is_dir():
-            raise ToolError(f"Path '{path}' is not a directory.")
+        self.check_absolute_path(path, is_file=False)
 
         try:
             flags = 0

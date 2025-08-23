@@ -12,7 +12,7 @@ from multiprocessing.synchronize import Event as SyncEvent
 from typing import Any
 
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
@@ -58,9 +58,9 @@ class PythonTool(Tool):
     name = "Python"
     description = load_tool_prompt('python')
     parameters = [
-        Parameter("code", "string", "The Python code to execute"),
-        Parameter("timeout", "number", "Optional timeout in milliseconds (max 600000)", required=False),
-        Parameter("description", "string", "Clear, concise description of what this code does in 5-10 words", required=False)]
+        Parameter("code", "The Python code to execute", ParameterType.String),
+        Parameter("timeout", "Optional timeout in milliseconds (max 600000)", ParameterType.Number, required=False),
+        Parameter("description", "Clear, concise description of what this code does in 5-10 words", ParameterType.String, required=False)]
 
     def __init__(self) -> None:
         self.ready = Event()
@@ -92,7 +92,7 @@ class PythonTool(Tool):
             code_snippet += "..."
         return code_snippet
 
-    def render_short_response(self, response: str) -> str:
+    def render_short_response(self, args: dict[str, Any], response: str) -> str:
         lines = response.strip().split('\n')
         if len(lines) <= 3:
             return response.strip()
