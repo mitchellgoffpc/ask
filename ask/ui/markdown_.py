@@ -12,6 +12,21 @@ from xml.etree.ElementTree import Element, SubElement
 
 from ask.ui.styles import Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
 
+def highlight_code(code: str, language: str) -> str:
+    formatter: Any
+    if ANSI_16M_SUPPORT:
+        formatter = TerminalTrueColorFormatter()
+    elif ANSI_256_SUPPORT:
+        formatter = Terminal256Formatter()
+    else:
+        formatter = TerminalFormatter()
+
+    try:
+        lexer = get_lexer_by_name(language)
+    except ClassNotFound:
+        lexer = guess_lexer(code)
+    return cast(str, highlight(code, lexer, formatter))
+
 
 # Codeblock parsing extension
 
@@ -65,19 +80,7 @@ class ANSIExtension(Extension):
         language = element.attrib.get('language', '')
         code = element.text or ''
 
-        formatter: Any
-        if ANSI_16M_SUPPORT:
-            formatter = TerminalTrueColorFormatter()
-        elif ANSI_256_SUPPORT:
-            formatter = Terminal256Formatter()
-        else:
-            formatter = TerminalFormatter()
-
-        try:
-            lexer = get_lexer_by_name(language)
-        except ClassNotFound:
-            lexer = guess_lexer(code)
-        return cast(str, highlight(code, lexer, formatter)) + (element.tail or "")
+        return highlight_code(code, language) + (element.tail or "")
 
     def render_basic_element(self, element: Element, stream: StringIO, indent: int) -> None:
         start, end = self.HTML_TO_ANSI.get(element.tag, ('', ''))
