@@ -2,32 +2,26 @@ import asyncio
 from typing import Any
 
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter
-from ask.ui.styles import Colors, Theme
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
 
 class BashTool(Tool):
     name = "Bash"
     description = load_tool_prompt('bash')
     parameters = [
-        Parameter("command", "string", "The command to execute"),
-        Parameter("timeout", "number", "Optional timeout in milliseconds (max 600000)", required=False),
-        Parameter("description", "string",
+        Parameter("command", "The command to execute", ParameterType.String),
+        Parameter("timeout", "Optional timeout in milliseconds (max 600000)", ParameterType.Number, required=False),
+        Parameter("description",
             "Clear, concise description of what this command does in 5-10 words. Examples:\n"
             "Input: ls\nOutput: Lists files in current directory\n\n"
             "Input: git status\nOutput: Shows working tree status\n\n"
             "Input: npm install\nOutput: Installs package dependencies\n\n"
-            "Input: mkdir foo\nOutput: Creates directory 'foo'", required=False)]
+            "Input: mkdir foo\nOutput: Creates directory 'foo'", ParameterType.String, required=False)]
 
     def render_args(self, args: dict[str, str]) -> str:
         return args['command']
 
-    def render_short_response(self, response: str) -> str:
-        lines = response.strip().split('\n')
-        if len(lines) <= 3:
-            return response.strip()
-        abbreviated = '\n'.join(lines[:3])
-        elipsis = Colors.hex(f"… +{len(lines) - 3} lines (ctrl+r to expand)", Theme.GRAY)
-        return f"{abbreviated}\n{elipsis}"
+    def render_short_response(self, args: dict[str, Any], response: str) -> str:
+        return abbreviate(response, max_lines=3)
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
