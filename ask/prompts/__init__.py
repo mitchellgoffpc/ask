@@ -4,6 +4,12 @@ from pathlib import Path
 from typing import cast
 from datetime import date
 
+def get_relative_path(path: Path | str) -> str:
+    try:
+        return str(Path(path).relative_to(Path.cwd()))
+    except ValueError:
+        return str(path)
+
 def is_git_repo() -> bool:
     current = Path.cwd().resolve()
     while current != current.parent:
