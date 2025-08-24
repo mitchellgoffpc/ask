@@ -25,7 +25,7 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lines[1], "     1→Hello universe")
             self.assertEqual(lines[2], "     2→This is a test")
 
-    async def test_replace_all_true(self):
+    async def test_replace_all(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("test test test\ntest again")
             f.flush()

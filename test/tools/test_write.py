@@ -12,7 +12,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "test_file.txt"
             content = "Hello, world!"
-            result = await self.tool.run(file_path=file_path, content=content)
+            result = await self.tool.run(file_path=file_path, old_content='', new_content=content, diff=[])
 
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
             self.assertIn("File created successfully", result)
@@ -22,7 +22,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             f.write("original content")
             f.flush()
             new_content = "new content"
-            result = await self.tool.run(file_path=Path(f.name), content=new_content)
+            result = await self.tool.run(file_path=Path(f.name), old_content='', new_content=new_content, diff=[])
 
             self.assertEqual(Path(f.name).read_text(encoding='utf-8'), new_content)
             self.assertIn("File updated successfully", result)
@@ -31,7 +31,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "nested" / "dirs" / "file.txt"
             content = "test content"
-            result = await self.tool.run(file_path=file_path, content=content)
+            result = await self.tool.run(file_path=file_path, old_content='', new_content=content, diff=[])
 
             self.assertTrue(file_path.exists())
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
