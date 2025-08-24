@@ -18,7 +18,7 @@ def OptionsList(options: dict[str, str | None], selected_idx: int) -> Box:
     return Box()[(Option(option, idx, idx == selected_idx, keybinding) for idx, (option, keybinding) in enumerate(options.items()))]
 
 def Approval(tool_call: ToolRequest, future: asyncio.Future) -> Component:
-    components = {'Bash': BashApproval, 'Edit': EditApproval, 'Write': EditApproval, 'Python': PythonApproval}
+    components = {'Bash': BashApproval, 'Edit': EditApproval, 'MultiEdit': EditApproval, 'Python': PythonApproval, 'Write': EditApproval}
     return components[tool_call.tool](tool_call, future)
 
 

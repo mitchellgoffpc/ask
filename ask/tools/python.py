@@ -5,7 +5,6 @@ import io
 import os
 import queue
 import signal
-import traceback
 from contextlib import redirect_stdout, redirect_stderr
 from multiprocessing import Event, Queue, Process
 from multiprocessing.synchronize import Event as SyncEvent
@@ -16,7 +15,7 @@ from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
-def repl_worker(ready: SyncEvent, command_queue: Queue, result_queue: Queue) -> None:
+def repl_worker(ready: SyncEvent, command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None]]) -> None:
     def signal_handler(signum, frame):
         raise KeyboardInterrupt()
 
@@ -28,10 +27,10 @@ def repl_worker(ready: SyncEvent, command_queue: Queue, result_queue: Queue) -> 
             if (nodes := command_queue.get()) is None:
                 break
             captured_output = io.StringIO()
-            captured_error = io.StringIO()
-            captured_traceback = None
+            captured_exception = None
 
-            with redirect_stdout(captured_output), redirect_stderr(captured_error):
+            # Redirect both stdout and stderr to the same stream
+            with redirect_stdout(captured_output), redirect_stderr(captured_output):
                 for i, node in enumerate(nodes):
                     if i == len(nodes) - 1 and isinstance(node, ast.Expr):
                         code = compile(ast.Interactive([node]), '<stdin>', 'single')
@@ -46,12 +45,12 @@ def repl_worker(ready: SyncEvent, command_queue: Queue, result_queue: Queue) -> 
                         globals_dict.clear()
                         break
                     except BaseException as e:
-                        captured_traceback = ''.join(traceback.format_exception(type(e), e, e.__traceback__.tb_next if e.__traceback__ else None))
+                        captured_exception = e
                         break
 
-            result_queue.put((captured_output.getvalue(), captured_error.getvalue(), captured_traceback))
+            result_queue.put((captured_output.getvalue(), captured_exception))
         except BaseException as e:
-            result_queue.put(("", str(e), None))
+            result_queue.put(("", e))
 
 
 class PythonTool(Tool):
@@ -64,8 +63,8 @@ class PythonTool(Tool):
 
     def __init__(self) -> None:
         self.ready = Event()
-        self.command_queue: Queue = Queue()
-        self.result_queue: Queue = Queue()
+        self.command_queue: Queue[list[ast.stmt] | None] = Queue()
+        self.result_queue: Queue[tuple[str, BaseException | None]] = Queue()
         self.worker_process: Process | None = None
 
     def _interrupt_worker(self) -> None:
@@ -110,7 +109,7 @@ class PythonTool(Tool):
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
         return {'nodes': list(module.body), 'timeout_seconds': timeout_seconds}
 
-    async def run(self, nodes: list[ast.AST], timeout_seconds: float) -> str:
+    async def run(self, nodes: list[ast.stmt], timeout_seconds: float) -> str:
         if not self.worker_process:
             self.worker_process = Process(target=repl_worker, args=(self.ready, self.command_queue, self.result_queue), daemon=True)
             self.worker_process.start()
@@ -129,7 +128,7 @@ class PythonTool(Tool):
         while True:
             try:
                 try:
-                    stdout, stderr, traceback = self.result_queue.get_nowait()
+                    output, exception = self.result_queue.get_nowait()
                     break
                 except queue.Empty:
                     if asyncio.get_event_loop().time() - start_time >= timeout_seconds:
@@ -140,6 +139,7 @@ class PythonTool(Tool):
                 self._interrupt_worker()
                 raise
 
-        stdout_formatted = f'<python-stdout>\n{stdout}</python-stdout>'
-        stderr_formatted = f'<python-stderr>\n{stderr}{traceback or ""}</python-stderr>'
-        return f'{stdout_formatted}\n{stderr_formatted}'
+        if exception:
+            raise ToolError("Python execution failed") from exception
+
+        return output
