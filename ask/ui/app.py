@@ -1,19 +1,23 @@
 import asyncio
 import sys
 import time
-from dataclasses import replace, astuple
+from dataclasses import replace
 from typing import Callable
 from uuid import UUID, uuid4
 
 from ask.models import Model, Message, Content, Text as TextContent, TextPrompt, ToolRequest, ToolResponse, ShellCommand, Status
 from ask.query import query
 from ask.tools import TOOLS, Tool
+from ask.ui.approvals import Approval
 from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
 from ask.ui.messages import Prompt, TextResponse, ToolCall, ShellCall
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.textbox import TextBox
 
+TOOL_REJECTED_MESSAGE = (
+    "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
+    "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
     '/exit': 'Exit the REPL',
@@ -37,6 +41,24 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
         Box(margin={'left': 2})[(CommandName(cmd, idx == selected_idx) for idx, cmd in enumerate(commands.keys()))],
         Box(margin={'left': 3})[(CommandDesc(desc, idx == selected_idx) for idx, desc in enumerate(commands.values()))]
     ]
+
+
+class Spinner(Box):
+    initial_state = {'spinner_state': 0}
+    frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+    def handle_mount(self) -> None:
+        super().handle_mount()
+        asyncio.create_task(self.spin())
+
+    async def spin(self) -> None:
+        while self.mounted:
+            self.state['spinner_state'] += 1
+            await asyncio.sleep(0.25)
+
+    def contents(self) -> list[Component | None]:
+        spinner_text = f"{self.frames[self.state['spinner_state'] % len(self.frames)]} Waiting…"
+        return [Text(Colors.hex(spinner_text, Theme.ORANGE), margin={'top': 1})]
 
 
 class PromptTextBox(Box):
@@ -94,7 +116,7 @@ class PromptTextBox(Box):
             self.state['bash_mode'] = False
 
     def contents(self) -> list[Component | None]:
-        border_color = Theme.DARK_PINK if self.state['bash_mode'] else Theme.DARK_GRAY
+        border_color = Theme.PINK if self.state['bash_mode'] else Theme.DARK_GRAY
         marker = Colors.hex('!', Theme.PINK) if self.state['bash_mode'] else '>'
         commands = self.get_matching_commands()
         return [
@@ -114,26 +136,8 @@ class PromptTextBox(Box):
         ]
 
 
-class Spinner(Box):
-    initial_state = {'spinner_state': 0}
-    frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-
-    def handle_mount(self) -> None:
-        super().handle_mount()
-        asyncio.create_task(self.spin())
-
-    async def spin(self) -> None:
-        while self.mounted:
-            self.state['spinner_state'] += 1
-            await asyncio.sleep(0.25)
-
-    def contents(self) -> list[Component | None]:
-        spinner_text = f"{self.frames[self.state['spinner_state'] % len(self.frames)]} Waiting…"
-        return [Text(Colors.hex(spinner_text, Theme.ORANGE), margin={'top': 1})]
-
-
 class App(Box):
-    initial_state = {'expanded': False, 'elapsed': 0}
+    initial_state = {'expanded': False, 'elapsed': 0, 'approvals': {}}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
@@ -169,20 +173,20 @@ class App(Box):
         prompt = messages[prompt_uuid].content
         try:
             text = ''
-            contents = []
+            contents = {}
             async for delta, content in query(self.props['model'], list(messages.values()), self.props['tools'], self.props['system_prompt']):
                 text = text + delta
                 if content:
-                    contents.append(content)
-                text_content = [TextContent(text)] if text and not any(isinstance(c, TextContent) for c in contents) else []
+                    contents[uuid4()] = content
+                text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                 if text or contents:
-                    self.state['messages'] = messages | {uuid4(): Message(role='assistant', content=c) for c in contents + text_content}
+                    self.state['messages'] = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
 
-            tool_requests = [c for c in contents if isinstance(c, ToolRequest)]
-            tool_responses = {uuid4(): ToolResponse(call_id=req.call_id, tool=req.tool, response='', status=Status.PENDING) for req in tool_requests}
-            tasks = [asyncio.create_task(self.tool_call(req, uuid)) for req, uuid in zip(tool_requests, tool_responses.keys(), strict=True)]
-            if tasks:
-                self.state['messages'] = self.state['messages'] | {uuid: Message(role='user', content=resp) for uuid, resp in tool_responses.items()}
+            tool_requests = {uuid: req for uuid, req in contents.items() if isinstance(req, ToolRequest)}
+            tool_responses = {uuid4(): ToolResponse(call_id=req.call_id, tool=req.tool, response='', status=Status.PENDING) for req in tool_requests.values()}
+            self.state['messages'] = self.state['messages'] | {uuid: Message(role='user', content=resp) for uuid, resp in tool_responses.items()}
+            if tool_requests:
+                tasks = [asyncio.create_task(self.tool_call(req_uuid, resp_uuid)) for req_uuid, resp_uuid in zip(tool_requests, tool_responses, strict=True)]
                 self.tasks.extend([*tasks, asyncio.create_task(self.send_tool_responses(prompt_uuid, tasks))])
             else:
                 self.update_message(prompt_uuid, replace(prompt, status=Status.COMPLETED))
@@ -191,16 +195,29 @@ class App(Box):
         except Exception as e:
             self.update_message(prompt_uuid, replace(prompt, status=Status.FAILED, error=str(e)))
 
-    async def tool_call(self, request: ToolRequest, response_uuid: UUID) -> None:
+    async def tool_call(self, request_uuid: UUID, response_uuid: UUID) -> None:
+        request = self.state['messages'][request_uuid].content
         try:
-            output = await TOOLS[request.tool](request.arguments)
+            tool = TOOLS[request.tool]
+            args = tool.check(request.arguments)
+            self.update_message(request_uuid, replace(request, processed_arguments=args))
+            if tool in (TOOLS['Bash'], TOOLS['Edit'], TOOLS['Python'], TOOLS['Write']):
+                future = asyncio.get_running_loop().create_future()
+                self.state['approvals'] = self.state['approvals'] | {request_uuid: future}
+                try:
+                    await future
+                finally:
+                    self.state['approvals'] = {k:v for k,v in self.state['approvals'].items() if k != request_uuid}
+            output = await tool.run(**args)
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=Status.COMPLETED)
         except asyncio.CancelledError:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response='', status=Status.CANCELLED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TOOL_REJECTED_MESSAGE, status=Status.CANCELLED)
+            raise
         except Exception as e:
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=str(e), status=Status.FAILED)
-        self.tool_responses[request.call_id] = response
-        self.update_message(response_uuid, response)
+        finally:
+            self.tool_responses[request.call_id] = response
+            self.update_message(response_uuid, response)
 
     async def send_tool_responses(self, prompt_uuid: UUID, tool_call_tasks: list[asyncio.Task]) -> None:
         try:
@@ -240,39 +257,45 @@ class App(Box):
     def handle_raw_input(self, ch: str) -> None:
         if ch == '\x12':  # Ctrl+R
             self.state['expanded'] = not self.state['expanded']
-        elif ch == '\x1b':  # Escape key
+        elif ch == '\x1b' and not self.state['approvals']:  # Escape key
             for task in self.tasks:
                 if not task.done():
                     task.cancel()
             self.tasks.clear()
 
-    def render_message(self, role: str, content: Content) -> list[Component]:
-        components = []
+    def render_message(self, role: str, content: Content) -> Component | None:
         if role == 'user':
             if isinstance(content, TextPrompt):
-                components.append(Prompt(content.text, error=content.error))
+                return Prompt(text=content)
             elif isinstance(content, ShellCommand):
-                command, output, error, status = astuple(content)
-                components.append(ShellCall(command, output, error, status, elapsed=self.state['elapsed'], expanded=self.state['expanded']))
+                return ShellCall(command=content, elapsed=self.state['elapsed'], expanded=self.state['expanded'])
         elif role == 'assistant':
             if isinstance(content, TextContent):
-                components.append(TextResponse(content.text))
+                return TextResponse(text=content)
             elif isinstance(content, ToolRequest):
                 response = self.tool_responses.get(content.call_id)
-                result = response.response if response else None
-                components.append(ToolCall(tool=content.tool, args=content.arguments, result=result, expanded=self.state['expanded']))
-        return components
+                return ToolCall(request=content, response=response, expanded=self.state['expanded'])
+        return None
 
     def contents(self) -> list[Component | None]:
+        approval_uuid = next(iter(self.state['approvals'].keys()), None)
+        waiting = any(is_pending(msg) for msg in self.state['messages'].values()) and not self.state['approvals']
+        messages = [self.render_message(msg.role, msg.content) for msg in self.state['messages'].values()]
+
         return [
-            *[component for message in self.state['messages'].values() for component in self.render_message(message.role, message.content)],
-            Spinner() if any(is_pending(msg) for msg in self.state['messages'].values()) else None,
-            PromptTextBox(
-                history=self.config['history'],
-                handle_submit=self.handle_submit,
-            ) if not self.state['expanded'] else None,
+            *filter(None, messages),
+            Spinner() if waiting else None,
+
             Box()[
                 Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
-                Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY)),
-            ] if self.state['expanded'] else None
+                Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
+            ] if self.state['expanded'] else
+            Approval(
+                tool_call=self.state['messages'][approval_uuid].content,
+                future=self.state['approvals'][approval_uuid]
+            ) if approval_uuid else
+            PromptTextBox(
+                history=self.config['history'],
+                handle_submit=self.handle_submit
+            ),
         ]

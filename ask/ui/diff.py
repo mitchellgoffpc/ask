@@ -1,14 +1,8 @@
-import difflib
-
 from ask.ui.components import Component, Text, Box
 from ask.ui.styles import Colors, Theme
 
 
-def Diff(old: str, new: str) -> Component:
-    old_lines = old.splitlines(keepends=True)
-    new_lines = new.splitlines(keepends=True)
-    diff = list(difflib.unified_diff(old_lines, new_lines, n=3))
-
+def Diff(diff: list[str], rejected: bool = False) -> Component:
     components: list[Component] = []
     old_line_num, new_line_num = 1, 1
     for line in diff[2:]:  # Skip header lines
@@ -24,12 +18,12 @@ def Diff(old: str, new: str) -> Component:
                 components.append(Text(f"{Colors.hex(' ... ', Theme.GRAY)}"))
         elif line.startswith('-'):
             line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
-            delta = Colors.bg_hex(Colors.hex(f'-  {delta}', Theme.WHITE), Theme.DARK_RED)
+            delta = Colors.bg_hex(Colors.hex(f'-  {delta}', Theme.WHITE), Theme.FADED_RED if rejected else Theme.DARK_RED)
             components.append(Text(f"{line_num} {delta}"))
             old_line_num += 1
         elif line.startswith('+'):
             line_num = Colors.hex(f"{new_line_num:>4}", Theme.GRAY)
-            delta = Colors.bg_hex(Colors.hex(f'+  {delta}', Theme.WHITE), Theme.DARK_GREEN)
+            delta = Colors.bg_hex(Colors.hex(f'+  {delta}', Theme.WHITE), Theme.FADED_GREEN if rejected else Theme.DARK_GREEN)
             components.append(Text(f"{line_num} {delta}"))
             new_line_num += 1
         elif line.startswith(' '):
