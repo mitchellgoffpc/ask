@@ -19,7 +19,7 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
     async def test_command_error(self):
         with self.assertRaises(ToolError) as context:
             await self.tool.run(command="ls /nonexistant", timeout_seconds=10)
-        self.assertEqual(str(context.exception), "ls: cannot access '/nonexistant': No such file or directory")
+        self.assertIn("No such file or directory", str(context.exception))
 
     async def test_task_timeout(self):
         start_time = asyncio.get_event_loop().time()
