@@ -7,7 +7,8 @@ import queue
 import signal
 from contextlib import redirect_stdout, redirect_stderr
 from multiprocessing import Event, Queue, Process
-from multiprocessing.synchronize import Event as SyncEvent
+from multiprocessing.synchronize import Event as _Event
+from multiprocessing.queues import Queue as _Queue
 from typing import Any
 
 from ask.prompts import load_tool_prompt
@@ -15,7 +16,7 @@ from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
-def repl_worker(ready: SyncEvent, command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None]]) -> None:
+def repl_worker(ready: _Event, command_queue: _Queue[list[ast.stmt] | None], result_queue: _Queue[tuple[str, BaseException | None]]) -> None:
     def signal_handler(signum, frame):
         raise KeyboardInterrupt()
 
@@ -63,8 +64,8 @@ class PythonTool(Tool):
 
     def __init__(self) -> None:
         self.ready = Event()
-        self.command_queue: Queue[list[ast.stmt] | None] = Queue()
-        self.result_queue: Queue[tuple[str, BaseException | None]] = Queue()
+        self.command_queue: _Queue[list[ast.stmt] | None] = Queue()
+        self.result_queue: _Queue[tuple[str, BaseException | None]] = Queue()
         self.worker_process: Process | None = None
 
     def _interrupt_worker(self) -> None:

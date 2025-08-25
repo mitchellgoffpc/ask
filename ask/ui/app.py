@@ -145,6 +145,9 @@ class App(Box):
         self.config = Config()
         self.tasks: list[asyncio.Task] = []
         self.tool_responses: dict[str, ToolResponse] = {}
+        for msg in messages.values():
+            if isinstance(msg.content, ToolResponse):
+                self.tool_responses[msg.content.call_id] = msg.content
 
     async def tick(self, interval: float) -> None:
         try:
@@ -231,8 +234,9 @@ class App(Box):
 
     def handle_mount(self) -> None:
         if self.state['messages']:
-            prompt_uuid = list(self.state['messages'].keys())[-1]
-            self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
+            prompt_uuid, prompt = list(self.state['messages'].items())[-1]
+            if prompt.role == 'user' and isinstance(prompt.content, TextPrompt):
+                self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
 
     def handle_submit(self, value: str) -> bool:
         if any(not task.done() for task in self.tasks):
