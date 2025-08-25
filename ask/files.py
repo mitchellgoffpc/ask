@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag, PageElement
 from pathlib import Path
 
 from ask.models import Text, Image
+from ask.tools.read import read_text_file
 
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'}
 
@@ -28,7 +29,7 @@ def list_files(path: Path) -> list[Path]:
     else:
         raise RuntimeError("Unknown file type")
 
-async def process_url(url: str) -> tuple[str, str | bytes]:
+async def read_remote_file(url: str) -> tuple[str, str | bytes]:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             response.raise_for_status()
@@ -55,7 +56,7 @@ async def read_files(files: list[str]) -> dict[str, Text | Image]:
     for fn in files:
         if fn.startswith(('http://', 'https://')):
             try:
-                mimetype, content = await process_url(fn)
+                mimetype, content = await read_remote_file(fn)
                 if mimetype.startswith('image/'):
                     image_files[fn] = Image(mimetype, content)  # type: ignore
                 else:
@@ -72,7 +73,7 @@ async def read_files(files: list[str]) -> dict[str, Text | Image]:
                         mimetype = IMAGE_TYPES[path.suffix]
                         image_files[str(path)] = Image(mimetype, path.read_bytes())
                     else:
-                        text_files[str(path)] = Text(path.read_text().strip())
+                        text_files[str(path)] = Text(read_text_file(path, add_line_numbers=True).strip())
             except FileNotFoundError:
                 print(f"{fn}: No such file or directory", file=sys.stderr)
                 sys.exit(1)

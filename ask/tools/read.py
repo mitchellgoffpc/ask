@@ -5,6 +5,28 @@ from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.styles import Styles
 
+def read_text_file(file_path: Path, offset: int = 0, max_lines: int | None = None, max_cols: int | None = None, add_line_numbers: bool = True) -> str:
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for i in range(offset):
+            try:
+                next(f)
+            except StopIteration:
+                raise ValueError(f"Offset {offset} is out of bounds, file '{file_path}' only contains {i} lines.") from None
+
+        lines = [f'{str(offset+1).rjust(6)}→'] if add_line_numbers else []
+        for i, line in enumerate(f):
+            if max_lines and i >= max_lines:
+                lines = lines[:-1] + [f"... [truncated, file contains more than {offset + max_lines} lines]"]
+                break
+            if max_cols and len(line) > max_cols:
+                line = line[:max_cols] + "... [truncated]\n"
+            lines.append(line)
+            if line.endswith('\n') and add_line_numbers:
+                lines.append(f'{str(offset+i+2).rjust(6)}→')
+
+        return ''.join(lines)
+
+
 class ReadTool(Tool):
     name = "Read"
     description = load_tool_prompt('read')
@@ -42,26 +64,7 @@ class ReadTool(Tool):
 
     async def run(self, file_path: Path, offset: int, limit: int) -> str:
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                for i in range(offset):
-                    try:
-                        next(f)
-                    except StopIteration:
-                        raise ToolError(f"Offset {offset} is out of bounds, file '{file_path}' only contains {i} lines.") from None
-
-                lines = [f'{str(offset+1).rjust(6)}→'] if self.add_line_numbers else []
-                for i, line in enumerate(f):
-                    if i >= limit:
-                        lines = lines[:-1] + [f"... [truncated, file contains more than {offset + limit} lines]"]
-                        break
-                    if len(line) > 2000:
-                        line = line[:2000] + "... [truncated]\n"
-                    lines.append(line)
-                    if line.endswith('\n') and self.add_line_numbers:
-                        lines.append(f'{str(offset+i+2).rjust(6)}→')
-
-                return ''.join(lines)
-
+            return read_text_file(file_path, offset, max_lines=limit, max_cols=2000, add_line_numbers=self.add_line_numbers)
         except UnicodeDecodeError as e:
             raise ToolError(f"File '{file_path}' is not a text file or contains invalid Unicode characters.") from e
         except PermissionError as e:
