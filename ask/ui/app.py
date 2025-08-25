@@ -1,15 +1,18 @@
 import asyncio
 import glob
 import os
+import re
 import sys
 import time
 from dataclasses import replace
+from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
 from ask.models import Model, Message, Content, Text as TextContent, TextPrompt, ToolRequest, ToolResponse, ShellCommand, Status
 from ask.query import query
 from ask.tools import TOOLS, Tool
+from ask.tools.read import read_text_file
 from ask.ui.approvals import Approval
 from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
@@ -299,6 +302,17 @@ class App(Box):
             self.state['messages'] = self.state['messages'] | {cmd_uuid: Message(role='user', content=cmd)}
             self.tasks.append(asyncio.create_task(self.shell(cmd_uuid, value)))
         else:
+            # Handle file attachments
+            file_paths = [m[1:] for m in re.findall(r'@\S+', value)]
+            valid_files = [fp for fp in file_paths if Path(fp).is_file()]
+            for file_path in valid_files:
+                call_id = str(uuid4())
+                request = ToolRequest(call_id=call_id, tool='Read', arguments={'file_path': str(Path(file_path).absolute().as_posix())})
+                response = ToolResponse(call_id=call_id, tool='Read', response=read_text_file(file_path), status=Status.COMPLETED)
+                tool_messages = {uuid4(): Message(role='assistant', content=request), uuid4(): Message(role='user', content=response)}
+                self.state['messages'] = self.state['messages'] | tool_messages
+                self.tool_responses[call_id] = response
+
             prompt_uuid = uuid4()
             self.state['messages'] = self.state['messages'] | {prompt_uuid: Message(role='user', content=TextPrompt(value))}
             self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
