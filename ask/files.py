@@ -1,7 +1,8 @@
+import aiohttp
 import glob
 import itertools
 import re
-import requests
+import sys
 from bs4 import BeautifulSoup, NavigableString, Tag, PageElement
 from pathlib import Path
 
@@ -27,30 +28,34 @@ def list_files(path: Path) -> list[Path]:
     else:
         raise RuntimeError("Unknown file type")
 
-def process_url(url: str) -> tuple[str, str | bytes]:
-    response = requests.get(url)
-    response.raise_for_status()
-    mimetype = response.headers.get('Content-Type', ';').split(';')[0]
+async def process_url(url: str) -> tuple[str, str | bytes]:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            mimetype = response.headers.get('Content-Type', ';').split(';')[0]
 
-    if mimetype.startswith('text/html'):
-        body = extract_body(response.text)
-        content = html_to_markdown(body)
-        return 'text/markdown', content
-    elif mimetype.startswith('image/'):
-        return mimetype, response.content
-    elif mimetype.startswith('text/') or mimetype == 'application/json':
-        return mimetype, response.text.strip()
-    else:
-        raise ValueError(f"Unsupported content type {mimetype} for URL {url}")
+            if mimetype.startswith('text/html'):
+                text = await response.text()
+                body = extract_body(text)
+                content = html_to_markdown(body)
+                return 'text/markdown', content
+            elif mimetype.startswith('image/'):
+                content = (await response.read()).decode('utf-8')
+                return mimetype, content
+            elif mimetype.startswith('text/') or mimetype == 'application/json':
+                text = await response.text()
+                return mimetype, text.strip()
+            else:
+                raise ValueError(f"Unsupported content type {mimetype} for URL {url}")
 
-def read_files(files: list[str]) -> dict[str, Text | Image]:
+async def read_files(files: list[str]) -> dict[str, Text | Image]:
     image_files: dict[str, Image] = {}
     text_files: dict[str, Text] = {}
 
     for fn in files:
         if fn.startswith(('http://', 'https://')):
             try:
-                mimetype, content = process_url(fn)
+                mimetype, content = await process_url(fn)
                 if mimetype.startswith('image/'):
                     image_files[fn] = Image(mimetype, content)  # type: ignore
                 else:
@@ -68,6 +73,12 @@ def read_files(files: list[str]) -> dict[str, Text | Image]:
                         image_files[str(path)] = Image(mimetype, path.read_bytes())
                     else:
                         text_files[str(path)] = Text(path.read_text().strip())
+            except FileNotFoundError:
+                print(f"{fn}: No such file or directory", file=sys.stderr)
+                sys.exit(1)
+            except PermissionError:
+                print(f"{fn}: Permission denied", file=sys.stderr)
+                sys.exit(1)
             except Exception as e:
                 print(f"Error processing file {fn}: {e}", file=sys.stderr)
                 sys.exit(1)
@@ -145,20 +156,26 @@ def extract_body(html: str) -> str:
 # Entry point for testing
 
 if __name__ == "__main__":
+    import asyncio
     import sys
-    if len(sys.argv) != 2:
-        print("Usage: python extract.py <path_to_html_file_or_url>")
-        sys.exit(1)
 
-    input_source = sys.argv[1]
-    if input_source.startswith(('http://', 'https://')):
-        response = requests.get(input_source)
-        response.raise_for_status()
-        html_content = response.text
-    else:
-        with open(input_source, 'r', encoding='utf-8') as f:
-            html_content = f.read()
+    async def main():
+        if len(sys.argv) != 2:
+            print("Usage: python extract.py <path_to_html_file_or_url>")
+            sys.exit(1)
 
-    body = extract_body(html_content)
-    markdown = html_to_markdown(body)
-    print(markdown)
+        input_source = sys.argv[1]
+        if input_source.startswith(('http://', 'https://')):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(input_source) as response:
+                    response.raise_for_status()
+                    html_content = await response.text()
+        else:
+            with open(input_source, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+
+        body = extract_body(html_content)
+        markdown = html_to_markdown(body)
+        print(markdown)
+
+    asyncio.run(main())
