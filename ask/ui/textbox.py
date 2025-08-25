@@ -1,13 +1,10 @@
+from collections import deque
 from typing import Any, Callable, cast
 
 from ask.ui.components import Box, Size, wrap_lines
 from ask.ui.styles import Styles, Colors
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
-
-IntCallback = Callable[[int], None]
-TextCallback = Callable[[str], None]
-InputCallback = Callable[[str, int], bool]
 
 class TextBox(Box):
     leaf = True
@@ -18,10 +15,10 @@ class TextBox(Box):
         width: Size = 1.0,
         text: str | None = None,
         placeholder: str = "",
-        handle_input: InputCallback | None = None,
-        handle_page: IntCallback | None = None,
-        handle_change: TextCallback | None = None,
-        handle_submit: TextCallback | None = None,
+        handle_input: Callable[[str, int], bool] | None = None,
+        handle_page: Callable[[int], None] | None = None,
+        handle_change: Callable[[str], None] | None = None,
+        handle_submit: Callable[[str], bool] | None = None,
         history: list[str] | None = None,
         **props: Any
     ) -> None:
@@ -30,6 +27,7 @@ class TextBox(Box):
         assert width is not None, "TextBox width must be specified"
         self.state['history'] = [*(history or []), text or '']
         self.state['history_idx'] = len(self.state['history']) - 1
+        self.undo_stack: deque[tuple[str, int]] = deque(maxlen=1000)
 
     @property
     def content_width(self) -> int:
@@ -70,8 +68,8 @@ class TextBox(Box):
         history_idx = self.state['history_idx']
 
         if ch == '\r':  # Enter, submit
-            if self.props['handle_submit']:
-                self.props['handle_submit'](text)
+            if self.props['handle_submit'] and self.props['handle_submit'](text):
+                self.undo_stack.clear()
         elif ch == '\x7f':  # Backspace
             if cursor_pos > 0:
                 text = text[:cursor_pos - 1] + text[cursor_pos:]
@@ -107,6 +105,13 @@ class TextBox(Box):
                 cursor_pos += 1
         elif ch == '\x19':  # Ctrl+Y - yank
             pass  # TODO: Implement this
+        elif ch == '\x1f':  # Ctrl+/ - undo
+            if self.undo_stack:
+                text, cursor_pos = self.undo_stack.pop()
+                self.state['cursor_pos'] = cursor_pos
+                if text != self.text:
+                    self.text = text
+                return
         elif ch.startswith('\x1b'):  # Escape sequence
             text, cursor_pos, history_idx = self.handle_escape_input(ch[1:])
         else:  # Regular character(s)
@@ -114,6 +119,9 @@ class TextBox(Box):
             text = text[:cursor_pos] + ch + text[cursor_pos:]
             cursor_pos += len(ch)
 
+        # Yes, it does need to be done in this particular order
+        if text != self.text:
+            self.undo_stack.append((self.text, self.cursor_pos))
         self.state.update({'cursor_pos': cursor_pos, 'history_idx': history_idx})
         if text != self.text:
             self.text = text

@@ -110,10 +110,12 @@ class PromptTextBox(Box):
             self.state['selected_idx'] = 0
         self.state['text'] = value
 
-    def handle_submit(self, value: str) -> None:
+    def handle_submit(self, value: str) -> bool:
         if self.props['handle_submit'](f"{'!' if self.state['bash_mode'] else ''}{value}"):
             self.state['text'] = ''
             self.state['bash_mode'] = False
+            return True
+        return False
 
     def contents(self) -> list[Component | None]:
         border_color = Theme.PINK if self.state['bash_mode'] else Theme.DARK_GRAY
