@@ -1,4 +1,6 @@
 import asyncio
+import glob
+import os
 import sys
 import time
 from dataclasses import replace
@@ -62,13 +64,33 @@ class Spinner(Box):
 
 
 class PromptTextBox(Box):
-    initial_state = {'text': '', 'bash_mode': False, 'selected_idx': 0}
+    initial_state = {'text': '', 'bash_mode': False, 'selected_idx': 0, 'autocomplete_matches': []}
 
     def __init__(self, history: list[str], handle_submit: Callable[[str], bool]) -> None:
         super().__init__(history=history, handle_submit=handle_submit)
 
     def get_matching_commands(self) -> dict[str, str]:
         return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text'])}
+
+    def get_current_word_prefix(self, text: str, cursor_pos: int) -> tuple[str, int]:
+        if cursor_pos > len(text):
+            cursor_pos = len(text)
+        start = cursor_pos
+        while start > 0 and text[start - 1] not in ' \t\n<>@|&;(){}[]"\'`':
+            start -= 1
+        return text[start:cursor_pos], start
+
+    def find_path_matches(self, prefix: str) -> list[str]:
+        if not prefix:
+            return []
+        try:
+            if prefix.startswith('~'):
+                prefix = os.path.expanduser(prefix)
+            matches = glob.glob(prefix + '*')
+            matches = [os.path.basename(m) if '/' not in prefix else m for m in matches]
+            return sorted(matches)[:10]
+        except Exception:
+            return []
 
     def handle_input(self, ch: str, cursor_pos: int) -> bool:
         # Bash mode
@@ -78,24 +100,33 @@ class PromptTextBox(Box):
             self.state['bash_mode'] = True
             return False
 
-        # Command selection
-        matching_commands = self.get_matching_commands()
-        selected_idx = self.state['selected_idx']
-        if not self.state['text'] or not matching_commands:
-            return True
-        elif ch in ('\t', '\r') and matching_commands:
-            command = list(matching_commands.keys())[selected_idx]
-            if ch == '\t':
-                self.state['text'] = command
-            else:
-                self.handle_submit(command)
+        # Path autocomplete
+        if ch == '\t':
+            prefix, start_pos = self.get_current_word_prefix(self.state['text'], cursor_pos)
+            matches = self.find_path_matches(prefix)
+            if len(matches) == 1:
+                self.state['text'] = self.state['text'][:start_pos] + matches[0] + self.state['text'][cursor_pos:]
+                self.state['autocomplete_matches'] = []
+            elif len(matches) > 1:
+                if self.state['autocomplete_matches']:
+                    self.state['selected_idx'] = (self.state['selected_idx'] + 1) % len(self.state['autocomplete_matches'])
+                else:
+                    self.state['autocomplete_matches'] = matches
+                    self.state['selected_idx'] = 0
             return False
-        elif ch in ('\x1b[A', '\x10'):  # Up arrow or Ctrl+P
-            selected_idx -= 1
-        elif ch in ('\x1b[B', '\x0e'):  # Down arrow or Ctrl+N
-            selected_idx += 1
-        if selected_idx != self.state['selected_idx']:
-            self.state['selected_idx'] = selected_idx % len(matching_commands)
+        elif ch == '\x1b[Z':  # Shift+Tab
+            if self.state['autocomplete_matches']:
+                self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(self.state['autocomplete_matches'])
+            return False
+
+        # Navigation for commands and autocomplete
+        matching_commands = self.get_matching_commands()
+        items = self.state['autocomplete_matches'] or (list(matching_commands.keys()) if matching_commands and self.state['text'] else [])
+        if items and ch in ('\x1b[A', '\x10', '\x1b[B', '\x0e'):  # Up/Down arrows or Ctrl+P/N
+            if ch in ('\x1b[A', '\x10'):
+                self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(items)
+            else:
+                self.state['selected_idx'] = (self.state['selected_idx'] + 1) % len(items)
             return False
         return True
 
@@ -108,12 +139,21 @@ class PromptTextBox(Box):
             self.state['bash_mode'] = True
         if value != self.state['text']:
             self.state['selected_idx'] = 0
+            self.state['autocomplete_matches'] = []
         self.state['text'] = value
 
     def handle_submit(self, value: str) -> bool:
+        if self.state['autocomplete_matches']:
+            selected_match = self.state['autocomplete_matches'][self.state['selected_idx']]
+            _, start_pos = self.get_current_word_prefix(self.state['text'], len(self.state['text']))
+            self.state['text'] = self.state['text'][:start_pos] + selected_match + self.state['text'][len(self.state['text']):]
+            self.state['autocomplete_matches'] = []
+            return False
+
+        if self.state['text'] and (matching_commands := self.get_matching_commands()):
+            value = list(matching_commands.keys())[self.state['selected_idx']]
         if self.props['handle_submit'](f"{'!' if self.state['bash_mode'] else ''}{value}"):
-            self.state['text'] = ''
-            self.state['bash_mode'] = False
+            self.state.update({'text': '', 'bash_mode': False, 'autocomplete_matches': []})
             return True
         return False
 
@@ -121,6 +161,8 @@ class PromptTextBox(Box):
         border_color = Theme.PINK if self.state['bash_mode'] else Theme.DARK_GRAY
         marker = Colors.hex('!', Theme.PINK) if self.state['bash_mode'] else '>'
         commands = self.get_matching_commands()
+        autocomplete_matches = self.state['autocomplete_matches']
+
         return [
             Box(border_color=Colors.HEX(border_color), border_style=Borders.ROUND, flex=Flex.HORIZONTAL, margin={'top': 1})[
                 Text(marker, margin={'left': 1, 'right': 1}, width=3),
@@ -134,7 +176,9 @@ class PromptTextBox(Box):
                     handle_change=self.handle_change,
                     handle_submit=self.handle_submit)
             ],
-            CommandsList(commands, self.state['selected_idx']) if commands and self.state['text'] else Shortcuts(self.state['bash_mode'])
+            CommandsList({match: '' for match in autocomplete_matches}, self.state['selected_idx']) if autocomplete_matches else
+            CommandsList(commands, self.state['selected_idx']) if commands and self.state['text'] else
+            Shortcuts(self.state['bash_mode'])
         ]
 
 
