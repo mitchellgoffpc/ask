@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import asyncio
 import atexit
@@ -5,18 +7,24 @@ import io
 import os
 import queue
 import signal
-from contextlib import redirect_stdout, redirect_stderr
-from multiprocessing import Event, Queue, Process
-from multiprocessing.synchronize import Event as _Event
-from multiprocessing.queues import Queue as _Queue
+from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from multiprocessing import Queue, Process
 from typing import Any
 
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
+@contextmanager
+def mask_signals():
+    old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
+    try:
+        yield
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, old_mask)
+
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
-def repl_worker(ready: _Event, command_queue: _Queue[list[ast.stmt] | None], result_queue: _Queue[tuple[str, BaseException | None]]) -> None:
+def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None]]) -> None:
     def signal_handler(signum, frame):
         raise KeyboardInterrupt()
 
@@ -24,7 +32,6 @@ def repl_worker(ready: _Event, command_queue: _Queue[list[ast.stmt] | None], res
     globals_dict: dict[str, Any] = {}
     while True:
         try:
-            ready.set()
             if (nodes := command_queue.get()) is None:
                 break
             captured_output = io.StringIO()
@@ -48,10 +55,11 @@ def repl_worker(ready: _Event, command_queue: _Queue[list[ast.stmt] | None], res
                     except BaseException as e:
                         captured_exception = e
                         break
-
-            result_queue.put((captured_output.getvalue(), captured_exception))
+            with mask_signals():
+                result_queue.put((captured_output.getvalue(), captured_exception))
         except BaseException as e:
-            result_queue.put(("", e))
+            with mask_signals():
+                result_queue.put(("", e))
 
 
 class PythonTool(Tool):
@@ -63,17 +71,22 @@ class PythonTool(Tool):
         Parameter("description", "Clear, concise description of what this code does in 5-10 words", ParameterType.String, required=False)]
 
     def __init__(self) -> None:
-        self.ready = Event()
-        self.command_queue: _Queue[list[ast.stmt] | None] = Queue()
-        self.result_queue: _Queue[tuple[str, BaseException | None]] = Queue()
+        self.command_queue: Queue[list[ast.stmt] | None] = Queue()
+        self.result_queue: Queue[tuple[str, BaseException | None]] = Queue()
         self.worker_process: Process | None = None
 
-    def _interrupt_worker(self) -> None:
+    async def _interrupt_worker(self) -> None:
         if self.worker_process and self.worker_process.pid:
             try:
                 os.kill(self.worker_process.pid, signal.SIGINT)
             except ProcessLookupError:
                 pass
+            while True:
+                try:
+                    self.result_queue.get_nowait()
+                    break
+                except queue.Empty:
+                    await asyncio.sleep(0.01)
 
     def _cleanup_worker(self) -> None:
         try:
@@ -112,19 +125,11 @@ class PythonTool(Tool):
 
     async def run(self, nodes: list[ast.stmt], timeout_seconds: float) -> str:
         if not self.worker_process:
-            self.worker_process = Process(target=repl_worker, args=(self.ready, self.command_queue, self.result_queue), daemon=True)
+            self.worker_process = Process(target=repl_worker, args=(self.command_queue, self.result_queue), daemon=True)
             self.worker_process.start()
             atexit.register(self._cleanup_worker)
 
-        while not self.ready.is_set():
-            await asyncio.sleep(0.01)
-        while True:  # Drain the result queue
-            try: self.result_queue.get_nowait()
-            except queue.Empty: break
-
-        self.ready.clear()
         self.command_queue.put(nodes)
-
         start_time = asyncio.get_event_loop().time()
         while True:
             try:
@@ -133,14 +138,13 @@ class PythonTool(Tool):
                     break
                 except queue.Empty:
                     if asyncio.get_event_loop().time() - start_time >= timeout_seconds:
-                        self._interrupt_worker()
+                        await self._interrupt_worker()
                         raise ToolError(f"Code execution timed out after {timeout_seconds} seconds") from None
                 await asyncio.sleep(0.01)
             except asyncio.CancelledError:
-                self._interrupt_worker()
+                await self._interrupt_worker()
                 raise
 
         if exception:
             raise ToolError("Python execution failed") from exception
-
         return output
