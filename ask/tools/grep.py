@@ -1,13 +1,49 @@
-import io
-import re
 import glob
 import mmap
+import re
 from pathlib import Path
 from typing import Any
 
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.styles import Styles
+
+def get_content_matches(file_path: str, content: mmap.mmap, regex: re.Pattern, show_line_nums: bool, before: int, after: int) -> tuple[int, list[str]]:
+    if not regex.search(content):
+        return 0, []
+
+    text = content[:].decode('utf-8')
+    lines = text.splitlines()
+    num_matches = 0
+    match_groups = []
+    for match in regex.finditer(content):
+        num_matches += 1
+        line_num = text[:match.start()].count('\n')
+        start = max(0, line_num - before)
+        end = min(len(lines), line_num + after + 1)
+        match_groups.append((start, end))
+
+    # Merge overlapping ranges and collect lines
+    merged_groups = []
+    current_start, current_end = match_groups[0]
+    for start, end in match_groups[1:]:
+        if start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            merged_groups.append((current_start, current_end))
+            current_start, current_end = start, end
+    merged_groups.append((current_start, current_end))
+
+    # Build result with separators
+    result = []
+    for start, end in merged_groups:
+        for j in range(start, end):
+            result.append(f"{file_path}:{f'{j+1}:' if show_line_nums else ''}{lines[j]}")
+        if before > 0 or after > 0:
+            result.append("--")
+
+    return num_matches, result
+
 
 class GrepTool(Tool):
     name = "Grep"
@@ -68,22 +104,46 @@ class GrepTool(Tool):
             raise ToolError(f"Invalid regular expression pattern: {str(e)}") from e
 
         glob_pattern = args.get("glob", "**/*")
-        return {'path': path, 'glob_pattern': glob_pattern, 'regex': regex}
+        output_mode = args.get("output_mode", "files_with_matches")
+        before = args.get("-B", 0) or args.get("-C", 0)
+        after = args.get("-A", 0) or args.get("-C", 0)
+        return {
+            'path': path, 'glob_pattern': glob_pattern, 'regex': regex, 'output_mode': output_mode,
+            'head_limit': args.get("head_limit"), 'show_line_nums': args.get("-n", False), 'before': before, 'after': after}
 
-    async def run(self, path: Path, glob_pattern: str, regex: re.Pattern) -> str:
+    async def run(self, path: Path, glob_pattern: str, regex: re.Pattern, output_mode: str,
+                        head_limit: int | None, show_line_nums: bool, before: int, after: int) -> str:
         try:
-            matches = []
+            results = []
+            total_matches = 0
             for file_path in glob.glob(str(path / glob_pattern), recursive=True):
                 if Path(file_path).is_file():
                     try:
-                        with io.open(file_path, 'r') as f:
-                            if regex.search(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)):
-                                matches.append(file_path)
-                    except PermissionError:
+                        with open(file_path, 'rb') as f:
+                            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as content:
+                                if output_mode == "content":
+                                    num_matches, lines = get_content_matches(file_path, content, regex, show_line_nums, before, after)
+                                    results.extend(lines)
+                                    total_matches += num_matches
+                                elif output_mode == "count":
+                                    if (num_matches := len(regex.findall(content))) > 0:
+                                        results.append(f"{file_path}:{num_matches}")
+                                        total_matches += 1
+                                else:
+                                    if regex.search(content):
+                                        results.append(file_path)
+                                        total_matches += 1
+                    except (PermissionError, UnicodeDecodeError, OSError):
                         pass
-            matches.sort(key=lambda x: Path(x).stat().st_mtime, reverse=True)
-            if matches:
-                return f"Found {len(matches)} files\n" + '\n'.join(matches)
+
+            if output_mode == "files_with_matches":
+                results.sort(key=lambda x: Path(x).stat().st_mtime, reverse=True)
+            if results and results[-1] == "--":
+                results.pop()
+            if head_limit:
+                results = results[:head_limit]
+            if results:
+                return f"Found {total_matches} {'matches' if output_mode == 'content' else 'files'}\n" + '\n'.join(results)
             else:
                 return "No matches found"
         except PermissionError as e:
