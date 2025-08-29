@@ -253,7 +253,7 @@ class App(Box):
             tool = TOOLS[request.tool]
             args = tool.check(request.arguments)
             self.update_message(request_uuid, replace(request, processed_arguments=args))
-            if tool in (TOOLS['Bash'], TOOLS['Edit'], TOOLS['Python'], TOOLS['Write']):
+            if tool.name in ('Bash', 'Edit', 'MultiEdit', 'Python', 'Write'):
                 future = asyncio.get_running_loop().create_future()
                 self.state['approvals'] = self.state['approvals'] | {request_uuid: future}
                 try:
