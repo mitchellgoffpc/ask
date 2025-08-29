@@ -4,10 +4,7 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Parameter, ParameterType
-from ask.tools.edit import EditTool
-
-def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
-    return '\n'.join(f'{str(i+1).rjust(6)}→{lines[i]}' for i in range(start, end) if 0 <= i < len(lines))
+from ask.tools.edit import EditTool, read_file, replace, get_formatted_lines
 
 
 class MultiEditTool(EditTool):
@@ -27,10 +24,10 @@ class MultiEditTool(EditTool):
         file_path = Path(args["file_path"])
         self.check_absolute_path(file_path, is_file=True)
 
-        content = working_content = self.read_file(file_path)
+        content = working_content = read_file(file_path)
         for i, edit in enumerate(args['edits']):
             replace_all = edit.get("replace_all", False)
-            working_content = self.replace(file_path, working_content, edit['old_string'], edit["new_string"], replace_all, prefix=f"Edit {i+1}: ")
+            working_content = replace(file_path, working_content, edit['old_string'], edit["new_string"], replace_all, prefix=f"Edit {i+1}: ")
 
         old_lines = content.splitlines(keepends=True)
         new_lines = working_content.splitlines(keepends=True)
