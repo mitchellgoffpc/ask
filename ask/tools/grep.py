@@ -77,7 +77,7 @@ class GrepTool(Tool):
         if len(pattern) > 50:
             pattern = pattern[:47] + "..."
         path = get_relative_path(args['path'])
-        return f'pattern: "{pattern}", path: "{path}", output_mode: "{args["output_mode"]}"'
+        return f'pattern: "{pattern}", path: "{path}"'
 
     def render_short_response(self, args: dict[str, Any], response: str) -> str:
         if response.startswith("Found "):
