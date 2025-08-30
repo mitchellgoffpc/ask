@@ -55,14 +55,27 @@ class Tool(metaclass=ABCMeta):
     parameters: list[Parameter]
     run: Callable[..., Any]
 
-    def get_input_schema(self) -> dict[str, Any]:
+    def get_parameter_schema(self, ptype: ParameterType | ParameterType.Enum | ParameterType.Array, description: str) -> dict[str, Any]:
+        description_dict = {"description": description} if description else {}
+        if isinstance(ptype, ParameterType.Enum):
+            return {"type": "string", "enum": ptype.values} | description_dict
+        elif isinstance(ptype, ParameterType.Array):
+            if isinstance(ptype.items, list):
+                items = self.get_parameters_schema(ptype.items)
+            else:
+                items = self.get_parameter_schema(ptype.items, "")
+            return {"type": "array", "minItems": ptype.min_items, "items": items} | description_dict
+        else:
+            return {"type": ptype.value} | description_dict
+
+    def get_parameters_schema(self, parameters: list[Parameter]) -> dict[str, Any]:
         return {
             "type": "object",
-            "properties": {p.name: {"type": p.type.value, "description": p.description} for p in self.parameters},
-            "required": [p.name for p in self.parameters if p.required],
-            "additionalProperties": False,
-            "$schema": "http://json-schema.org/draft-07/schema#",
-        }
+            "properties": {p.name: self.get_parameter_schema(p.type, p.description) for p in parameters},
+            "required": [p.name for p in parameters if p.required]}
+
+    def get_input_schema(self) -> dict[str, Any]:
+        return self.get_parameters_schema(self.parameters)
 
     @abstractmethod
     def render_args(self, args: dict[str, Any]) -> str: ...
