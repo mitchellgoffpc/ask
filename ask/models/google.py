@@ -3,7 +3,7 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups, Usage
 
 class GoogleAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -23,7 +23,7 @@ class GoogleAPI(API):
 
     def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
         role = 'model' if role == 'assistant' else role
-        return {'role': role, 'parts': [x for c in content for x in self.render_content(c, model)]}
+        return {'role': role, 'parts': [x for c in content for x in self.render_content(role, c, model)]}
 
     def url(self, model: Model, stream: bool) -> str:
         return f"{self.base_url}/{model.name}:{'streamGenerateContent?alt=sse' if stream else 'generateContent'}"
@@ -48,18 +48,18 @@ class GoogleAPI(API):
                 result.append(ToolRequest(call_id=str(uuid4()), tool=content['functionCall']['name'], arguments=content['functionCall']['args']))
         return result
 
-    def decode_chunk(self, chunk: str) -> tuple[str, str, str]:
+    def decode_chunk(self, chunk: str) -> tuple[str, str, str, Usage | None]:
         if not chunk.startswith("data: "):
-            return '', '', ''
+            return '', '', '', None
         line = json.loads(chunk[6:])
         assert len(line['candidates']) == 1, "Expected exactly one choice"
         if 'parts' not in line['candidates'][0]['content']:
-            return '', '', ''
+            return '', '', '', None
         parts = line['candidates'][0]['content']['parts']
         assert len(parts) == 1, "Expected exactly one part"
         if 'text' in parts[0]:
-            return '', '', parts[0]['text']
+            return '', '', parts[0]['text'], None
         elif 'functionCall' in parts[0]:
-            return '0', f"{parts[0]['functionCall']['name']}:{uuid4()}", json.dumps(parts[0]['functionCall']['args'])
+            return '0', f"{parts[0]['functionCall']['name']}:{uuid4()}", json.dumps(parts[0]['functionCall']['args']), None
         else:
             raise ValueError(f"Unexpected content part: {parts[0]}")

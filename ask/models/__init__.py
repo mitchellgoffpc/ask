@@ -1,4 +1,4 @@
-from ask.models.base import API, Model, Message, Content, Status, Text, TextPrompt, Reasoning, Image, ToolRequest, ToolResponse, ShellCommand
+from ask.models.base import API, Model, Message, Content, Status, Text, TextPrompt, Reasoning, Image, ToolRequest, ToolResponse, ShellCommand, Pricing
 from ask.models.openai import OpenAIAPI
 from ask.models.anthropic import AnthropicAPI
 from ask.models.google import GoogleAPI
@@ -13,20 +13,21 @@ APIS = {
 
 MODELS = [
     # OpenAI
-    Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o']),
-    Model(name='gpt-4.1', api=APIS['openai'], shortcuts=['gpt41', '41']),
-    Model(name='gpt-5', api=APIS['openai'], shortcuts=['gpt5', '5'], stream=False),
-    Model(name='gpt-5-mini', api=APIS['openai'], shortcuts=['gpt5m', '5m'], stream=False),
-    Model(name='o1', api=APIS['openai'], shortcuts=['o1']),
-    Model(name='o1-pro', api=APIS['openai'], shortcuts=['o1p']),
-    Model(name='o3-mini', api=APIS['openai'], shortcuts=['o3m'], supports_images=False),
-    Model(name='o3', api=APIS['openai'], shortcuts=['o3']),
-    Model(name='o4-mini', api=APIS['openai'], shortcuts=['o4m']),
+    Model(name='gpt-4o', api=APIS['openai'], pricing=Pricing(2.50, 2.50, 1.25, 10.00), shortcuts=['gpt4o', '4o']),
+    Model(name='gpt-4.1', api=APIS['openai'], pricing=Pricing(2.00, 2.00, 0.50, 8.00), shortcuts=['gpt41', '41']),
+    Model(name='gpt-5', api=APIS['openai'], pricing=Pricing(1.25, 1.25, 0.125, 10.00), shortcuts=['gpt5', '5'], stream=False),
+    Model(name='gpt-5-mini', api=APIS['openai'], pricing=Pricing(0.25, 0.25, 0.025, 2.00), shortcuts=['gpt5m', '5m'], stream=False),
+    Model(name='o1', api=APIS['openai'], pricing=Pricing(15.00, 15.00, 7.50, 60.00), shortcuts=['o1']),
+    Model(name='o1-pro', api=APIS['openai'], pricing=Pricing(150.00, 150.00, 150.00, 600.00), shortcuts=['o1p']),
+    Model(name='o3-mini', api=APIS['openai'], pricing=Pricing(0.60, 0.75, 0.06, 3.00), shortcuts=['o3m'], supports_images=False),
+    Model(name='o3', api=APIS['openai'], pricing=Pricing(2.00, 2.00, 0.50, 8.00), shortcuts=['o3']),
+    Model(name='o3-pro', api=APIS['openai'], pricing=Pricing(20.00, 20.00, 20.00, 80.00), shortcuts=['o3']),
+    Model(name='o4-mini', api=APIS['openai'], pricing=Pricing(1.10, 1.10, 0.275, 4.40), shortcuts=['o4m']),
     # Anthropic
-    Model(name='claude-3-5-haiku-latest', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
-    Model(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], shortcuts=['sonnet37', 's37']),
-    Model(name='claude-sonnet-4-20250514', api=APIS['anthropic'], shortcuts=['sonnet', 's', 'claude', 'c']),
-    Model(name='claude-opus-4-1-20250805', api=APIS['anthropic'], shortcuts=['opus', 'o']),
+    Model(name='claude-3-5-haiku-latest',  api=APIS['anthropic'], pricing=Pricing(0.80, 1.00, 0.08, 4.00), shortcuts=['haiku', 'h']),
+    Model(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], pricing=Pricing(3.00, 3.75, 0.30, 15.00), shortcuts=['sonnet37', 's37'],),
+    Model(name='claude-sonnet-4-20250514', api=APIS['anthropic'], pricing=Pricing(3.00, 3.75, 0.30, 15.00), shortcuts=['sonnet', 's', 'claude', 'c']),
+    Model(name='claude-opus-4-1-20250805', api=APIS['anthropic'], pricing=Pricing(15.00, 18.75, 1.50, 75.00), shortcuts=['opus', 'o']),
     # Google
     Model(name='gemini-2.0-flash', api=APIS['google'], shortcuts=['gemini2', 'g2'], stream=False),
     Model(name='gemini-2.5-flash', api=APIS['google'], shortcuts=['gemini25', 'g25', 'gemini', 'g']),

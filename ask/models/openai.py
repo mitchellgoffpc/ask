@@ -2,11 +2,14 @@ import base64
 import json
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class OpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
         return {'type': 'input_text', 'text': text.text}
+
+    def render_response_text(self, text: Text) -> dict[str, Any]:
+        return {'type': 'output_text', 'text': text.text}
 
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'input_image', 'image_url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}
@@ -18,7 +21,7 @@ class OpenAIAPI(API):
         return {'type': 'function_call_output', 'call_id': response.call_id, 'output': response.response}
 
     def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
-        return {'role': role, 'content': [x for c in content for x in self.render_content(c, model)]}
+        return {'role': role, 'content': [x for c in content for x in self.render_content(role, c, model)]}
 
     def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
         tool_request_msgs = [self.render_tool_request(c) for c in content if isinstance(c, ToolRequest)]
@@ -55,17 +58,25 @@ class OpenAIAPI(API):
                         result.append(Text(text=item['text']))
             elif msg['type'] == 'function_call':
                 result.append(ToolRequest(call_id=msg['call_id'], tool=msg['name'], arguments=json.loads(msg['arguments'])))
-        return result
+        return [*result, self.decode_usage(response['usage'])]
 
-    def decode_chunk(self, chunk: str) -> tuple[str, str, str]:
+    def decode_chunk(self, chunk: str) -> tuple[str, str, str, Usage | None]:
         if not chunk.startswith("data: "):
-            return '', '', ''
+            return '', '', '', None
         line = json.loads(chunk[6:])
+        usage = self.decode_usage(line['usage']) if 'usage' in line else None
         if line['type'] == 'response.output_item.added' and line.get('item', {}).get('type') == 'function_call':
-            return str(line['output_index']), f"{line['item']['name']}:{line['item']['call_id']}", line['item']['arguments']
+            return str(line['output_index']), f"{line['item']['name']}:{line['item']['call_id']}", line['item']['arguments'], usage
         elif line['type'] == 'response.function_call_arguments.delta':
-            return str(line['output_index']), '', line['delta']
+            return str(line['output_index']), '', line['delta'], usage
         elif line['type'] == 'response.output_text.delta':
-            return str(line['output_index']), '', line['delta']
+            return str(line['output_index']), '', line['delta'], usage
         else:
-            return '', '', ''
+            return '', '', '', usage
+
+    def decode_usage(self, usage: dict[str, Any]) -> Usage:
+        return Usage(
+            input=usage['input_tokens'],
+            cache_write=0,
+            cache_read=usage['input_tokens_details']['cached_tokens'],
+            output=usage['output_tokens'])

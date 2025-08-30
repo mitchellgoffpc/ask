@@ -3,11 +3,14 @@ import json
 from typing import Any
 
 from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class LegacyOpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
         return {'type': 'text', 'text': text.text}
+
+    def render_reasoning(self, reasoning: Reasoning) -> list[dict[str, Any]]:
+        return[{'type': 'reasoning', 'reasoning': reasoning.text}]
 
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image_url', 'image_url': {'url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}}
@@ -28,7 +31,7 @@ class LegacyOpenAIAPI(API):
 
     def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
         tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
-        rendered_content = [x for c in content for x in self.render_content(c, model)]
+        rendered_content = [x for c in content for x in self.render_content(role, c, model)]
         return {'role': role, 'content': rendered_content} | tool_call_dict
 
     def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
@@ -61,7 +64,8 @@ class LegacyOpenAIAPI(API):
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
         if not model.supports_tools:
             system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
-        system_msgs = self.render_system_prompt(system_prompt, model)
+        system_msgs = self.render_system_prompt('You are a helpful assistant.', model)
+        messages = [Message(role='user', content=Text(system_prompt)), Message(role='assistant', content=Text("Understood.")), *messages]
         chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
         msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": 1.0, 'stream': model.stream}
         tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
@@ -78,15 +82,15 @@ class LegacyOpenAIAPI(API):
                 result.append(ToolRequest(call_id=call['id'], tool=call['function']['name'], arguments=json.loads(call['function']['arguments'])))
         return result
 
-    def decode_chunk(self, chunk: str) -> tuple[str, str, str]:
+    def decode_chunk(self, chunk: str) -> tuple[str, str, str, Usage | None]:
         if not chunk.startswith("data: ") or chunk == 'data: [DONE]':
-            return '', '', ''
+            return '', '', '', None
         line = json.loads(chunk[6:])
         if 'choices' not in line:
-            return '', '', ''
+            return '', '', '', None
         assert len(line['choices']) <= 1, f"Expected exactly one choice, but got {len(line['choices'])}!"
         if not line['choices'] or 'delta' not in line['choices'][0]:
-            return '', '', ''
+            return '', '', '', None
         index = line['choices'][0]['index']
         delta = line['choices'][0]['delta']
         if 'tool_calls' in delta:
@@ -95,14 +99,14 @@ class LegacyOpenAIAPI(API):
         else:
             return self.decode_text_chunk(index, delta)
 
-    def decode_tool_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
+    def decode_tool_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str, Usage | None]:
         tool = delta['tool_calls'][0]['function']
         tool_name = f"{tool['name']}:{delta['tool_calls'][0]['id']}" if 'name' in tool else ''
         subindex = f"{index}.{delta['tool_calls'][0]['index']}"
-        return subindex, tool_name, tool['arguments']
+        return subindex, tool_name, tool['arguments'], None
 
-    def decode_text_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str]:
+    def decode_text_chunk(self, index: int, delta: dict[str, Any]) -> tuple[str, str, str, Usage | None]:
         if delta.get('content'):
-            return str(index), '', delta['content']
+            return str(index), '', delta['content'], None
         else:
-            return '', '', ''
+            return '', '', '', None
