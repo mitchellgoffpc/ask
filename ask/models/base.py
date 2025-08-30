@@ -90,15 +90,15 @@ class Model:
     supports_system_prompt: bool = True
 
 
-@dataclass
 class API(metaclass=ABCMeta):
-    key: str
-    url: str
+    def __init__(self, url: str, key: str):
+        self.key = key
+        self.base_url = url
 
     # Rendering
 
-    def render_text(self, text: Text) -> dict[str, Any]:
-        return {'type': 'text', 'text': text.text}
+    @abstractmethod
+    def render_text(self, text: Text) -> dict[str, Any]: ...
 
     @abstractmethod
     def render_image(self, image: Image) -> dict[str, Any]: ...
@@ -142,11 +142,14 @@ class API(metaclass=ABCMeta):
 
     # Request / Response
 
+    def url(self, model: Model, stream: bool) -> str:
+        return self.base_url
+
     @abstractmethod
     def headers(self, api_key: str) -> dict[str, str]: ...
 
     @abstractmethod
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]: ...
+    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]: ...
 
     @abstractmethod
     def result(self, response: dict[str, Any]) -> list[Content]: ...

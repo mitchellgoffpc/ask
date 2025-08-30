@@ -7,8 +7,10 @@ from ask.tools import Tool
 from ask.models import Model, Message, Content, Text
 from ask.models.tool_helpers import parse_tool_block
 
-async def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> AsyncIterator[tuple[str, Content | None]]:
-    async for chunk, content in _query(model, messages, tools, system_prompt):
+AsyncContentIterator = AsyncIterator[tuple[str, Content | None]]
+
+async def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool = True) -> AsyncContentIterator:
+    async for chunk, content in _query(model, messages, tools, system_prompt, stream):
         if isinstance(content, Text) and not model.supports_tools:
             yield chunk, None
             for item in parse_tool_block(content):
@@ -16,10 +18,12 @@ async def query(model: Model, messages: list[Message], tools: list[Tool], system
         else:
             yield chunk, content
 
-async def _query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str) -> AsyncIterator[tuple[str, Content | None]]:
+async def _query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> AsyncContentIterator:
     api = model.api
     api_key = os.getenv(api.key, '')
-    params = api.params(model, messages, tools, system_prompt)
+    stream = stream and model.stream
+    url = api.url(model, stream)
+    params = api.params(model, messages, tools, system_prompt, stream)
     headers = api.headers(api_key)
     assert api_key, f"{api.key!r} environment variable isn't set!"
 
@@ -28,7 +32,7 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
             json.dump(params, f, indent=2)
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(api.url, headers=headers, json=params) as r:
+        async with session.post(url, headers=headers, json=params) as r:
             if r.status != 200:
                 try:
                     response_json = await r.json()
@@ -38,7 +42,7 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
                     print(response_text)
                 raise RuntimeError("Invalid response from API")
 
-            if model.stream:
+            if stream:
                 async for delta, content in api.decode(line.decode('utf-8') async for line in r.content):
                     yield delta, content
             else:
