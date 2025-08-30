@@ -1,5 +1,6 @@
 import base64
 import json
+import socket
 from typing import Any
 
 from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, Usage, get_message_groups
@@ -45,9 +46,11 @@ class OpenAIAPI(API):
         return {"Authorization": f"Bearer {api_key}"}
 
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
+        cache_key = f'ask-{socket.gethostname()}'
+        tool_defs = [self.render_tool(tool) for tool in tools]
         system_msgs = self.render_system_prompt(system_prompt, model)
         chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
-        return {"model": model.name, "input": system_msgs + chat_msgs, 'stream': stream, 'tools': [self.render_tool(tool) for tool in tools]}
+        return {"model": model.name, "input": system_msgs + chat_msgs, 'stream': stream, 'tools': tool_defs, 'prompt_cache_key': cache_key}
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
