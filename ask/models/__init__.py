@@ -8,7 +8,7 @@ APIS = {
     'openai': OpenAIAPI(url='https://api.openai.com/v1/responses', key='OPENAI_API_KEY'),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='_ANTHROPIC_API_KEY'),
     'google': GoogleAPI(url='https://generativelanguage.googleapis.com/v1beta/models', key='GOOGLE_API_KEY'),
-    'cerebras': LegacyOpenAIAPI(url='https://api.cerebras.ai/v1/chat/completions', key='CEREBRAS_API_KEY'),
+    'openrouter': LegacyOpenAIAPI(url='https://openrouter.ai/api/v1/chat/completions', key='OPENROUTER_API_KEY'),
 }
 
 MODELS = [
@@ -30,8 +30,8 @@ MODELS = [
     # Google
     Model(name='gemini-2.0-flash', api=APIS['google'], shortcuts=['gemini2', 'g2'], stream=False),
     Model(name='gemini-2.5-flash', api=APIS['google'], shortcuts=['gemini25', 'g25', 'gemini', 'g']),
-    # Cerebras
-    Model(name='gpt-oss-120b', api=APIS['cerebras'], shortcuts=['gptoss', 'oss']),
+    # OpenRouter
+    Model(name='gpt-oss-120b', api=APIS['openrouter'], shortcuts=['gptoss', 'oss'], stream=False),
 ]
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}

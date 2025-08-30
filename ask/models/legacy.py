@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, get_message_groups
 
 class LegacyOpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -29,10 +29,6 @@ class LegacyOpenAIAPI(API):
     def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
         tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
         rendered_content = [x for c in content for x in self.render_content(c, model)]
-        # NOTE: This is required by cerebras, but I'm pretty sure this doesn't match the OpenAI schema
-        if role == 'assistant':
-            assert all(c['type'] == 'text' for c in rendered_content), "Assistant messages must only contain text"
-            return {'role': role, 'content': '\n\n'.join(c['text'] for c in rendered_content)} | tool_call_dict
         return {'role': role, 'content': rendered_content} | tool_call_dict
 
     def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
@@ -62,18 +58,20 @@ class LegacyOpenAIAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str = '', temperature: float = 0.7) -> dict[str, Any]:
+    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
         if not model.supports_tools:
             system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
         system_msgs = self.render_system_prompt(system_prompt, model)
         chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
-        msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": temperature, 'stream': model.stream}
+        msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": 1.0, 'stream': model.stream}
         tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
         return msg_dict | tools_dict
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
         for item in response['choices']:
+            if item['message'].get('reasoning'):
+                result.append(Reasoning(text=item['message']['reasoning']))
             if item['message'].get('content'):
                 result.append(Text(text=item['message']['content']))
             for call in item['message'].get('tool_calls') or []:
@@ -84,6 +82,8 @@ class LegacyOpenAIAPI(API):
         if not chunk.startswith("data: ") or chunk == 'data: [DONE]':
             return '', '', ''
         line = json.loads(chunk[6:])
+        if 'choices' not in line:
+            return '', '', ''
         assert len(line['choices']) <= 1, f"Expected exactly one choice, but got {len(line['choices'])}!"
         if not line['choices'] or 'delta' not in line['choices'][0]:
             return '', '', ''
