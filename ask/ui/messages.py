@@ -122,7 +122,7 @@ def ToolCall(request: ToolRequest, response: ToolResponse | None, expanded: bool
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
             get_edit_result(request.processed_arguments or {}, result, status, expanded)
-                if tool in (TOOLS['Edit'], TOOLS['MultiEdit'], TOOLS['Write'])
+                if tool.name in ('Edit', 'MultiEdit', 'Write')
                 else Text(get_tool_result(tool, request.arguments, result, status, expanded))
         ],
     ]

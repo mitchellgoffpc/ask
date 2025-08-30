@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import Model, Message, Content, Text as TextContent, TextPrompt, ToolRequest, ToolResponse, ShellCommand, Status
+from ask.models import Model, Message, Content, Text as TextContent, TextPrompt, Reasoning, ToolRequest, ToolResponse, ShellCommand, Status
 from ask.query import query
 from ask.tools import TOOLS, Tool
 from ask.tools.read import read_text_file
@@ -18,12 +18,14 @@ from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
 from ask.ui.messages import Prompt, TextResponse, ToolCall, ShellCall
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
+from ask.ui.settings import ModelSelector
 from ask.ui.textbox import TextBox
 
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
     "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
 COMMANDS = {
+    '/model': 'Select a model',
     '/clear': 'Clear conversation history and free up context',
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL'}
@@ -186,11 +188,12 @@ class PromptTextBox(Box):
 
 
 class App(Box):
-    initial_state = {'expanded': False, 'elapsed': 0, 'approvals': {}}
+    initial_state = {'expanded': False, 'elapsed': 0, 'approvals': {}, 'show_model_selector': False}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
         self.state['messages'] = messages
+        self.state['model'] = model
         self.config = Config()
         self.tasks: list[asyncio.Task] = []
         self.tool_responses: dict[str, ToolResponse] = {}
@@ -240,6 +243,8 @@ class App(Box):
             if tool_requests:
                 tasks = [asyncio.create_task(self.tool_call(req_uuid, resp_uuid)) for req_uuid, resp_uuid in zip(tool_requests, tool_responses, strict=True)]
                 self.tasks.extend([*tasks, asyncio.create_task(self.send_tool_responses(prompt_uuid, tasks))])
+            elif any(isinstance(c, Reasoning) for c in contents.values()) and not any(isinstance(c, TextContent) for c in contents.values()):
+                await self.query(prompt_uuid)
             else:
                 self.update_message(prompt_uuid, replace(prompt, status=Status.COMPLETED))
         except asyncio.CancelledError:
@@ -296,6 +301,8 @@ class App(Box):
             sys.exit()
         elif value == '/clear':
             self.state['messages'] = {}
+        elif value == '/model':
+            self.state['show_model_selector'] = True
         elif value.startswith('!'):
             value = value.removeprefix('!')
             cmd_uuid, cmd = uuid4(), ShellCommand(command=value, output='', error='', status=Status.PENDING)
@@ -326,6 +333,13 @@ class App(Box):
                 if not task.done():
                     task.cancel()
             self.tasks.clear()
+
+    def handle_model_select(self, model: Model) -> None:
+        self.state['model'] = model
+        self.state['show_model_selector'] = False
+
+    def handle_model_selector_exit(self) -> None:
+        self.state['show_model_selector'] = False
 
     def render_message(self, role: str, content: Content) -> Component | None:
         if role == 'user':
@@ -358,7 +372,11 @@ class App(Box):
                 tool_call=self.state['messages'][approval_uuid].content,
                 future=self.state['approvals'][approval_uuid]
             ) if approval_uuid else
-            PromptTextBox(
+            ModelSelector(
+                active_model=self.state['model'],
+                handle_select=self.handle_model_select,
+                handle_exit=self.handle_model_selector_exit
+            ) if self.state['show_model_selector'] else PromptTextBox(
                 history=self.config['history'],
                 handle_submit=self.handle_submit
             ),
