@@ -1,45 +1,30 @@
 from ask.models.base import API, Model, Message, Content, Status, Text, TextPrompt, Reasoning, Image, ToolRequest, ToolResponse, ShellCommand
-from ask.models.openai import OpenAIAPI, O1API
+from ask.models.openai import OpenAIAPI
 from ask.models.anthropic import AnthropicAPI
-from ask.models.deepseek import DeepseekAPI
+from ask.models.google import GoogleAPI
 
 APIS = {
-    'openai': OpenAIAPI(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
-    'openai-o1': O1API(url='https://api.openai.com/v1/chat/completions', key='OPENAI_API_KEY'),
-    'mistral': OpenAIAPI(url='https://api.mistral.ai/v1/chat/completions', key='MISTRAL_API_KEY'),
-    'groq': OpenAIAPI(url='https://api.groq.com/openai/v1/chat/completions', key='GROQ_API_KEY'),
-    'xai': OpenAIAPI(url='https://api.x.ai/v1/chat/completions', key='XAI_API_KEY'),
-    'deepseek': DeepseekAPI(url='https://api.deepseek.com/chat/completions', key='DEEPSEEK_API_KEY'),
+    'openai': OpenAIAPI(url='https://api.openai.com/v1/responses', key='OPENAI_API_KEY'),
     'anthropic': AnthropicAPI(url='https://api.anthropic.com/v1/messages', key='_ANTHROPIC_API_KEY'),
+    'google': GoogleAPI(url='https://generativelanguage.googleapis.com/v1beta/models', key='GOOGLE_API_KEY'),
 }
 
 MODELS = [
-    Model(name='gpt-3.5-turbo', api=APIS['openai'], shortcuts=['gpt3', '3'], supports_images=False),
-    Model(name='gpt-4', api=APIS['openai'], shortcuts=['gpt4', '4'], supports_images=False),
-    Model(name='gpt-4-turbo', api=APIS['openai'], shortcuts=['gpt4t', '4t', 't']),
-    Model(name='gpt-4o-mini', api=APIS['openai'], shortcuts=['gpt4om', 'gpt4m', '4om', '4m']),
     Model(name='gpt-4o', api=APIS['openai'], shortcuts=['gpt4o', '4o']),
-    Model(name='gpt-4.5-preview', api=APIS['openai'], shortcuts=['gpt45', '45']),
-    Model(name='o1-mini', api=APIS['openai-o1'], shortcuts=['o1m'], supports_images=False, supports_tools=False, supports_system_prompt=False),
-    Model(name='o1-preview', api=APIS['openai-o1'], shortcuts=['o1p'], supports_images=False, supports_tools=False, supports_system_prompt=False),
-    Model(name='o1', api=APIS['openai-o1'], shortcuts=['o1']),
-    Model(name='o3-mini', api=APIS['openai-o1'], shortcuts=['o3m'], supports_images=False),
-    Model(name='mistral-small-latest', api=APIS['mistral'], shortcuts=['mistral-small', 'ms'], supports_images=False),
-    Model(name='mistral-large-latest', api=APIS['mistral'], shortcuts=['mistral-large', 'ml', 'i'], supports_images=False),
-    Model(name='pixtral-12b-2409', api=APIS['mistral'], shortcuts=['pixtral-small', 'ps']),
-    Model(name='pixtral-large-latest', api=APIS['mistral'], shortcuts=['pixtral-large', 'pl', 'p']),
-    Model(name='llama-3.1-8b-instant', api=APIS['groq'], shortcuts=['llama-small', 'llama-8b', 'ls', 'l8'], supports_images=False),
-    Model(name='llama-3.3-70b-versatile', api=APIS['groq'], shortcuts=['llama-med', 'llama-70b', 'lm', 'l70'], supports_images=False),
-    # NOTE: Deepseek V3 should support tools directly, but it seems to get stuck in a loop when using them.
-    Model(name='deepseek-chat', api=APIS['deepseek'], shortcuts=['deepseek', 'ds'], supports_images=False, supports_tools=False),
-    Model(name='deepseek-reasoner', api=APIS['deepseek'], shortcuts=['r1'], supports_images=False, supports_tools=False),
+    Model(name='gpt-4.1', api=APIS['openai'], shortcuts=['gpt41', '41']),
+    Model(name='gpt-5', api=APIS['openai'], shortcuts=['gpt5', '5'], stream=False),
+    Model(name='gpt-5-mini', api=APIS['openai'], shortcuts=['gpt5m', '5m'], stream=False),
+    Model(name='o1', api=APIS['openai'], shortcuts=['o1']),
+    Model(name='o1-pro', api=APIS['openai'], shortcuts=['o1p']),
+    Model(name='o3-mini', api=APIS['openai'], shortcuts=['o3m'], supports_images=False),
+    Model(name='o3', api=APIS['openai'], shortcuts=['o3']),
+    Model(name='o4-mini', api=APIS['openai'], shortcuts=['o4m']),
     Model(name='claude-3-5-haiku-latest', api=APIS['anthropic'], shortcuts=['haiku', 'h']),
-    Model(name='claude-3-5-sonnet-latest', api=APIS['anthropic'], shortcuts=['sonnet35', 's35']),
     Model(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], shortcuts=['sonnet37', 's37']),
     Model(name='claude-sonnet-4-20250514', api=APIS['anthropic'], shortcuts=['sonnet', 's', 'claude', 'c']),
-    Model(name='claude-opus-4-20250514', api=APIS['anthropic'], shortcuts=['opus', 'o']),
-    Model(name='grok-2-1212', api=APIS['xai'], shortcuts=['grok', 'g'], supports_images=False),
-    Model(name='grok-2-vision-1212', api=APIS['xai'], shortcuts=['grok-vision', 'gv']),
+    Model(name='claude-opus-4-1-20250805', api=APIS['anthropic'], shortcuts=['opus', 'o']),
+    Model(name='gemini-2.0-flash', api=APIS['google'], shortcuts=['gemini2', 'g2'], stream=False),
+    Model(name='gemini-2.5-flash', api=APIS['google'], shortcuts=['gemini25', 'g25', 'gemini', 'g']),
 ]
 
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
