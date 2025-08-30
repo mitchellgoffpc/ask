@@ -7,24 +7,16 @@ import io
 import os
 import queue
 import signal
-from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from contextlib import redirect_stdout, redirect_stderr
 from multiprocessing import Queue, Process
 from typing import Any
 
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
-@contextmanager
-def mask_signals():
-    old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
-    try:
-        yield
-    finally:
-        signal.pthread_sigmask(signal.SIG_SETMASK, old_mask)
-
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
-def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None]]) -> None:
+def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None] | None]) -> None:
     def signal_handler(signum, frame):
         raise KeyboardInterrupt()
 
@@ -32,6 +24,7 @@ def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue
     globals_dict: dict[str, Any] = {}
     while True:
         try:
+            result_queue.put(None)
             if (nodes := command_queue.get()) is None:
                 break
             captured_output = io.StringIO()
@@ -55,11 +48,9 @@ def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue
                     except BaseException as e:
                         captured_exception = e
                         break
-            with mask_signals():
-                result_queue.put((captured_output.getvalue(), captured_exception))
+            result_queue.put((captured_output.getvalue(), captured_exception))
         except BaseException as e:
-            with mask_signals():
-                result_queue.put(("", e))
+            result_queue.put(("", e))
 
 
 class PythonTool(Tool):
@@ -72,7 +63,7 @@ class PythonTool(Tool):
 
     def __init__(self) -> None:
         self.command_queue: Queue[list[ast.stmt] | None] = Queue()
-        self.result_queue: Queue[tuple[str, BaseException | None]] = Queue()
+        self.result_queue: Queue[tuple[str, BaseException | None] | None] = Queue()
         self.worker_process: Process | None = None
 
     async def _interrupt_worker(self) -> None:
@@ -81,12 +72,6 @@ class PythonTool(Tool):
                 os.kill(self.worker_process.pid, signal.SIGINT)
             except ProcessLookupError:
                 pass
-            while True:
-                try:
-                    self.result_queue.get_nowait()
-                    break
-                except queue.Empty:
-                    await asyncio.sleep(0.01)
 
     def _cleanup_worker(self) -> None:
         try:
@@ -129,12 +114,21 @@ class PythonTool(Tool):
             self.worker_process.start()
             atexit.register(self._cleanup_worker)
 
+        while True:
+            try:
+                if self.result_queue.get_nowait() is None:
+                    break
+            except queue.Empty:
+                await asyncio.sleep(0.01)
+
         self.command_queue.put(nodes)
         start_time = asyncio.get_event_loop().time()
         while True:
             try:
                 try:
-                    output, exception = self.result_queue.get_nowait()
+                    result = self.result_queue.get_nowait()
+                    assert result is not None
+                    output, exception = result
                     break
                 except queue.Empty:
                     if asyncio.get_event_loop().time() - start_time >= timeout_seconds:
