@@ -7,8 +7,8 @@ from ask.ui.styles import Borders, Colors, Theme
 class ModelSelector(Box):
     initial_state = {'selected_idx': 0}
 
-    def __init__(self, active_model: Model, handle_select: Callable[[Model], None], handle_exit: Callable[[], None]) -> None:
-        super().__init__(active_model=active_model, handle_select=handle_select, handle_exit=handle_exit)
+    def __init__(self, active_model: Model, handle_select: Callable[[Model], None]) -> None:
+        super().__init__(active_model=active_model, handle_select=handle_select)
         self.state['selected_idx'] = next((i for i, m in enumerate(MODELS) if m == self.props['active_model']), 0)
 
     def handle_raw_input(self, ch: str) -> None:
@@ -16,12 +16,10 @@ class ModelSelector(Box):
             self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(MODELS)
         elif ch in ('\x1b[B', '\x0e'):  # Down arrow or Ctrl+N
             self.state['selected_idx'] = (self.state['selected_idx'] + 1) % len(MODELS)
-        elif ch == '\x1b':  # Escape key
-            self.props['handle_exit']()
         elif ch == '\r':  # Enter key
-            idx = self.state['selected_idx']
-            model = MODELS[idx]
-            self.props['handle_select'](model)
+            self.props['handle_select'](MODELS[self.state['selected_idx']])
+        else:
+            self.props['handle_select'](self.props['active_model'])
 
     def contents(self) -> list:
         rows = []

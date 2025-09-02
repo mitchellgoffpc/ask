@@ -1,6 +1,7 @@
 from typing import Any
+from uuid import UUID
 
-from ask.models import Text as TextContent, TextPrompt, ToolRequest, ToolResponse, ShellCommand, Status
+from ask.models import Model, Message, Text as TextContent, TextPrompt, ToolRequest, ToolResponse, ShellCommand, Status, Usage
 from ask.prompts import get_relative_path
 from ask.tools import TOOLS, Tool
 from ask.ui.components import Component, Box, Text
@@ -125,4 +126,30 @@ def ToolCall(request: ToolRequest, response: ToolResponse | None, expanded: bool
                 if tool.name in ('Edit', 'MultiEdit', 'Write')
                 else Text(get_tool_result(tool, request.arguments, result, status, expanded))
         ],
+    ]
+
+
+# Command components
+
+def Cost(messages: dict[UUID, Message], model: Model) -> Component | None:
+    usages = [m.content for m in messages.values() if isinstance(m.content, Usage)]
+    total_in = sum(u.input for u in usages)
+    total_out = sum(u.output for u in usages)
+    total_cache_w = sum(u.cache_write for u in usages)
+    total_cache_r = sum(u.cache_read for u in usages)
+
+    cost = ''
+    if p := model.pricing:
+        cost = f"Cost:  ${(total_in * p.input + total_cache_w * p.cache_write + total_cache_r * p.cache_read + total_out * p.output) / 1_000_000:,.4f}"
+
+    usage = f"Usage: {total_in:,} input, {total_out:,} output, {total_cache_r:,} cache read, {total_cache_w:,} cache write"
+    return Box()[
+        Text(Colors.hex('> /cost', Theme.GRAY)),
+        Box(flex=Flex.HORIZONTAL)[
+            Text(Colors.hex("  ⎿  ", Theme.GRAY)),
+            Box() [
+                Text(Colors.hex(cost, Theme.GRAY)) if cost else None,
+                Text(Colors.hex(usage, Theme.GRAY)),
+            ]
+        ]
     ]

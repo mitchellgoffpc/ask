@@ -16,7 +16,7 @@ from ask.tools.read import read_text_file
 from ask.ui.approvals import Approval
 from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
-from ask.ui.messages import Prompt, TextResponse, ToolCall, ShellCall
+from ask.ui.messages import Prompt, TextResponse, ToolCall, ShellCall, Cost
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.settings import ModelSelector
 from ask.ui.textbox import TextBox
@@ -25,8 +25,9 @@ TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
     "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
 COMMANDS = {
-    '/model': 'Select a model',
     '/clear': 'Clear conversation history and free up context',
+    '/cost': 'Show the total cost and token usage for current session',
+    '/model': 'Select a model',
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL'}
 
@@ -292,6 +293,19 @@ class App(Box):
             if prompt.role == 'user' and isinstance(prompt.content, TextPrompt):
                 self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
 
+    def handle_select_model(self, model: Model) -> None:
+        self.state['model'] = model
+        self.state['show_model_selector'] = False
+
+    def handle_raw_input(self, ch: str) -> None:
+        if ch == '\x12':  # Ctrl+R
+            self.state['expanded'] = not self.state['expanded']
+        elif ch == '\x1b' and not self.state['approvals']:  # Escape key
+            for task in self.tasks:
+                if not task.done():
+                    task.cancel()
+            self.tasks.clear()
+
     def handle_submit(self, value: str) -> bool:
         if any(not task.done() for task in self.tasks):
             return False
@@ -301,6 +315,8 @@ class App(Box):
             sys.exit()
         elif value == '/clear':
             self.state['messages'] = {}
+        elif value == '/cost':
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=TextContent(value))}
         elif value == '/model':
             self.state['show_model_selector'] = True
         elif value.startswith('!'):
@@ -325,26 +341,12 @@ class App(Box):
             self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
         return True
 
-    def handle_raw_input(self, ch: str) -> None:
-        if ch == '\x12':  # Ctrl+R
-            self.state['expanded'] = not self.state['expanded']
-        elif ch == '\x1b' and not self.state['approvals']:  # Escape key
-            for task in self.tasks:
-                if not task.done():
-                    task.cancel()
-            self.tasks.clear()
-
-    def handle_model_select(self, model: Model) -> None:
-        self.state['model'] = model
-        self.state['show_model_selector'] = False
-
-    def handle_model_selector_exit(self) -> None:
-        self.state['show_model_selector'] = False
-
     def render_message(self, role: str, content: Content) -> Component | None:
         if role == 'user':
             if isinstance(content, TextPrompt):
                 return Prompt(text=content)
+            elif isinstance(content, TextContent) and content.text == '/cost':
+                return Cost(messages=self.state['messages'], model=self.state['model'])
             elif isinstance(content, ShellCommand):
                 return ShellCall(command=content, elapsed=self.state['elapsed'], expanded=self.state['expanded'])
         elif role == 'assistant':
@@ -374,9 +376,9 @@ class App(Box):
             ) if approval_uuid else
             ModelSelector(
                 active_model=self.state['model'],
-                handle_select=self.handle_model_select,
-                handle_exit=self.handle_model_selector_exit
-            ) if self.state['show_model_selector'] else PromptTextBox(
+                handle_select=self.handle_select_model
+            ) if self.state['show_model_selector'] else
+            PromptTextBox(
                 history=self.config['history'],
                 handle_submit=self.handle_submit
             ),
