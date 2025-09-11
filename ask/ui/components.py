@@ -1,7 +1,7 @@
 from typing import Any, Literal, Iterable, Optional, Self, Union, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice
+from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
@@ -63,20 +63,6 @@ def apply_boxing(content: str, max_width: int, component: 'Component') -> str:
     content = apply_borders(content, padded_width, component.props.get('border_style'), component.props.get('border_color'))
     content = apply_spacing(content, component.margin)
     return content
-
-def wrap_lines(content: str, max_width: int) -> str:
-    lines = []
-    paragraphs = content.split('\n')
-    for paragraph in paragraphs:
-        if paragraph == '':
-            lines.append('')
-        else:
-            start = 0
-            while start < ansi_len(paragraph):
-                end = min(start + max_width, ansi_len(paragraph))
-                lines.append(ansi_slice(paragraph, start, end))
-                start = end
-    return '\n'.join(lines)
 
 
 class State:

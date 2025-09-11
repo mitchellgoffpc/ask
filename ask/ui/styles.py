@@ -170,11 +170,24 @@ def ansi_slice(string: str, start: int, end: int) -> str:
 
     return ''.join(result) + (Styles.RESET if result and (active_styles or active_color or active_bgcolor) else '')
 
+def wrap_lines(content: str, max_width: int) -> str:
+    lines = []
+    pos = 0
+    while line := ansi_slice(content, pos, pos + max_width):
+        line_len = max_width
+        if (newline_pos := line.find('\n')) >= 0:
+            first_line = line[:newline_pos]
+            first_line_len = ansi_len(first_line)
+            line = ansi_slice(content, pos, pos + first_line_len)
+            line_len = first_line_len + 1
+        lines.append(line)
+        pos += line_len
+    return '\n'.join(lines)
+
 
 class Styles:
     RESET = "\u001B[0m"
     BOLD = "\u001B[1m"
-    DIM = "\u001B[2m"
     ITALIC = "\u001B[3m"
     UNDERLINE = "\u001B[4m"
     OVERLINE = "\u001B[53m"
@@ -183,7 +196,6 @@ class Styles:
     STRIKETHROUGH = "\u001B[9m"
 
     BOLD_END = "\u001B[22m"
-    DIM_END = "\u001B[22m"
     ITALIC_END = "\u001B[23m"
     UNDERLINE_END = "\u001B[24m"
     OVERLINE_END = "\u001B[55m"
@@ -192,7 +204,6 @@ class Styles:
     STRIKETHROUGH_END = "\u001B[29m"
 
     bold = staticmethod(partial(apply_style, start=BOLD, end=BOLD_END))
-    dim = staticmethod(partial(apply_style, start=DIM, end=DIM_END))
     italic = staticmethod(partial(apply_style, start=ITALIC, end=ITALIC_END))
     underline = staticmethod(partial(apply_style, start=UNDERLINE, end=UNDERLINE_END))
     overline = staticmethod(partial(apply_style, start=OVERLINE, end=OVERLINE_END))
