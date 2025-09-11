@@ -47,6 +47,12 @@ class Parameter:
 
 # Tool base class
 
+class ToolCallStatus(Enum):
+    PENDING = 'pending'
+    FAILED = 'failed'
+    CANCELLED = 'cancelled'
+    COMPLETED = 'completed'
+
 class ToolError(Exception): ...
 
 class Tool(metaclass=ABCMeta):

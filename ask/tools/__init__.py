@@ -1,4 +1,4 @@
-from ask.tools.base import Tool, ToolError, Parameter
+from ask.tools.base import Tool, ToolError, ToolCallStatus, Parameter
 from ask.tools.bash import BashTool
 from ask.tools.edit import EditTool
 from ask.tools.glob_ import GlobTool
@@ -12,7 +12,7 @@ from ask.tools.write import WriteTool
 TOOL_LIST = [BashTool(), EditTool(), GlobTool(), GrepTool(), ListTool(), MultiEditTool(), PythonTool(), ReadTool(), WriteTool()]
 TOOLS = {tool.name: tool for tool in TOOL_LIST}
 
-__all__ = ["TOOLS", "Tool", "ToolError", "Parameter"]
+__all__ = ["TOOLS", "Tool", "ToolError", "ToolCallStatus", "Parameter"]
 
 
 if __name__ == "__main__":
