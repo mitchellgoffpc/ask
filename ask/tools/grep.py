@@ -133,7 +133,7 @@ class GrepTool(Tool):
                                     if regex.search(content):
                                         results.append(file_path)
                                         total_matches += 1
-                    except (PermissionError, UnicodeDecodeError, OSError):
+                    except (PermissionError, UnicodeDecodeError, OSError, ValueError):
                         pass
 
             if output_mode == "files_with_matches":
