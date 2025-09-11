@@ -42,6 +42,7 @@ class Text:
 @dataclass
 class Reasoning:
     text: str
+    encrypted: bool = False
 
 @dataclass
 class Image:
@@ -121,11 +122,11 @@ class API(metaclass=ABCMeta):
     def render_response_text(self, text: Text) -> dict[str, Any]:
         return self.render_text(text)
 
-    def render_reasoning(self, reasoning: Reasoning) -> list[dict[str, Any]]:
-        return []  # Don't render reasoning by default
-
     @abstractmethod
     def render_image(self, image: Image) -> dict[str, Any]: ...
+
+    @abstractmethod
+    def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]: ...
 
     @abstractmethod
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]: ...
@@ -167,7 +168,7 @@ class API(metaclass=ABCMeta):
         elif isinstance(content, ShellCommand):
             return self.render_shell_command(content)
         elif isinstance(content, Reasoning):
-            return self.render_reasoning(content)
+            return [self.render_reasoning(content)]
         else:
             raise TypeError(f"Unsupported message content: {type(content)}")
 
@@ -210,7 +211,9 @@ class API(metaclass=ABCMeta):
     def decode_chunk(self, chunk: str) -> tuple[str, str, str, Usage | None]: ...
 
     def flush_content(self, current_idx: str, next_idx: str, tool: str, data: str) -> tuple[str, Content | None]:
-        if tool:
+        if tool == '/reasoning':
+            return '', Reasoning(text=data, encrypted=True)
+        elif tool:
             assert ':' in tool, "Expected tool to be formatted as <name>:<call-id>"
             tool_name, call_id = tool.rsplit(':', 1)
             return '', ToolRequest(call_id=call_id, tool=tool_name, arguments=json.loads(data))

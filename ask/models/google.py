@@ -3,7 +3,7 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, get_message_groups, Usage
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, get_message_groups, Usage
 
 class GoogleAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -11,6 +11,9 @@ class GoogleAPI(API):
 
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'inline_data': {'mime_type': image.mimetype, 'data': base64.b64encode(image.data).decode()}}
+
+    def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
+        raise NotImplementedError("Google API does not support reasoning")
 
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'functionCall': {'name': request.tool, 'args': request.arguments}}

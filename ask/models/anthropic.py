@@ -2,7 +2,7 @@ import base64
 import json
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class AnthropicAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -10,6 +10,9 @@ class AnthropicAPI(API):
 
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image', 'source': {'type': 'base64', 'media_type': image.mimetype, 'data': base64.b64encode(image.data).decode()}}
+
+    def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
+        return {'type': 'reasoning', 'encrypted_content': reasoning.text}
 
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'type': 'tool_use', 'id': request.call_id, 'name': request.tool, 'input': request.arguments}

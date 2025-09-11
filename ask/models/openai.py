@@ -3,7 +3,7 @@ import json
 import socket
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class OpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -15,6 +15,9 @@ class OpenAIAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'input_image', 'image_url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}
 
+    def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
+        return {'type': 'reasoning', 'encrypted_content': reasoning.text, 'summary': []}
+
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'type': 'function_call', 'call_id': request.call_id, 'name': request.tool, 'arguments': json.dumps(request.arguments)}
 
@@ -25,11 +28,12 @@ class OpenAIAPI(API):
         return {'role': role, 'content': [x for c in content for x in self.render_content(role, c, model)]}
 
     def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
+        reasoning_msgs = [self.render_reasoning(c) for c in content if isinstance(c, Reasoning)]
         tool_request_msgs = [self.render_tool_request(c) for c in content if isinstance(c, ToolRequest)]
         tool_response_msgs = [self.render_tool_response(c) for c in content if isinstance(c, ToolResponse)]
-        other_content: list[Content] = [c for c in content if not isinstance(c, (ToolRequest, ToolResponse))]
+        other_content: list[Content] = [c for c in content if not isinstance(c, (Reasoning, ToolRequest, ToolResponse))]
         other_messages = [self.render_message(role, other_content, model)] if other_content else []
-        return tool_request_msgs + tool_response_msgs + other_messages
+        return reasoning_msgs + tool_request_msgs + tool_response_msgs + other_messages
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         return {'type': 'function', 'name': tool.name, 'description': tool.description, 'parameters': tool.get_input_schema()}
@@ -50,7 +54,9 @@ class OpenAIAPI(API):
         tool_defs = [self.render_tool(tool) for tool in tools]
         system_msgs = self.render_system_prompt(system_prompt, model)
         chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
-        return {"model": model.name, "input": system_msgs + chat_msgs, 'stream': stream, 'tools': tool_defs, 'prompt_cache_key': cache_key}
+        return {
+            "model": model.name, "input": system_msgs + chat_msgs, "stream": stream, "tools": tool_defs,
+            "prompt_cache_key": cache_key, "include": ["reasoning.encrypted_content"]}
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
@@ -59,6 +65,8 @@ class OpenAIAPI(API):
                 for item in msg['content']:
                     if item['type'] == 'output_text':
                         result.append(Text(text=item['text']))
+            elif msg['type'] == 'reasoning':
+                result.append(Reasoning(text=msg['encrypted_content'], encrypted=True))
             elif msg['type'] == 'function_call':
                 result.append(ToolRequest(call_id=msg['call_id'], tool=msg['name'], arguments=json.loads(msg['arguments'])))
         return [*result, self.decode_usage(response['usage'])]
@@ -74,6 +82,8 @@ class OpenAIAPI(API):
             return str(line['output_index']), '', line['delta'], usage
         elif line['type'] == 'response.output_text.delta':
             return str(line['output_index']), '', line['delta'], usage
+        elif line['type'] == 'response.output_item.done' and line.get('item', {}).get('type') == 'reasoning':
+            return str(line['output_index']), '/reasoning', line['item']['encrypted_content'], usage
         else:
             return '', '', '', usage
 
