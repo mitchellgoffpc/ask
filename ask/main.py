@@ -6,9 +6,9 @@ from pathlib import Path
 from uuid import uuid4
 
 from ask.files import read_files
-from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, TextPrompt, Image, ToolRequest, ToolResponse, Status
+from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image, ToolRequest, ToolResponse
 from ask.prompts import load_system_prompt
-from ask.tools import TOOLS, Tool
+from ask.tools import TOOLS, Tool, ToolCallStatus
 from ask.ui.app import App
 from ask.ui.render import render_root
 
@@ -48,16 +48,16 @@ def main() -> None:
     messages = {uuid4(): Message(role='user', content=content) for content in image_files.values()}
     if text_files:
         file_list = '\n'.join(f'- {fp}' for fp in text_files)
-        messages[uuid4()] = Message(role='user', content=TextPrompt(f'Take a look at these files:\n{file_list}', status=Status.COMPLETED))
+        messages[uuid4()] = Message(role='user', content=Text(f'Take a look at these files:\n{file_list}'))
 
         for file_path, data in text_files.items():
             call_id = str(uuid4())
             tool_args = {'file_path': str(Path(file_path).absolute().as_posix())}
             messages[uuid4()] = Message(role='assistant', content=ToolRequest(call_id=call_id, tool='Read', arguments=tool_args))
-            messages[uuid4()] = Message(role='user', content=ToolResponse(call_id=call_id, tool='Read', response=data.text, status=Status.COMPLETED))
+            messages[uuid4()] = Message(role='user', content=ToolResponse(call_id=call_id, tool='Read', response=data.text, status=ToolCallStatus.COMPLETED))
 
     if question:
-        messages[uuid4()] = Message(role='user', content=TextPrompt(question))
+        messages[uuid4()] = Message(role='user', content=Text(question))
 
     # Launch the UI
     model = MODEL_SHORTCUTS[args.model]

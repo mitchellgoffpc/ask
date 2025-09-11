@@ -1,9 +1,8 @@
 from typing import Any
-from uuid import UUID
 
-from ask.models import Model, Message, Text as TextContent, TextPrompt, ToolRequest, ToolResponse, ShellCommand, Status, Usage
+from ask.models import Text as TextContent, ToolRequest, ToolResponse, AppCommand, ShellCommand, Error
 from ask.prompts import get_relative_path
-from ask.tools import TOOLS, Tool
+from ask.tools import TOOLS, Tool, ToolCallStatus
 from ask.ui.components import Component, Box, Text
 from ask.ui.diff import Diff
 from ask.ui.markdown_ import render_markdown
@@ -11,37 +10,37 @@ from ask.ui.styles import Flex, Colors, Styles, Theme
 
 NUM_PREVIEW_LINES = 5
 STATUS_COLORS = {
-    Status.PENDING: Theme.GRAY,
-    Status.COMPLETED: Theme.GREEN,
-    Status.CANCELLED: Theme.RED,
-    Status.FAILED: Theme.RED,
-}
+    ToolCallStatus.PENDING: Theme.GRAY,
+    ToolCallStatus.COMPLETED: Theme.GREEN,
+    ToolCallStatus.CANCELLED: Theme.RED,
+    ToolCallStatus.FAILED: Theme.RED}
 
-def get_shell_output(result: str, status: Status, elapsed: float, expanded: bool) -> str:
-    if status is Status.PENDING:
-        return Colors.hex("Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), Theme.GRAY)
-    elif status is Status.CANCELLED:
-        return Colors.hex("Interrupted by user", Theme.RED)
-    elif status is Status.FAILED:
-        return Colors.hex(f"Error: {result}", Theme.RED)
-    elif status is Status.COMPLETED:
+def get_shell_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float, expanded: bool) -> tuple[str, str]:
+    if status is ToolCallStatus.PENDING:
+        return Colors.hex("Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), Theme.GRAY), ''
+    elif status is ToolCallStatus.CANCELLED:
+        return stdout, "Interrupted by user"
+    elif status is ToolCallStatus.FAILED:
+        return stdout, stderr or "Bash exited with non-zero exit code"
+    elif status is ToolCallStatus.COMPLETED:
+        result = stdout + stderr
         if not result:
-            return Colors.hex("(No content)", Theme.GRAY)
+            return Colors.hex("(No content)", Theme.GRAY), ''
         elif expanded:
-            return result
+            return result, ''
         else:
             lines = result.rstrip('\n').split('\n')
             expand_text = Colors.hex(f"… +{len(lines) - NUM_PREVIEW_LINES} lines (ctrl+r to expand)", Theme.GRAY)
-            return '\n'.join(lines[:NUM_PREVIEW_LINES]) + (f'\n{expand_text}' if len(lines) > NUM_PREVIEW_LINES else '')
+            return '\n'.join(lines[:NUM_PREVIEW_LINES]) + (f'\n{expand_text}' if len(lines) > NUM_PREVIEW_LINES else ''), ''
 
-def get_tool_result(tool: Tool, args: dict[str, Any], result: str, status: Status, expanded: bool) -> str:
-    if status is Status.PENDING:
+def get_tool_result(tool: Tool, args: dict[str, Any], result: str, status: ToolCallStatus, expanded: bool) -> str:
+    if status is ToolCallStatus.PENDING:
         return Colors.hex("Running…", Theme.GRAY)
-    elif status is Status.CANCELLED:
+    elif status is ToolCallStatus.CANCELLED:
         return Colors.hex("Tool call cancelled by user", Theme.RED)
-    elif status is Status.FAILED:
+    elif status is ToolCallStatus.FAILED:
         return Colors.hex(tool.render_error(result), Theme.RED)
-    elif status is Status.COMPLETED:
+    elif status is ToolCallStatus.COMPLETED:
         if not result:
             return Colors.hex("(No content)", Theme.GRAY)
         elif expanded:
@@ -49,20 +48,20 @@ def get_tool_result(tool: Tool, args: dict[str, Any], result: str, status: Statu
         else:
             return tool.render_short_response(args, result)
 
-def get_edit_result(args: dict[str, Any], result: str, status: Status, expanded: bool) -> Component:
-    if status is Status.PENDING:
+def get_edit_result(args: dict[str, Any], result: str, status: ToolCallStatus, expanded: bool) -> Component:
+    if status is ToolCallStatus.PENDING:
         return Text(Colors.hex("Waiting…", Theme.GRAY))
-    elif status is Status.FAILED:
+    elif status is ToolCallStatus.FAILED:
         return Text(Colors.hex(result, Theme.RED))
-    elif status is Status.CANCELLED:
+    elif status is ToolCallStatus.CANCELLED:
         operation = 'update' if args['old_content'] else 'write'
         return Box()[
             Text(Colors.hex(f"User rejected {operation} to {Styles.bold(get_relative_path(args['file_path']))}", Theme.RED)),
             Diff(diff=args['diff'], rejected=True)
         ]
-    elif status is Status.COMPLETED and not args['old_content']:
+    elif status is ToolCallStatus.COMPLETED and not args['old_content']:
         return Text(get_tool_result(TOOLS['Write'], args, result, status, expanded))
-    elif status is Status.COMPLETED:
+    elif status is ToolCallStatus.COMPLETED:
         num_additions = sum(1 for line in args['diff'] if line.startswith('+') and not line.startswith('+++'))
         num_deletions = sum(1 for line in args['diff'] if line.startswith('-') and not line.startswith('---'))
         addition_text = f"{Styles.bold(str(num_additions))} addition{'s' if num_additions != 1 else ''}"
@@ -75,43 +74,27 @@ def get_edit_result(args: dict[str, Any], result: str, status: Status, expanded:
 
 # Components
 
-def Prompt(text: TextPrompt) -> Component:
-    return Box(margin={'top': 1})[
-        Box(flex=Flex.HORIZONTAL)[
-            Text(Colors.hex("> ", Theme.GRAY)),
-            Text(Colors.hex(text.text, Theme.GRAY))
-        ],
-        Box(flex=Flex.HORIZONTAL)[
-            Text(Colors.hex("  ⎿  ", Theme.GRAY)),
-            Text(Colors.hex(text.error, Theme.RED))
-        ] if text.error else None,
+def PromptMessage(text: TextContent) -> Component:
+    return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
+        Text(Colors.hex("> ", Theme.GRAY)),
+        Text(Colors.hex(text.text, Theme.GRAY))
     ]
 
-def ShellCall(command: ShellCommand, elapsed: float, expanded: bool = True) -> Component:
-    return Box(margin={'top': 1})[
-        Box(flex=Flex.HORIZONTAL)[
-            Text(Colors.hex("! ", Theme.PINK)),
-            Text(Colors.hex(command.command, Theme.GRAY))
-        ],
-        Box(flex=Flex.HORIZONTAL)[
-            Text("  ⎿  "),
-            Text(get_shell_output(command.output, command.status, elapsed, expanded))
-        ],
-        Box(flex=Flex.HORIZONTAL)[
-            Text("  ⎿  "),
-            Text(Colors.hex(command.error, Theme.RED))
-        ] if command.status is Status.COMPLETED and command.error else None,
-    ]
-
-def TextResponse(text: TextContent) -> Component:
+def ResponseMessage(text: TextContent) -> Component:
     return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
         Text("● "),
         Text(render_markdown(text.text))
     ]
 
-def ToolCall(request: ToolRequest, response: ToolResponse | None, expanded: bool = True) -> Component:
+def ErrorMessage(error: Error) -> Component:
+    return Box(flex=Flex.HORIZONTAL)[
+        Text(Colors.hex("  ⎿  ", Theme.GRAY)),
+        Text(Colors.hex(error.text, Theme.RED))
+    ]
+
+def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expanded: bool = True) -> Component:
     tool = TOOLS[request.tool]
-    status = response.status if response else Status.PENDING
+    status = response.status if response else ToolCallStatus.PENDING
     result = response.response if response else ''
     args_str = tool.render_args(request.arguments)
 
@@ -128,28 +111,28 @@ def ToolCall(request: ToolRequest, response: ToolResponse | None, expanded: bool
         ],
     ]
 
-
-# Command components
-
-def Cost(messages: dict[UUID, Message], model: Model) -> Component | None:
-    usages = [m.content for m in messages.values() if isinstance(m.content, Usage)]
-    total_in = sum(u.input for u in usages)
-    total_out = sum(u.output for u in usages)
-    total_cache_w = sum(u.cache_write for u in usages)
-    total_cache_r = sum(u.cache_read for u in usages)
-
-    cost = ''
-    if p := model.pricing:
-        cost = f"Cost:  ${(total_in * p.input + total_cache_w * p.cache_write + total_cache_r * p.cache_read + total_out * p.output) / 1_000_000:,.4f}"
-
-    usage = f"Usage: {total_in:,} input, {total_out:,} output, {total_cache_r:,} cache read, {total_cache_w:,} cache write"
+def AppCommandMessage(command: AppCommand) -> Component:
     return Box()[
-        Text(Colors.hex('> /cost', Theme.GRAY)),
+        Text(Colors.hex(f'> {command.command}', Theme.GRAY)),
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
-            Box() [
-                Text(Colors.hex(cost, Theme.GRAY)) if cost else None,
-                Text(Colors.hex(usage, Theme.GRAY)),
-            ]
+            Text(Colors.hex(command.output, Theme.GRAY))
         ]
+    ]
+
+def ShellCommandMessage(command: ShellCommand, elapsed: float, expanded: bool = True) -> Component:
+    output, error = get_shell_output(command.stdout, command.stderr, command.status, elapsed, expanded)
+    return Box(margin={'top': 1})[
+        Box(flex=Flex.HORIZONTAL)[
+            Text(Colors.hex("! ", Theme.PINK)),
+            Text(Colors.hex(command.command, Theme.GRAY))
+        ],
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(output)
+        ] if output else None,
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(Colors.hex(error, Theme.RED))
+        ] if error else None,
     ]

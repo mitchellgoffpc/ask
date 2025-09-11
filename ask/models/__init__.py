@@ -1,4 +1,4 @@
-from ask.models.base import API, Model, Message, Content, Status, Text, TextPrompt, Reasoning, Image, ToolRequest, ToolResponse, ShellCommand, Usage, Pricing
+from ask.models.base import API, Model, Message, Content, Text, Reasoning, Image, ToolRequest, ToolResponse, AppCommand, ShellCommand, Usage, Pricing, Error
 from ask.models.openai import OpenAIAPI
 from ask.models.anthropic import AnthropicAPI
 from ask.models.google import GoogleAPI
@@ -35,9 +35,10 @@ MODELS = [
     Model(name='gpt-oss-120b', api=APIS['openrouter'], shortcuts=['gptoss', 'oss'], stream=False),
 ]
 
+MODELS_BY_NAME = {model.name: model for model in MODELS}
 MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.shortcuts]}
 
 __all__ = [
     'MODELS', 'MODEL_SHORTCUTS',
-    'API', 'Model', 'Message', 'Content', 'Status', 'Usage', 'Pricing',
-    'Text', 'TextPrompt', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'ShellCommand']
+    'API', 'Model', 'Message', 'Content', 'Usage', 'Pricing',
+    'Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'AppCommand', 'ShellCommand', 'Error']

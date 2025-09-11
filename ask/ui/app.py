@@ -4,19 +4,21 @@ import os
 import re
 import sys
 import time
+from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import Model, Message, Content, Text as TextContent, TextPrompt, Reasoning, ToolRequest, ToolResponse, ShellCommand, Status
+from ask.models import (
+    MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Error, Reasoning, ToolRequest, ToolResponse, AppCommand, ShellCommand, Usage)
 from ask.query import query
-from ask.tools import TOOLS, Tool
+from ask.tools import TOOLS, Tool, ToolCallStatus
 from ask.tools.read import read_text_file
 from ask.ui.approvals import Approval
 from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
-from ask.ui.messages import Prompt, TextResponse, ToolCall, ShellCall, Cost
+from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, AppCommandMessage, ShellCommandMessage
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.settings import ModelSelector
 from ask.ui.textbox import TextBox
@@ -30,9 +32,6 @@ COMMANDS = {
     '/model': 'Select a model',
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL'}
-
-def is_pending(message: Message) -> bool:
-    return isinstance(message.content, (TextPrompt, ToolResponse)) and message.content.status is Status.PENDING
 
 def Shortcuts(bash_mode: bool) -> Text:
     bash_color = Theme.PINK if bash_mode else Theme.GRAY
@@ -189,7 +188,7 @@ class PromptTextBox(Box):
 
 
 class App(Box):
-    initial_state = {'expanded': False, 'elapsed': 0, 'approvals': {}, 'show_model_selector': False}
+    initial_state = {'expanded': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'show_model_selector': False}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
@@ -197,10 +196,6 @@ class App(Box):
         self.state['model'] = model
         self.config = Config()
         self.tasks: list[asyncio.Task] = []
-        self.tool_responses: dict[str, ToolResponse] = {}
-        for msg in messages.values():
-            if isinstance(msg.content, ToolResponse):
-                self.tool_responses[msg.content.call_id] = msg.content
 
     async def tick(self, interval: float) -> None:
         try:
@@ -211,25 +206,53 @@ class App(Box):
         except asyncio.CancelledError:
             self.state['elapsed'] = 0
 
-    async def shell(self, message_uuid: UUID, command: str) -> None:
+    async def command(self, command: str) -> None:
+        if command == '/cost':
+            usages_by_model = defaultdict(list)
+            for msg in self.state['messages'].values():
+                if isinstance(msg.content, Usage) and msg.content.model:
+                    usages_by_model[msg.content.model.name].append(msg.content)
+
+            cost = 0.
+            rows: list[tuple[str, str]] = []
+            for model_name, usages in usages_by_model.items():
+                if p := MODELS_BY_NAME[model_name].pricing:
+                    total_in = sum(u.input for u in usages)
+                    total_out = sum(u.output for u in usages)
+                    total_cache_w = sum(u.cache_write for u in usages)
+                    total_cache_r = sum(u.cache_read for u in usages)
+                    cost += total_in * p.input + total_cache_w * p.cache_write + total_cache_r * p.cache_read + total_out * p.output
+                    rows.append((f"    {model_name}", f"{total_in:,} input, {total_out:,} output, {total_cache_r:,} cache read, {total_cache_w:,} cache write"))
+                else:
+                    rows.append((f"    {model_name}", "(no pricing)"))
+
+            rows.insert(0, ("Total cost", f"${cost / 1_000_000:,.4f}"))
+            if usages_by_model:
+                rows.insert(1, ("Usage by model", ""))
+            max_title_len = max(len(title) + 1 for title, _ in rows)
+            output = '\n'.join(f"{title + ':':<{max_title_len}}  {value}" for title, value in rows)
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=AppCommand(command=command, output=output))}
+
+    async def shell(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
-        message = self.state['messages'][message_uuid]
+        message_uuid = uuid4()
+        shell_command = ShellCommand(command=command)
+        self.state['messages'] = self.state['messages'] | {message_uuid: Message(role='user', content=shell_command)}
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await process.communicate()
-            shell_command = replace(message.content, output=stdout.decode(), error=stderr.decode(), status=Status.COMPLETED)
+            status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
+            shell_command = replace(shell_command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status)
         except asyncio.CancelledError:
-            shell_command = replace(message.content, status=Status.CANCELLED)
-        finally:
-            ticker.cancel()
+            shell_command = replace(shell_command, status=ToolCallStatus.CANCELLED)
+        ticker.cancel()
         self.update_message(message_uuid, shell_command)
 
-    async def query(self, prompt_uuid: UUID) -> None:
+    async def query(self) -> None:
+        self.state['pending'] += 1
         messages = self.state['messages'].copy()
-        prompt = messages[prompt_uuid].content
+        text, contents = '', {}
         try:
-            text = ''
-            contents = {}
             async for delta, content in query(self.props['model'], list(messages.values()), self.props['tools'], self.props['system_prompt']):
                 text = text + delta
                 if content:
@@ -237,23 +260,25 @@ class App(Box):
                 text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                 if text or contents:
                     self.state['messages'] = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
-
-            tool_requests = {uuid: req for uuid, req in contents.items() if isinstance(req, ToolRequest)}
-            tool_responses = {uuid4(): ToolResponse(call_id=req.call_id, tool=req.tool, response='', status=Status.PENDING) for req in tool_requests.values()}
-            self.state['messages'] = self.state['messages'] | {uuid: Message(role='user', content=resp) for uuid, resp in tool_responses.items()}
-            if tool_requests:
-                tasks = [asyncio.create_task(self.tool_call(req_uuid, resp_uuid)) for req_uuid, resp_uuid in zip(tool_requests, tool_responses, strict=True)]
-                self.tasks.extend([*tasks, asyncio.create_task(self.send_tool_responses(prompt_uuid, tasks))])
-            elif any(isinstance(c, Reasoning) for c in contents.values()) and not any(isinstance(c, TextContent) for c in contents.values()):
-                await self.query(prompt_uuid)
-            else:
-                self.update_message(prompt_uuid, replace(prompt, status=Status.COMPLETED))
         except asyncio.CancelledError:
-            self.update_message(prompt_uuid, replace(prompt, status=Status.CANCELLED, error="Request interrupted by user"))
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=Error("Request interrupted by user"))}
         except Exception as e:
-            self.update_message(prompt_uuid, replace(prompt, status=Status.FAILED, error=str(e)))
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=Error(str(e)))}
 
-    async def tool_call(self, request_uuid: UUID, response_uuid: UUID) -> None:
+        try:
+            tool_requests = {uuid: req for uuid, req in contents.items() if isinstance(req, ToolRequest)}
+            if tool_requests:
+                tasks = [asyncio.create_task(self.tool_call(req_uuid)) for req_uuid in tool_requests.keys()]
+                await asyncio.gather(*tasks)
+                await self.query()
+            elif any(isinstance(c, Reasoning) for c in contents.values()) and not any(isinstance(c, TextContent) for c in contents.values()):
+                await self.query()
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self.state['pending'] -= 1
+
+    async def tool_call(self, request_uuid: UUID) -> None:
         request = self.state['messages'][request_uuid].content
         try:
             tool = TOOLS[request.tool]
@@ -267,31 +292,23 @@ class App(Box):
                 finally:
                     self.state['approvals'] = {k:v for k,v in self.state['approvals'].items() if k != request_uuid}
             output = await tool.run(**args)
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=Status.COMPLETED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=ToolCallStatus.COMPLETED)
         except asyncio.CancelledError:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TOOL_REJECTED_MESSAGE, status=Status.CANCELLED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TOOL_REJECTED_MESSAGE, status=ToolCallStatus.CANCELLED)
             raise
         except Exception as e:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=str(e), status=Status.FAILED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=str(e), status=ToolCallStatus.FAILED)
         finally:
-            self.tool_responses[request.call_id] = response
-            self.update_message(response_uuid, response)
-
-    async def send_tool_responses(self, prompt_uuid: UUID, tool_call_tasks: list[asyncio.Task]) -> None:
-        try:
-            await asyncio.gather(*tool_call_tasks)
-            self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
-        except asyncio.CancelledError:
-            self.update_message(prompt_uuid, replace(self.state['messages'][prompt_uuid].content, status=Status.COMPLETED))
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=response)}
 
     def update_message(self, uuid: UUID, content: Content) -> None:
         self.state['messages'] = self.state['messages'] | {uuid: replace(self.state['messages'][uuid], content=content)}
 
     def handle_mount(self) -> None:
         if self.state['messages']:
-            prompt_uuid, prompt = list(self.state['messages'].items())[-1]
-            if prompt.role == 'user' and isinstance(prompt.content, TextPrompt):
-                self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
+            prompt = list(self.state['messages'].values())[-1]
+            if prompt.role == 'user' and isinstance(prompt.content, TextContent):
+                self.tasks.append(asyncio.create_task(self.query()))
 
     def handle_select_model(self, model: Model) -> None:
         self.state['model'] = model
@@ -315,15 +332,12 @@ class App(Box):
             sys.exit()
         elif value == '/clear':
             self.state['messages'] = {}
-        elif value == '/cost':
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=TextContent(value))}
         elif value == '/model':
             self.state['show_model_selector'] = True
+        elif value == '/cost':
+            self.tasks.append(asyncio.create_task(self.command(value)))
         elif value.startswith('!'):
-            value = value.removeprefix('!')
-            cmd_uuid, cmd = uuid4(), ShellCommand(command=value, output='', error='', status=Status.PENDING)
-            self.state['messages'] = self.state['messages'] | {cmd_uuid: Message(role='user', content=cmd)}
-            self.tasks.append(asyncio.create_task(self.shell(cmd_uuid, value)))
+            self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:
             # Handle file attachments
             file_paths = [m[1:] for m in re.findall(r'@\S+', value)]
@@ -331,40 +345,37 @@ class App(Box):
             for file_path in valid_files:
                 call_id = str(uuid4())
                 request = ToolRequest(call_id=call_id, tool='Read', arguments={'file_path': str(Path(file_path).absolute().as_posix())})
-                response = ToolResponse(call_id=call_id, tool='Read', response=read_text_file(file_path), status=Status.COMPLETED)
+                response = ToolResponse(call_id=call_id, tool='Read', response=read_text_file(file_path), status=ToolCallStatus.COMPLETED)
                 tool_messages = {uuid4(): Message(role='assistant', content=request), uuid4(): Message(role='user', content=response)}
                 self.state['messages'] = self.state['messages'] | tool_messages
-                self.tool_responses[call_id] = response
-
-            prompt_uuid = uuid4()
-            self.state['messages'] = self.state['messages'] | {prompt_uuid: Message(role='user', content=TextPrompt(value))}
-            self.tasks.append(asyncio.create_task(self.query(prompt_uuid)))
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=TextContent(value))}
+            self.tasks.append(asyncio.create_task(self.query()))
         return True
-
-    def render_message(self, role: str, content: Content) -> Component | None:
-        if role == 'user':
-            if isinstance(content, TextPrompt):
-                return Prompt(text=content)
-            elif isinstance(content, TextContent) and content.text == '/cost':
-                return Cost(messages=self.state['messages'], model=self.state['model'])
-            elif isinstance(content, ShellCommand):
-                return ShellCall(command=content, elapsed=self.state['elapsed'], expanded=self.state['expanded'])
-        elif role == 'assistant':
-            if isinstance(content, TextContent):
-                return TextResponse(text=content)
-            elif isinstance(content, ToolRequest):
-                response = self.tool_responses.get(content.call_id)
-                return ToolCall(request=content, response=response, expanded=self.state['expanded'])
-        return None
 
     def contents(self) -> list[Component | None]:
         approval_uuid = next(iter(self.state['approvals'].keys()), None)
-        waiting = any(is_pending(msg) for msg in self.state['messages'].values()) and not self.state['approvals']
-        messages = [self.render_message(msg.role, msg.content) for msg in self.state['messages'].values()]
+        tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
+
+        messages = []
+        for msg in self.state['messages'].values():
+            if msg.role == 'user':
+                if isinstance(msg.content, TextContent):
+                    messages.append(PromptMessage(text=msg.content))
+                elif isinstance(msg.content, Error):
+                    messages.append(ErrorMessage(error=msg.content))
+                if isinstance(msg.content, AppCommand):
+                    messages.append(AppCommandMessage(command=msg.content))
+                elif isinstance(msg.content, ShellCommand):
+                    messages.append(ShellCommandMessage(command=msg.content, elapsed=self.state['elapsed'], expanded=self.state['expanded']))
+            elif msg.role == 'assistant':
+                if isinstance(msg.content, TextContent):
+                    messages.append(ResponseMessage(text=msg.content))
+                elif isinstance(msg.content, ToolRequest):
+                    messages.append(ToolCallMessage(request=msg.content, response=tool_responses.get(msg.content.call_id), expanded=self.state['expanded']))
 
         return [
-            *filter(None, messages),
-            Spinner() if waiting else None,
+            *messages,
+            Spinner() if self.state['pending'] else None,
 
             Box()[
                 Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
