@@ -6,6 +6,7 @@ from ask.ui.components import Component, Box, Text
 from ask.ui.diff import Diff
 from ask.ui.markdown_ import highlight_code
 from ask.ui.styles import Borders, Colors, Styles, Theme
+from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 
 
 def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -> Text:
@@ -18,7 +19,12 @@ def OptionsList(options: dict[str, str | None], selected_idx: int) -> Box:
     return Box()[(Option(option, idx, idx == selected_idx, keybinding) for idx, (option, keybinding) in enumerate(options.items()))]
 
 def Approval(tool_call: ToolRequest, future: asyncio.Future) -> Component:
-    components = {'Bash': BashApproval, 'Edit': EditApproval, 'MultiEdit': EditApproval, 'Python': PythonApproval, 'Write': EditApproval}
+    components = {
+        BashTool.name: BashApproval,
+        EditTool.name: EditApproval,
+        MultiEditTool.name: EditApproval,
+        PythonTool.name: PythonApproval,
+        WriteTool.name: EditApproval}
     return components[tool_call.tool](tool_call, future)
 
 

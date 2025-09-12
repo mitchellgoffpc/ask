@@ -2,7 +2,7 @@ from typing import Any
 
 from ask.models import Text as TextContent, ToolRequest, ToolResponse, AppCommand, ShellCommand, Error
 from ask.prompts import get_relative_path
-from ask.tools import TOOLS, Tool, ToolCallStatus
+from ask.tools import TOOLS, Tool, ToolCallStatus, EditTool, MultiEditTool, WriteTool
 from ask.ui.components import Component, Box, Text
 from ask.ui.diff import Diff
 from ask.ui.markdown_ import render_markdown
@@ -60,7 +60,7 @@ def get_edit_result(args: dict[str, Any], result: str, status: ToolCallStatus, e
             Diff(diff=args['diff'], rejected=True)
         ]
     elif status is ToolCallStatus.COMPLETED and not args['old_content']:
-        return Text(get_tool_result(TOOLS['Write'], args, result, status, expanded))
+        return Text(get_tool_result(TOOLS[WriteTool.name], args, result, status, expanded))
     elif status is ToolCallStatus.COMPLETED:
         num_additions = sum(1 for line in args['diff'] if line.startswith('+') and not line.startswith('+++'))
         num_deletions = sum(1 for line in args['diff'] if line.startswith('-') and not line.startswith('---'))
@@ -106,7 +106,7 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
             get_edit_result(request.processed_arguments or {}, result, status, expanded)
-                if tool.name in ('Edit', 'MultiEdit', 'Write')
+                if tool.name in (EditTool.name, MultiEditTool.name, WriteTool.name)
                 else Text(get_tool_result(tool, request.arguments, result, status, expanded))
         ],
     ]

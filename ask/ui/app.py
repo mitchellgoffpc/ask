@@ -4,18 +4,17 @@ import os
 import re
 import sys
 import time
-from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import (
-    MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Error, Reasoning, ToolRequest, ToolResponse, AppCommand, ShellCommand, Usage)
+from ask.models import Model, Message, Content, Text as TextContent, Error, Reasoning, ToolRequest, ToolResponse, AppCommand, ShellCommand
 from ask.query import query
-from ask.tools import TOOLS, Tool, ToolCallStatus
+from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.tools.read import read_text_file
 from ask.ui.approvals import Approval
+from ask.ui.commands import get_usage_message
 from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, AppCommandMessage, ShellCommandMessage
@@ -69,10 +68,18 @@ class Spinner(Box):
 
 
 class PromptTextBox(Box):
-    initial_state = {'text': '', 'bash_mode': False, 'selected_idx': 0, 'autocomplete_matches': []}
+    initial_state = {'text': '', 'bash_mode': False, 'show_exit_prompt': False, 'selected_idx': 0, 'autocomplete_matches': []}
 
-    def __init__(self, history: list[str], handle_submit: Callable[[str], bool]) -> None:
-        super().__init__(history=history, handle_submit=handle_submit)
+    def __init__(self, history: list[str], handle_submit: Callable[[str], bool], handle_exit: Callable[[], None]) -> None:
+        super().__init__(history=history, handle_submit=handle_submit, handle_exit=handle_exit)
+
+    async def confirm_exit(self) -> None:
+        if self.state['show_exit_prompt']:
+            self.props['handle_exit']()
+        else:
+            self.state['show_exit_prompt'] = True
+            await asyncio.sleep(1)
+            self.state['show_exit_prompt'] = False
 
     def get_matching_commands(self) -> dict[str, str]:
         return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text'])}
@@ -96,6 +103,11 @@ class PromptTextBox(Box):
             return sorted(matches)[:10]
         except Exception:
             return []
+
+    def handle_raw_input(self, ch: str) -> None:
+        if ch == '\x03':  # Ctrl+C
+            self.state['text'] = ''
+            asyncio.create_task(self.confirm_exit())
 
     def handle_input(self, ch: str, cursor_pos: int) -> bool:
         # Bash mode
@@ -181,14 +193,18 @@ class PromptTextBox(Box):
                     handle_change=self.handle_change,
                     handle_submit=self.handle_submit)
             ],
-            CommandsList({match: '' for match in autocomplete_matches}, self.state['selected_idx']) if autocomplete_matches else
-            CommandsList(commands, self.state['selected_idx']) if commands and self.state['text'] else
+            Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
+                if self.state['show_exit_prompt'] else
+            CommandsList({match: '' for match in autocomplete_matches}, self.state['selected_idx'])
+                if autocomplete_matches else
+            CommandsList(commands, self.state['selected_idx'])
+                if commands and self.state['text'] else
             Shortcuts(self.state['bash_mode'])
         ]
 
 
 class App(Box):
-    initial_state = {'expanded': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'show_model_selector': False}
+    initial_state = {'expanded': False, 'exiting': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'show_model_selector': False}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
@@ -196,6 +212,12 @@ class App(Box):
         self.state['model'] = model
         self.config = Config()
         self.tasks: list[asyncio.Task] = []
+        self.start_time = time.monotonic()
+        self.query_time = 0.
+
+    def exit(self) -> None:
+        self.state['exiting'] = True
+        asyncio.get_running_loop().call_later(0.1, sys.exit, 0)
 
     async def tick(self, interval: float) -> None:
         try:
@@ -205,33 +227,6 @@ class App(Box):
                 await asyncio.sleep(interval)
         except asyncio.CancelledError:
             self.state['elapsed'] = 0
-
-    async def command(self, command: str) -> None:
-        if command == '/cost':
-            usages_by_model = defaultdict(list)
-            for msg in self.state['messages'].values():
-                if isinstance(msg.content, Usage) and msg.content.model:
-                    usages_by_model[msg.content.model.name].append(msg.content)
-
-            cost = 0.
-            rows: list[tuple[str, str]] = []
-            for model_name, usages in usages_by_model.items():
-                if p := MODELS_BY_NAME[model_name].pricing:
-                    total_in = sum(u.input for u in usages)
-                    total_out = sum(u.output for u in usages)
-                    total_cache_w = sum(u.cache_write for u in usages)
-                    total_cache_r = sum(u.cache_read for u in usages)
-                    cost += total_in * p.input + total_cache_w * p.cache_write + total_cache_r * p.cache_read + total_out * p.output
-                    rows.append((f"    {model_name}", f"{total_in:,} input, {total_out:,} output, {total_cache_r:,} cache read, {total_cache_w:,} cache write"))
-                else:
-                    rows.append((f"    {model_name}", "(no pricing)"))
-
-            rows.insert(0, ("Total cost", f"${cost / 1_000_000:,.4f}"))
-            if usages_by_model:
-                rows.insert(1, ("Usage by model", ""))
-            max_title_len = max(len(title) + 1 for title, _ in rows)
-            output = '\n'.join(f"{title + ':':<{max_title_len}}  {value}" for title, value in rows)
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=AppCommand(command=command, output=output))}
 
     async def shell(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
@@ -252,8 +247,9 @@ class App(Box):
         self.state['pending'] += 1
         messages = self.state['messages'].copy()
         text, contents = '', {}
+        start_time = time.monotonic()
         try:
-            async for delta, content in query(self.props['model'], list(messages.values()), self.props['tools'], self.props['system_prompt']):
+            async for delta, content in query(self.state['model'], list(messages.values()), self.props['tools'], self.props['system_prompt']):
                 text = text + delta
                 if content:
                     contents[uuid4()] = content
@@ -265,6 +261,7 @@ class App(Box):
         except Exception as e:
             self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=Error(str(e)))}
 
+        self.query_time += time.monotonic() - start_time
         try:
             tool_requests = {uuid: req for uuid, req in contents.items() if isinstance(req, ToolRequest)}
             if tool_requests:
@@ -284,7 +281,7 @@ class App(Box):
             tool = TOOLS[request.tool]
             args = tool.check(request.arguments)
             self.update_message(request_uuid, replace(request, processed_arguments=args))
-            if tool.name in ('Bash', 'Edit', 'MultiEdit', 'Python', 'Write'):
+            if tool.name in (BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name):
                 future = asyncio.get_running_loop().create_future()
                 self.state['approvals'] = self.state['approvals'] | {request_uuid: future}
                 try:
@@ -329,13 +326,14 @@ class App(Box):
 
         self.config['history'] = [*self.config['history'], value]
         if value in ('/exit', '/quit', 'exit', 'quit'):
-            sys.exit()
+            self.exit()
         elif value == '/clear':
             self.state['messages'] = {}
         elif value == '/model':
             self.state['show_model_selector'] = True
         elif value == '/cost':
-            self.tasks.append(asyncio.create_task(self.command(value)))
+            output = get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time)
+            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=AppCommand(command='/cost', output=output))}
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:
@@ -377,6 +375,8 @@ class App(Box):
             *messages,
             Spinner() if self.state['pending'] else None,
 
+            Text(Colors.hex(get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time), Theme.GRAY), margin={'top': 1})
+                if self.state['exiting'] else
             Box()[
                 Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
                 Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
@@ -391,6 +391,7 @@ class App(Box):
             ) if self.state['show_model_selector'] else
             PromptTextBox(
                 history=self.config['history'],
-                handle_submit=self.handle_submit
+                handle_submit=self.handle_submit,
+                handle_exit=self.exit,
             ),
         ]

@@ -165,8 +165,6 @@ async def render_root(root: Component) -> None:
                     sequence = ''
                     while (ch := sys.stdin.read(1)):
                         sequence += ch
-                if sequence == '\x03':  # Ctrl+C
-                    sys.exit()
                 propogate(root, sequence, 'handle_raw_input')
 
             # Check for dirty components
