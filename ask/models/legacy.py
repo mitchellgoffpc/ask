@@ -9,8 +9,8 @@ class LegacyOpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
         return {'type': 'text', 'text': text.text}
 
-    def render_reasoning(self, reasoning: Reasoning) -> list[dict[str, Any]]:
-        return[{'type': 'reasoning', 'reasoning': reasoning.text}]
+    def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
+        return {'type': 'reasoning', 'reasoning': reasoning.data}
 
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image_url', 'image_url': {'url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}}
@@ -75,7 +75,7 @@ class LegacyOpenAIAPI(API):
         result: list[Content] = []
         for item in response['choices']:
             if item['message'].get('reasoning'):
-                result.append(Reasoning(text=item['message']['reasoning']))
+                result.append(Reasoning(data=item['message']['reasoning'], encrypted=False))
             if item['message'].get('content'):
                 result.append(Text(text=item['message']['content']))
             for call in item['message'].get('tool_calls') or []:

@@ -16,7 +16,7 @@ class OpenAIAPI(API):
         return {'type': 'input_image', 'image_url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}
 
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
-        return {'type': 'reasoning', 'encrypted_content': reasoning.text, 'summary': []}
+        return {'type': 'reasoning', 'encrypted_content': reasoning.data, 'summary': []}
 
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'type': 'function_call', 'call_id': request.call_id, 'name': request.tool, 'arguments': json.dumps(request.arguments)}
@@ -54,9 +54,8 @@ class OpenAIAPI(API):
         tool_defs = [self.render_tool(tool) for tool in tools]
         system_msgs = self.render_system_prompt(system_prompt, model)
         chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
-        return {
-            "model": model.name, "input": system_msgs + chat_msgs, "stream": stream, "tools": tool_defs,
-            "prompt_cache_key": cache_key, "include": ["reasoning.encrypted_content"]}
+        metadata = {"prompt_cache_key": cache_key, "store": False} | ({"include": ["reasoning.encrypted_content"]} if model.supports_reasoning else {})
+        return {"model": model.name, "input": system_msgs + chat_msgs, "stream": stream, "tools": tool_defs, **metadata}
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
@@ -66,7 +65,7 @@ class OpenAIAPI(API):
                     if item['type'] == 'output_text':
                         result.append(Text(text=item['text']))
             elif msg['type'] == 'reasoning':
-                result.append(Reasoning(text=msg['encrypted_content'], encrypted=True))
+                result.append(Reasoning(data=msg['encrypted_content'], encrypted=True))
             elif msg['type'] == 'function_call':
                 result.append(ToolRequest(call_id=msg['call_id'], tool=msg['name'], arguments=json.loads(msg['arguments'])))
         return [*result, self.decode_usage(response['usage'])]
@@ -75,7 +74,7 @@ class OpenAIAPI(API):
         if not chunk.startswith("data: "):
             return '', '', '', None
         line = json.loads(chunk[6:])
-        usage = self.decode_usage(line['usage']) if 'usage' in line else None
+        usage = self.decode_usage(line['response']['usage']) if line.get('response', {}).get('usage') else None
         if line['type'] == 'response.output_item.added' and line.get('item', {}).get('type') == 'function_call':
             return str(line['output_index']), f"{line['item']['name']}:{line['item']['call_id']}", line['item']['arguments'], usage
         elif line['type'] == 'response.function_call_arguments.delta':
@@ -83,7 +82,7 @@ class OpenAIAPI(API):
         elif line['type'] == 'response.output_text.delta':
             return str(line['output_index']), '', line['delta'], usage
         elif line['type'] == 'response.output_item.done' and line.get('item', {}).get('type') == 'reasoning':
-            return str(line['output_index']), '/reasoning', line['item']['encrypted_content'], usage
+            return str(line['output_index']), '/reasoning:encrypted', line['item']['encrypted_content'], usage
         else:
             return '', '', '', usage
 

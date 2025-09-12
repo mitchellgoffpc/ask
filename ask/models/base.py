@@ -41,7 +41,8 @@ class Text:
 
 @dataclass
 class Reasoning:
-    text: str
+    data: str
+    summary: str | None = None
     encrypted: bool = False
 
 @dataclass
@@ -107,6 +108,7 @@ class Model:
     supports_tools: bool = True
     supports_images: bool = True
     supports_system_prompt: bool = True
+    supports_reasoning: bool = True
 
 
 class API(metaclass=ABCMeta):
@@ -211,8 +213,12 @@ class API(metaclass=ABCMeta):
     def decode_chunk(self, chunk: str) -> tuple[str, str, str, Usage | None]: ...
 
     def flush_content(self, current_idx: str, next_idx: str, tool: str, data: str) -> tuple[str, Content | None]:
-        if tool == '/reasoning':
-            return '', Reasoning(text=data, encrypted=True)
+        if tool.startswith('/reasoning'):
+            _, *tags = tool.split(':')
+            summary = None
+            if '\x00' in data:
+                summary, data = data.split('\x00', 1)
+            return '', Reasoning(data=data, summary=summary, encrypted='encrypted' in tags)
         elif tool:
             assert ':' in tool, "Expected tool to be formatted as <name>:<call-id>"
             tool_name, call_id = tool.rsplit(':', 1)

@@ -12,7 +12,7 @@ class AnthropicAPI(API):
         return {'type': 'image', 'source': {'type': 'base64', 'media_type': image.mimetype, 'data': base64.b64encode(image.data).decode()}}
 
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
-        return {'type': 'reasoning', 'encrypted_content': reasoning.text}
+        return {'type': 'thinking', 'signature': reasoning.data, 'thinking': reasoning.summary or ''}
 
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'type': 'tool_use', 'id': request.call_id, 'name': request.tool, 'input': request.arguments}
@@ -36,14 +36,17 @@ class AnthropicAPI(API):
             chat_msgs[-1]['content'][-1]['cache_control'] = {'type': 'ephemeral'}
         system_dict = {'system': [{'type': 'text', 'text': system_prompt, 'cache_control': {'type': 'ephemeral'}}]} if system_prompt else {}
         tools_dict = {'tools': [self.render_tool(tool) for tool in tools]} if tools else {}
+        # reasoning_dict = {'thinking': {"type": "enabled", "budget_tokens": 1024}} if model.supports_reasoning else {}
         msg_dict = {"model": model.name, "messages": chat_msgs, "temperature": 1.0, 'max_tokens': 4096, 'stream': stream}
-        return system_dict | tools_dict | msg_dict
+        return system_dict | tools_dict | msg_dict # | reasoning_dict
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
         for content in response['content']:
             if content['type'] == 'text':
                 result.append(Text(text=content['text']))
+            elif content['type'] == 'thinking':
+                result.append(Reasoning(data=content['signature'], summary=content['thinking'], encrypted=True))
             elif content['type'] == 'tool_use':
                 result.append(ToolRequest(call_id=content['id'], tool=content['name'], arguments=content['input']))
         return [*result, self.decode_usage(response['usage'])]
@@ -62,6 +65,10 @@ class AnthropicAPI(API):
                 return str(line['index']), '', line['delta']['partial_json'], usage
             elif line['delta']['type'] == 'text_delta':
                 return str(line['index']), '', line['delta']['text'], usage
+            elif line['delta']['type'] == 'thinking_delta':
+                return str(line['index']), '/reasoning:encrypted', line['delta']['thinking'], usage
+            elif line['delta']['type'] == 'signature_delta':
+                return str(line['index']), '/reasoning:encrypted', '\x00' + line['delta']['signature'], usage
         return '', '', '', usage
 
     def decode_usage(self, usage: dict[str, Any]) -> Usage:
