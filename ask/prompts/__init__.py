@@ -29,10 +29,10 @@ def load_system_prompt() -> str:
         os_version=f"{os.uname().sysname.lower()} {os.uname().release}",
         current_date=date.today().strftime('%Y-%m-%d'))
 
-def load_tool_prompt(tool_name: str) -> str:
+def load_tool_prompt(tool_name: str, key: str = "prompt") -> str:
     prompt_file = Path(__file__).parent / "tools" / f"{tool_name}.toml"
     if not prompt_file.is_file():
         raise FileNotFoundError(f"Tool prompt file for '{tool_name}' not found.")
     with open(prompt_file, "rb") as f:
         data = tomllib.load(f)
-    return cast(str, data['prompt']).strip()
+    return cast(str, data[key]).strip()
