@@ -5,7 +5,7 @@ from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
 
 class BashTool(Tool):
-    name = "Bash"
+    name = "BashShell"
     description = load_tool_prompt('bash')
     parameters = [
         Parameter("command", "The command to execute", ParameterType.String),

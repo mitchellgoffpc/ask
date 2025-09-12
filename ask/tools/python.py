@@ -54,7 +54,7 @@ def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue
 
 
 class PythonTool(Tool):
-    name = "Python"
+    name = "PythonShell"
     description = load_tool_prompt('python')
     parameters = [
         Parameter("code", "The Python code to execute", ParameterType.String),
