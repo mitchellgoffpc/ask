@@ -6,6 +6,10 @@ from ask.ui.styles import Styles, Colors, wrap_lines
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
+def is_stop_char(ch: str) -> bool:
+    return ch in ' \t\n<>@/|&;(){}[]"\'`'
+
+
 class TextBox(Box):
     leaf = True
     initial_state = {'text': '', 'cursor_pos': 0}
@@ -147,9 +151,9 @@ class TextBox(Box):
                 text, cursor_pos, history_idx = self.change_history_idx(1)
         elif ch == '\x7f' and cursor_pos > 0:  # Alt+Backspace, delete word
             pos = cursor_pos - 1
-            while pos >= 0 and text[pos].isspace():
+            while pos >= 0 and is_stop_char(text[pos]):
                 pos -= 1
-            while pos >= 0 and not text[pos].isspace():
+            while pos >= 0 and not is_stop_char(text[pos]):
                 pos -= 1
             text = text[:pos + 1] + text[cursor_pos:]
             cursor_pos = pos + 1
@@ -158,16 +162,16 @@ class TextBox(Box):
             cursor_pos += 1
         elif ch == 'f':  # Alt+F, move forward one word
             pos = cursor_pos
-            while pos < len(text) and not text[pos].isspace():
+            while pos < len(text) and not is_stop_char(text[pos]):
                 pos += 1
-            while pos < len(text) and text[pos].isspace():
+            while pos < len(text) and is_stop_char(text[pos]):
                 pos += 1
             cursor_pos = pos
         elif ch == 'b':  # Alt+B, move backward one word
             pos = cursor_pos - 1
-            while pos >= 0 and text[pos].isspace():
+            while pos >= 0 and is_stop_char(text[pos]):
                 pos -= 1
-            while pos >= 0 and not text[pos].isspace():
+            while pos >= 0 and not is_stop_char(text[pos]):
                 pos -= 1
             cursor_pos = pos + 1
 
