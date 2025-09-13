@@ -1,8 +1,8 @@
 import os
 import tomllib
-from pathlib import Path
-from typing import cast
 from datetime import date
+from functools import cache
+from pathlib import Path
 
 def get_relative_path(path: Path | str) -> str:
     try:
@@ -18,11 +18,16 @@ def is_git_repo() -> bool:
         current = current.parent
     return False
 
+@cache
+def load_prompt_file(prompt_file: str) -> dict[str, str]:
+    prompt_path = Path(__file__).parent / prompt_file
+    if not prompt_path.is_file():
+        raise FileNotFoundError(f"Prompt file '{prompt_path}' not found.")
+    with open(prompt_path, "rb") as f:
+        return tomllib.load(f)
+
 def load_system_prompt() -> str:
-    prompt_file = Path(__file__).parent / "system.toml"
-    with open(prompt_file, "rb") as f:
-        prompt = cast(str, tomllib.load(f)['prompt'])
-    return prompt.format(
+    return load_prompt_file('system.toml')['prompt'].format(
         working_directory=Path.cwd().resolve(),
         is_git_repo="Yes" if is_git_repo() else "No",
         platform=os.uname().sysname,
@@ -30,9 +35,4 @@ def load_system_prompt() -> str:
         current_date=date.today().strftime('%Y-%m-%d'))
 
 def load_tool_prompt(tool_name: str, key: str = "prompt") -> str:
-    prompt_file = Path(__file__).parent / "tools" / f"{tool_name}.toml"
-    if not prompt_file.is_file():
-        raise FileNotFoundError(f"Tool prompt file for '{tool_name}' not found.")
-    with open(prompt_file, "rb") as f:
-        data = tomllib.load(f)
-    return cast(str, data[key]).strip()
+    return load_prompt_file(f'tools/{tool_name}.toml')[key].strip()
