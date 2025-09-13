@@ -304,6 +304,7 @@ class Theme:
     RED = '#FF6B80'
     DARK_RED = '#7A2936'
     FADED_RED = '#69484D'
+    LIGHT_ORANGE = '#EB9F7F'
     ORANGE = '#D77757'
     GREEN = '#4EBA65'
     DARK_GREEN = '#225C2B'
