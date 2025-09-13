@@ -10,6 +10,7 @@ from typing import Callable
 from uuid import UUID, uuid4
 
 from ask.models import Model, Message, Content, Text as TextContent, Error, Reasoning, ToolRequest, ToolResponse, AppCommand, ShellCommand
+from ask.prompts import load_prompt_file
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.tools.read import read_text_file
@@ -28,6 +29,7 @@ TOOL_REJECTED_MESSAGE = (
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
     '/cost': 'Show the total cost and token usage for current session',
+    '/init': 'Generate an AGENTS.md file with codebase documentation',
     '/model': 'Select a model',
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL'}
@@ -82,7 +84,7 @@ class PromptTextBox(Box):
             self.state['show_exit_prompt'] = False
 
     def get_matching_commands(self) -> dict[str, str]:
-        return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text'])}
+        return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text']) or cmd == self.state['text'].rstrip(' ')}
 
     def get_current_word_prefix(self, text: str, cursor_pos: int) -> tuple[str, int]:
         if cursor_pos > len(text):
@@ -117,12 +119,18 @@ class PromptTextBox(Box):
             self.state['bash_mode'] = True
             return False
 
-        # Path autocomplete
+        # Tab completion
+        matching_commands = self.get_matching_commands()
+        items = self.state['autocomplete_matches'] or (list(matching_commands.keys()) if matching_commands and self.state['text'] else [])
         if ch == '\t':
+            if matching_commands and self.state['text']:
+                self.state['text'] = list(matching_commands.keys())[self.state['selected_idx']] + ' '
+                return False
             prefix, start_pos = self.get_current_word_prefix(self.state['text'], cursor_pos)
             matches = self.find_path_matches(prefix)
             if len(matches) == 1:
-                self.state['text'] = self.state['text'][:start_pos] + matches[0] + self.state['text'][cursor_pos:]
+                completion = matches[0] + ('/' if (Path(prefix).parent / matches[0]).is_dir() else '')
+                self.state['text'] = self.state['text'][:start_pos] + completion + self.state['text'][cursor_pos:]
                 self.state['autocomplete_matches'] = []
             elif len(matches) > 1:
                 if self.state['autocomplete_matches']:
@@ -136,9 +144,7 @@ class PromptTextBox(Box):
                 self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(self.state['autocomplete_matches'])
             return False
 
-        # Navigation for commands and autocomplete
-        matching_commands = self.get_matching_commands()
-        items = self.state['autocomplete_matches'] or (list(matching_commands.keys()) if matching_commands and self.state['text'] else [])
+        # Navigation for commands and autocomplete items
         if items and ch in ('\x1b[A', '\x10', '\x1b[B', '\x0e'):  # Up/Down arrows or Ctrl+P/N
             if ch in ('\x1b[A', '\x10'):
                 self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(items)
@@ -219,6 +225,14 @@ class App(Box):
         self.state['exiting'] = True
         asyncio.get_running_loop().call_later(0.1, sys.exit, 0)
 
+    def add_message(self, role: str, content: Content) -> UUID:
+        message_uuid = uuid4()
+        self.state['messages'] = self.state['messages'] | {message_uuid: Message(role=role, content=content)}
+        return message_uuid
+
+    def update_message(self, uuid: UUID, content: Content) -> None:
+        self.state['messages'] = self.state['messages'] | {uuid: replace(self.state['messages'][uuid], content=content)}
+
     async def tick(self, interval: float) -> None:
         try:
             start_time = time.time()
@@ -230,9 +244,8 @@ class App(Box):
 
     async def shell(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
-        message_uuid = uuid4()
         shell_command = ShellCommand(command=command)
-        self.state['messages'] = self.state['messages'] | {message_uuid: Message(role='user', content=shell_command)}
+        message_uuid = self.add_message('user', shell_command)
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await process.communicate()
@@ -257,9 +270,9 @@ class App(Box):
                 if text or contents:
                     self.state['messages'] = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
         except asyncio.CancelledError:
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=Error("Request interrupted by user"))}
+            self.add_message('user', Error("Request interrupted by user"))
         except Exception as e:
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=Error(str(e)))}
+            self.add_message('user', Error(str(e)))
 
         self.query_time += time.monotonic() - start_time
         try:
@@ -296,10 +309,7 @@ class App(Box):
         except Exception as e:
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=str(e), status=ToolCallStatus.FAILED)
         finally:
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=response)}
-
-    def update_message(self, uuid: UUID, content: Content) -> None:
-        self.state['messages'] = self.state['messages'] | {uuid: replace(self.state['messages'][uuid], content=content)}
+            self.add_message('user', response)
 
     def handle_mount(self) -> None:
         if self.state['messages']:
@@ -308,11 +318,16 @@ class App(Box):
                 self.tasks.append(asyncio.create_task(self.query()))
 
     def handle_select_model(self, model: Model) -> None:
+        if model != self.state['model']:
+            # We have to remove all reasoning messages because they generally aren't compatible across models
+            self.state['messages'] = {uuid: msg for uuid, msg in self.state['messages'].items() if not isinstance(msg.content, Reasoning)}
         self.state['model'] = model
         self.state['show_model_selector'] = False
 
     def handle_raw_input(self, ch: str) -> None:
-        if ch == '\x12':  # Ctrl+R
+        if ch == '\x03':  # Ctrl+C
+            self.state.update({'show_model_selector': False, 'expanded': False})
+        elif ch == '\x12':  # Ctrl+R
             self.state['expanded'] = not self.state['expanded']
         elif ch == '\x1b' and not self.state['approvals']:  # Escape key
             for task in self.tasks:
@@ -333,7 +348,11 @@ class App(Box):
             self.state['show_model_selector'] = True
         elif value == '/cost':
             output = get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time)
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=AppCommand(command='/cost', output=output))}
+            self.add_message('user', AppCommand(command='/cost', output=output))
+        elif value == '/init':
+            self.add_message('user', AppCommand(command='/init', output=''))
+            self.add_message('user', TextContent(load_prompt_file('init.toml')['prompt']))
+            self.tasks.append(asyncio.create_task(self.query()))
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:
@@ -342,18 +361,40 @@ class App(Box):
             valid_files = [fp for fp in file_paths if Path(fp).is_file()]
             for file_path in valid_files:
                 call_id = str(uuid4())
-                request = ToolRequest(call_id=call_id, tool='Read', arguments={'file_path': str(Path(file_path).absolute().as_posix())})
-                response = ToolResponse(call_id=call_id, tool='Read', response=read_text_file(file_path), status=ToolCallStatus.COMPLETED)
-                tool_messages = {uuid4(): Message(role='assistant', content=request), uuid4(): Message(role='user', content=response)}
-                self.state['messages'] = self.state['messages'] | tool_messages
-            self.state['messages'] = self.state['messages'] | {uuid4(): Message(role='user', content=TextContent(value))}
+                self.add_message('assistant', ToolRequest(call_id=call_id, tool='Read', arguments={'file_path': str(Path(file_path).absolute().as_posix())}))
+                self.add_message('user', ToolResponse(call_id=call_id, tool='Read', response=read_text_file(file_path), status=ToolCallStatus.COMPLETED))
+            self.add_message('user', TextContent(value))
             self.tasks.append(asyncio.create_task(self.query()))
         return True
 
-    def contents(self) -> list[Component | None]:
-        approval_uuid = next(iter(self.state['approvals'].keys()), None)
-        tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
+    def prompt_contents(self) -> Component:
+        if self.state['exiting']:
+            wall_time = time.monotonic() - self.start_time
+            return Text(Colors.hex(get_usage_message(self.state['messages'], self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+        elif approval_uuid := next(iter(self.state['approvals'].keys()), None):
+            return Approval(
+                tool_call=self.state['messages'][approval_uuid].content,
+                future=self.state['approvals'][approval_uuid]
+            )
+        elif self.state['show_model_selector']:
+            return ModelSelector(
+                active_model=self.state['model'],
+                handle_select=self.handle_select_model
+            )
+        elif self.state['expanded']:
+            return Box()[
+                Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
+                Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
+            ]
+        else:
+            return PromptTextBox(
+                history=self.config['history'],
+                handle_submit=self.handle_submit,
+                handle_exit=self.exit,
+            )
 
+    def contents(self) -> list[Component | None]:
+        tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
         messages = []
         for msg in self.state['messages'].values():
             if msg.role == 'user':
@@ -374,24 +415,5 @@ class App(Box):
         return [
             *messages,
             Spinner() if self.state['pending'] else None,
-
-            Text(Colors.hex(get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time), Theme.GRAY), margin={'top': 1})
-                if self.state['exiting'] else
-            Box()[
-                Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
-                Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
-            ] if self.state['expanded'] else
-            Approval(
-                tool_call=self.state['messages'][approval_uuid].content,
-                future=self.state['approvals'][approval_uuid]
-            ) if approval_uuid else
-            ModelSelector(
-                active_model=self.state['model'],
-                handle_select=self.handle_select_model
-            ) if self.state['show_model_selector'] else
-            PromptTextBox(
-                history=self.config['history'],
-                handle_submit=self.handle_submit,
-                handle_exit=self.exit,
-            ),
+            self.prompt_contents(),
         ]

@@ -37,7 +37,9 @@ class BaseApproval(Box):
 
     def handle_raw_input(self, ch: str) -> None:
         selected_idx = self.state['selected_idx']
-        if ch in ('\x1b[A', '\x10'):  # Up arrow or Ctrl+P
+        if ch == '\x03':  # Ctrl+C
+            self.props['future'].cancel()
+        elif ch in ('\x1b[A', '\x10'):  # Up arrow or Ctrl+P
             self.state['selected_idx'] = max(selected_idx - 1, 0)
         elif ch in ('\x1b[B', '\x0e'):  # Down arrow or Ctrl+N
             self.state['selected_idx'] = min(selected_idx + 1, len(self.options) - 1)

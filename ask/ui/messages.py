@@ -117,7 +117,7 @@ def AppCommandMessage(command: AppCommand) -> Component:
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
             Text(Colors.hex(command.output, Theme.GRAY))
-        ]
+        ] if command.output else None
     ]
 
 def ShellCommandMessage(command: ShellCommand, elapsed: float, expanded: bool = True) -> Component:
