@@ -21,7 +21,7 @@ class WriteTool(Tool):
         return abbreviate(self.render_response(args, response), max_lines=8)
 
     def render_response(self, args: dict[str, Any], response: str) -> str:
-        num_lines = response.count('\n') + 1
+        num_lines = args['new_content'].count('\n') + 1
         status_line = f"Wrote {Styles.bold(str(num_lines))} lines to {Styles.bold(get_relative_path(args['file_path']))}"
         return f"{status_line}\n{highlight_code(response, '')}"
 
