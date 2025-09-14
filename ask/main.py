@@ -5,11 +5,12 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-from ask.files import read_files
-from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image, ToolRequest, ToolResponse
+from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image
 from ask.prompts import load_system_prompt
-from ask.tools import TOOLS, Tool, ToolCallStatus
+from ask.tools import TOOLS, Tool
+from ask.tools.read import read_text_file
 from ask.ui.app import App
+from ask.ui.commands import FilesCommand
 from ask.ui.render import render_root
 
 
@@ -41,21 +42,10 @@ def main() -> None:
     question = question.strip()
 
     # Read any attached files
-    files = asyncio.run(read_files(args.file))
-    text_files = {fn: content for fn, content in files.items() if isinstance(content, Text)}
-    image_files = {fn: content for fn, content in files.items() if isinstance(content, Image)}
-
-    messages = {uuid4(): Message(role='user', content=content) for content in image_files.values()}
-    if text_files:
-        file_list = '\n'.join(f'- {fp}' for fp in text_files)
-        messages[uuid4()] = Message(role='user', content=Text(f'Take a look at these files:\n{file_list}'))
-
-        for file_path, data in text_files.items():
-            call_id = str(uuid4())
-            tool_args = {'file_path': str(Path(file_path).absolute().as_posix())}
-            messages[uuid4()] = Message(role='assistant', content=ToolRequest(call_id=call_id, tool='Read', arguments=tool_args))
-            messages[uuid4()] = Message(role='user', content=ToolResponse(call_id=call_id, tool='Read', response=data.text, status=ToolCallStatus.COMPLETED))
-
+    messages = {}
+    if args.file:
+        file_contents: dict[Path, Text | Image] = {Path(fn): Text(read_text_file(fn)) for fn in args.file}
+        messages[uuid4()] = Message(role='user', content=FilesCommand(command=f'Read {len(args.file)} files', file_contents=file_contents))
     if question:
         messages[uuid4()] = Message(role='user', content=Text(question))
 

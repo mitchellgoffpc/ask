@@ -19,7 +19,8 @@ class GoogleAPI(API):
         return {'functionCall': {'name': request.tool, 'args': request.arguments}}
 
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        return {'functionResponse': {'name': response.tool, 'response': {'result': response.response}}}
+        assert isinstance(response.response, Text)
+        return {'functionResponse': {'name': response.tool, 'response': {'result': response.response.text}}}
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         return {"name": tool.name, "description": tool.description, "parameters": tool.get_input_schema()}

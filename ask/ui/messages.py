@@ -1,8 +1,9 @@
 from typing import Any
 
-from ask.models import Text as TextContent, ToolRequest, ToolResponse, AppCommand, ShellCommand, Error
+from ask.models import Text as TextContent, ToolRequest, ToolResponse, Error
 from ask.prompts import get_relative_path
 from ask.tools import TOOLS, Tool, ToolCallStatus, EditTool, MultiEditTool, WriteTool
+from ask.ui.commands import ShellCommand, SlashCommand
 from ask.ui.components import Component, Box, Text
 from ask.ui.diff import Diff
 from ask.ui.markdown_ import render_markdown
@@ -95,7 +96,10 @@ def ErrorMessage(error: Error) -> Component:
 def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expanded: bool = True) -> Component:
     tool = TOOLS[request.tool]
     status = response.status if response else ToolCallStatus.PENDING
-    result = response.response if response else ''
+    result = ''
+    if response:
+        assert isinstance(response.response, TextContent)
+        result = response.response.text
     args_str = tool.render_args(request.arguments)
 
     return Box(margin={'top': 1})[
@@ -111,7 +115,7 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
         ],
     ]
 
-def AppCommandMessage(command: AppCommand) -> Component:
+def SlashCommandMessage(command: SlashCommand) -> Component:
     return Box()[
         Text(Colors.hex(f'> {command.command}', Theme.GRAY)),
         Box(flex=Flex.HORIZONTAL)[

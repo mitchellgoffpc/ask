@@ -9,16 +9,15 @@ from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import Model, Message, Content, Text as TextContent, Error, Reasoning, ToolRequest, ToolResponse, AppCommand, ShellCommand
-from ask.prompts import load_prompt_file
+from ask.models import Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.tools.read import read_text_file
 from ask.ui.approvals import Approval
-from ask.ui.commands import get_usage_message
+from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
-from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, AppCommandMessage, ShellCommandMessage
+from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.settings import ModelSelector
 from ask.ui.textbox import TextBox
@@ -26,6 +25,7 @@ from ask.ui.textbox import TextBox
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
     "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
+
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
     '/cost': 'Show the total cost and token usage for current session',
@@ -302,12 +302,12 @@ class App(Box):
                 finally:
                     self.state['approvals'] = {k:v for k,v in self.state['approvals'].items() if k != request_uuid}
             output = await tool.run(**args)
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=ToolCallStatus.COMPLETED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(output), status=ToolCallStatus.COMPLETED)
         except asyncio.CancelledError:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TOOL_REJECTED_MESSAGE, status=ToolCallStatus.CANCELLED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(TOOL_REJECTED_MESSAGE), status=ToolCallStatus.CANCELLED)
             raise
         except Exception as e:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=str(e), status=ToolCallStatus.FAILED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(str(e)), status=ToolCallStatus.FAILED)
         finally:
             self.add_message('user', response)
 
@@ -348,22 +348,19 @@ class App(Box):
             self.state['show_model_selector'] = True
         elif value == '/cost':
             output = get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time)
-            self.add_message('user', AppCommand(command='/cost', output=output))
+            self.add_message('user', SlashCommand(command='/cost', output=output))
         elif value == '/init':
-            self.add_message('user', AppCommand(command='/init', output=''))
-            self.add_message('user', TextContent(load_prompt_file('init.toml')['prompt']))
+            self.add_message('user', InitCommand(command='/init'))
             self.tasks.append(asyncio.create_task(self.query()))
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:
-            # Handle file attachments
-            file_paths = [m[1:] for m in re.findall(r'@\S+', value)]
-            valid_files = [fp for fp in file_paths if Path(fp).is_file()]
-            for file_path in valid_files:
-                call_id = str(uuid4())
-                self.add_message('assistant', ToolRequest(call_id=call_id, tool='Read', arguments={'file_path': str(Path(file_path).absolute().as_posix())}))
-                self.add_message('user', ToolResponse(call_id=call_id, tool='Read', response=read_text_file(file_path), status=ToolCallStatus.COMPLETED))
-            self.add_message('user', TextContent(value))
+            file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', value) if Path(m[1:]).is_file()]  # get file attachments
+            if file_paths:
+                file_contents: dict[Path, TextContent | Image] = {fp: TextContent(read_text_file(fp)) for fp in file_paths}
+                self.add_message('user', FilesCommand(command=value, file_contents=file_contents))
+            else:
+                self.add_message('user', TextContent(value))
             self.tasks.append(asyncio.create_task(self.query()))
         return True
 
@@ -397,20 +394,21 @@ class App(Box):
         tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
         messages = []
         for msg in self.state['messages'].values():
-            if msg.role == 'user':
-                if isinstance(msg.content, TextContent):
+            match (msg.role, msg.content):
+                case ('user', TextContent()):
                     messages.append(PromptMessage(text=msg.content))
-                elif isinstance(msg.content, Error):
+                case ('user', Error()):
                     messages.append(ErrorMessage(error=msg.content))
-                if isinstance(msg.content, AppCommand):
-                    messages.append(AppCommandMessage(command=msg.content))
-                elif isinstance(msg.content, ShellCommand):
+                case ('user', ShellCommand()):
                     messages.append(ShellCommandMessage(command=msg.content, elapsed=self.state['elapsed'], expanded=self.state['expanded']))
-            elif msg.role == 'assistant':
-                if isinstance(msg.content, TextContent):
+                case ('user', SlashCommand()):
+                    messages.append(SlashCommandMessage(command=msg.content))
+                case ('assistant', TextContent()):
                     messages.append(ResponseMessage(text=msg.content))
-                elif isinstance(msg.content, ToolRequest):
+                case ('assistant', ToolRequest()):
                     messages.append(ToolCallMessage(request=msg.content, response=tool_responses.get(msg.content.call_id), expanded=self.state['expanded']))
+                case _:
+                    pass
 
         return [
             *messages,

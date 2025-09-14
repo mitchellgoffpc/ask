@@ -22,7 +22,8 @@ class OpenAIAPI(API):
         return {'type': 'function_call', 'call_id': request.call_id, 'name': request.tool, 'arguments': json.dumps(request.arguments)}
 
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        return {'type': 'function_call_output', 'call_id': response.call_id, 'output': response.response}
+        assert isinstance(response.response, Text)
+        return {'type': 'function_call_output', 'call_id': response.call_id, 'output': response.response.text}
 
     def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
         return {'role': role, 'content': [x for c in content for x in self.render_content(role, c, model)]}

@@ -27,7 +27,8 @@ class LegacyOpenAIAPI(API):
         return {'id': request.call_id, 'type': 'function', 'function': {'name': request.tool, 'arguments': json.dumps(request.arguments)}}
 
     def render_tool_message(self, response: ToolResponse) -> dict[str, Any]:
-        return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response}
+        assert isinstance(response.response, Text)
+        return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response.text}
 
     def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
         tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
