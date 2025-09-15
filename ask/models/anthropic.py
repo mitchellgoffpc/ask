@@ -20,8 +20,8 @@ class AnthropicAPI(API):
         return {'type': 'tool_use', 'id': request.call_id, 'name': request.tool, 'input': request.arguments}
 
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        content = response.response.text if isinstance(response.response, Text) else self.render_image(response.response)
-        return {'type': 'tool_result', 'tool_use_id': response.call_id, 'content': content}
+        content = self.render_text(response.response) if isinstance(response.response, Text) else self.render_image(response.response)
+        return {'type': 'tool_result', 'tool_use_id': response.call_id, 'content': [content]}
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:
         return {"name": tool.name, "description": tool.description, "input_schema": tool.get_input_schema()}

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ask.tools.base import Tool, ToolError, ToolCallStatus, Parameter
 from ask.tools.bash import BashTool
 from ask.tools.edit import EditTool
@@ -10,7 +12,7 @@ from ask.tools.read import ReadTool
 from ask.tools.todo import ToDoTool
 from ask.tools.write import WriteTool
 
-TOOL_LIST = [BashTool(), EditTool(), GlobTool(), GrepTool(), ListTool(), MultiEditTool(), PythonTool(), ReadTool(), ToDoTool(), WriteTool()]
+TOOL_LIST: list[Tool] = [BashTool(), EditTool(), GlobTool(), GrepTool(), ListTool(), MultiEditTool(), PythonTool(), ReadTool(), ToDoTool(), WriteTool()]
 TOOLS = {tool.name: tool for tool in TOOL_LIST}
 
 __all__ = [

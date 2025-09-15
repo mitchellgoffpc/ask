@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, member, nonmember
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Union
+from typing import Any, Callable, ClassVar, Coroutine, Union
 
 from ask.ui.styles import Colors, Theme
 
@@ -59,7 +59,7 @@ class Tool(metaclass=ABCMeta):
     name: str
     description: str
     parameters: list[Parameter]
-    run: Callable[..., Any]
+    run: Callable[..., Coroutine[Any, Any, str]]
 
     def get_parameter_schema(self, ptype: ParameterType | ParameterType.Enum | ParameterType.Array, description: str) -> dict[str, Any]:
         description_dict = {"description": description} if description else {}
@@ -91,6 +91,9 @@ class Tool(metaclass=ABCMeta):
 
     def render_response(self, args: dict[str, Any], response: str) -> str:
         return response
+
+    def render_image_response(self, args: dict[str, Any], response: bytes) -> str:
+        raise NotImplementedError("Image response not implemented")
 
     def render_error(self, error: str) -> str:
         return f"Error: {error}"

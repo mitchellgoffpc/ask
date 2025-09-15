@@ -10,7 +10,7 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
 
     async def run_tool(self, code, timeout_seconds = 10):
         args = self.tool.check({"code": code})
-        return await self.tool.run(nodes=args['nodes'], timeout_seconds=timeout_seconds)
+        return await self.tool.run(code=code, nodes=args['nodes'], timeout_seconds=timeout_seconds, description='')
 
     async def test_basic_execution(self):
         result = await self.run_tool("print('hello world')")

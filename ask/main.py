@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text, Image
+from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text
 from ask.prompts import load_system_prompt
 from ask.tools import TOOLS, Tool
-from ask.tools.read import read_text_file
+from ask.tools.read import read_file
 from ask.ui.app import App
 from ask.ui.commands import FilesCommand
 from ask.ui.render import render_root
@@ -44,9 +44,10 @@ def main() -> None:
     # Read any attached files
     messages = {}
     if args.file:
-        file_contents: dict[Path, Text | Image] = {Path(fn): Text(read_text_file(fn)) for fn in args.file}
-        messages[uuid4()] = Message(role='user', content=FilesCommand(command=f'Read {len(args.file)} files', file_contents=file_contents))
-    if question:
+        prompt = question or f'Read {len(args.file)} files'
+        file_contents = {Path(fn): read_file(Path(fn)) for fn in args.file}
+        messages[uuid4()] = Message(role='user', content=FilesCommand(command=prompt, file_contents=file_contents))
+    elif question:
         messages[uuid4()] = Message(role='user', content=Text(question))
 
     # Launch the UI

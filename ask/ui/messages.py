@@ -1,6 +1,6 @@
 from typing import Any
 
-from ask.models import Text as TextContent, ToolRequest, ToolResponse, Error
+from ask.models import Text as TextContent, Image, ToolRequest, ToolResponse, Error
 from ask.prompts import get_relative_path
 from ask.tools import TOOLS, Tool, ToolCallStatus, EditTool, MultiEditTool, WriteTool
 from ask.ui.commands import ShellCommand, SlashCommand
@@ -34,26 +34,30 @@ def get_shell_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: 
             expand_text = Colors.hex(f"… +{len(lines) - NUM_PREVIEW_LINES} lines (ctrl+r to expand)", Theme.GRAY)
             return '\n'.join(lines[:NUM_PREVIEW_LINES]) + (f'\n{expand_text}' if len(lines) > NUM_PREVIEW_LINES else ''), ''
 
-def get_tool_result(tool: Tool, args: dict[str, Any], result: str, status: ToolCallStatus, expanded: bool) -> str:
+def get_tool_result(tool: Tool, args: dict[str, Any], result: TextContent | Image | None, status: ToolCallStatus, expanded: bool) -> str:
     if status is ToolCallStatus.PENDING:
         return Colors.hex("Running…", Theme.GRAY)
     elif status is ToolCallStatus.CANCELLED:
         return Colors.hex("Tool call cancelled by user", Theme.RED)
     elif status is ToolCallStatus.FAILED:
-        return Colors.hex(tool.render_error(result), Theme.RED)
+        assert isinstance(result, TextContent)
+        return Colors.hex(tool.render_error(result.text), Theme.RED)
     elif status is ToolCallStatus.COMPLETED:
         if not result:
             return Colors.hex("(No content)", Theme.GRAY)
+        elif isinstance(result, Image):
+            return tool.render_image_response(args, result.data)
         elif expanded:
-            return tool.render_response(args, result)
+            return tool.render_response(args, result.text)
         else:
-            return tool.render_short_response(args, result)
+            return tool.render_short_response(args, result.text)
 
-def get_edit_result(args: dict[str, Any], result: str, status: ToolCallStatus, expanded: bool) -> Component:
+def get_edit_result(args: dict[str, Any], result: TextContent | Image | None, status: ToolCallStatus, expanded: bool) -> Component:
+    assert isinstance(result, TextContent)
     if status is ToolCallStatus.PENDING:
         return Text(Colors.hex("Waiting…", Theme.GRAY))
     elif status is ToolCallStatus.FAILED:
-        return Text(Colors.hex(result, Theme.RED))
+        return Text(Colors.hex(result.text, Theme.RED))
     elif status is ToolCallStatus.CANCELLED:
         operation = 'update' if args['old_content'] else 'write'
         return Box()[
@@ -96,11 +100,8 @@ def ErrorMessage(error: Error) -> Component:
 def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expanded: bool = True) -> Component:
     tool = TOOLS[request.tool]
     status = response.status if response else ToolCallStatus.PENDING
-    result = ''
-    if response:
-        assert isinstance(response.response, TextContent)
-        result = response.response.text
     args_str = tool.render_args(request.arguments)
+    response_content = response.response if response else None
 
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
@@ -109,9 +110,9 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
         ],
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
-            get_edit_result(request.processed_arguments or {}, result, status, expanded)
+            get_edit_result(request.processed_arguments or {}, response_content, status, expanded)
                 if tool.name in (EditTool.name, MultiEditTool.name, WriteTool.name)
-                else Text(get_tool_result(tool, request.arguments, result, status, expanded))
+                else Text(get_tool_result(tool, request.processed_arguments or {}, response_content, status, expanded))
         ],
     ]
 

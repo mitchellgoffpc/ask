@@ -4,15 +4,16 @@ import os
 import re
 import sys
 import time
+from base64 import b64decode
 from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
+from ask.models import Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Command, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
-from ask.tools.read import read_text_file
+from ask.tools.read import read_file
 from ask.ui.approvals import Approval
 from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.components import Component, Box, Text, Line
@@ -302,7 +303,12 @@ class App(Box):
                 finally:
                     self.state['approvals'] = {k:v for k,v in self.state['approvals'].items() if k != request_uuid}
             output = await tool.run(**args)
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(output), status=ToolCallStatus.COMPLETED)
+            output_content: TextContent | Image
+            if args.get('file_type') == 'image':
+                output_content = Image(data=b64decode(output), mimetype='image/jpeg')
+            else:
+                output_content = TextContent(output)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output_content, status=ToolCallStatus.COMPLETED)
         except asyncio.CancelledError:
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(TOOL_REJECTED_MESSAGE), status=ToolCallStatus.CANCELLED)
             raise
@@ -314,7 +320,7 @@ class App(Box):
     def handle_mount(self) -> None:
         if self.state['messages']:
             prompt = list(self.state['messages'].values())[-1]
-            if prompt.role == 'user' and isinstance(prompt.content, TextContent):
+            if prompt.role == 'user' and isinstance(prompt.content, (TextContent, Command)):
                 self.tasks.append(asyncio.create_task(self.query()))
 
     def handle_select_model(self, model: Model) -> None:
@@ -357,8 +363,7 @@ class App(Box):
         else:
             file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', value) if Path(m[1:]).is_file()]  # get file attachments
             if file_paths:
-                file_contents: dict[Path, TextContent | Image] = {fp: TextContent(read_text_file(fp)) for fp in file_paths}
-                self.add_message('user', FilesCommand(command=value, file_contents=file_contents))
+                self.add_message('user', FilesCommand(command=value, file_contents={fp: read_file(fp) for fp in file_paths}))
             else:
                 self.add_message('user', TextContent(value))
             self.tasks.append(asyncio.create_task(self.query()))

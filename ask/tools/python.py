@@ -81,11 +81,11 @@ class PythonTool(Tool):
         except Exception:
             pass
 
-    def render_args(self, args: dict[str, str]) -> str:
-        description = args.get('description', '')
+    def render_args(self, args: dict[str, Any]) -> str:
+        description: str = args.get('description', '')
         if description:
             return description
-        code_snippet = args['code'][:50]
+        code_snippet: str = args['code'][:50]
         if len(args['code']) > 50:
             code_snippet += "..."
         return code_snippet
@@ -106,9 +106,9 @@ class PythonTool(Tool):
         timeout_seconds = int(args.get("timeout", 120000)) / 1000.0  # Convert to seconds
         if timeout_seconds > 600:
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
-        return {'nodes': list(module.body), 'timeout_seconds': timeout_seconds}
+        return {'code': args['code'], 'nodes': list(module.body), 'timeout_seconds': timeout_seconds, 'description': args.get('description', '')}
 
-    async def run(self, nodes: list[ast.stmt], timeout_seconds: float) -> str:
+    async def run(self, code: str, nodes: list[ast.stmt], timeout_seconds: float, description: str) -> str:
         if not self.worker_process:
             self.worker_process = Process(target=repl_worker, args=(self.command_queue, self.result_queue), daemon=True)
             self.worker_process.start()
