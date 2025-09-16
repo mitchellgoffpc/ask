@@ -57,6 +57,8 @@ class FilesCommand(SlashCommand):
             tool_args = {'file_path': str(Path(file_path).absolute().as_posix())}
             messages.append(Message(role='assistant', content=ToolRequest(call_id=call_id, tool='Read', arguments=tool_args)))
             messages.append(Message(role='user', content=ToolResponse(call_id=call_id, tool='Read', response=file_data, status=ToolCallStatus.COMPLETED)))
+        if self.command:
+            messages.append(Message(role='user', content=Text(self.command)))
         return messages
 
 

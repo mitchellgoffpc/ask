@@ -53,10 +53,10 @@ def get_tool_result(tool: Tool, args: dict[str, Any], result: TextContent | Imag
             return tool.render_short_response(args, result.text)
 
 def get_edit_result(args: dict[str, Any], result: TextContent | Image | None, status: ToolCallStatus, expanded: bool) -> Component:
-    assert isinstance(result, TextContent)
     if status is ToolCallStatus.PENDING:
         return Text(Colors.hex("Waiting…", Theme.GRAY))
     elif status is ToolCallStatus.FAILED:
+        assert isinstance(result, TextContent)
         return Text(Colors.hex(result.text, Theme.RED))
     elif status is ToolCallStatus.CANCELLED:
         operation = 'update' if args['old_content'] else 'write'

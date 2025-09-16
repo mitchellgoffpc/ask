@@ -35,10 +35,6 @@ COMMANDS = {
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL'}
 
-def Shortcuts(bash_mode: bool) -> Text:
-    bash_color = Theme.PINK if bash_mode else Theme.GRAY
-    return Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), margin={'left': 2})
-
 def CommandName(name: str, active: bool) -> Text:
     return Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
 
@@ -73,8 +69,8 @@ class Spinner(Box):
 class PromptTextBox(Box):
     initial_state = {'text': '', 'bash_mode': False, 'show_exit_prompt': False, 'selected_idx': 0, 'autocomplete_matches': []}
 
-    def __init__(self, history: list[str], handle_submit: Callable[[str], bool], handle_exit: Callable[[], None]) -> None:
-        super().__init__(history=history, handle_submit=handle_submit, handle_exit=handle_exit)
+    def __init__(self, history: list[str], model: Model, handle_submit: Callable[[str], bool], handle_exit: Callable[[], None]) -> None:
+        super().__init__(history=history, model=model, handle_submit=handle_submit, handle_exit=handle_exit)
 
     async def confirm_exit(self) -> None:
         if self.state['show_exit_prompt']:
@@ -182,6 +178,7 @@ class PromptTextBox(Box):
         return False
 
     def contents(self) -> list[Component | None]:
+        bash_color = Theme.PINK if self.state['bash_mode'] else Theme.GRAY
         border_color = Theme.PINK if self.state['bash_mode'] else Theme.DARK_GRAY
         marker = Colors.hex('!', Theme.PINK) if self.state['bash_mode'] else '>'
         commands = self.get_matching_commands()
@@ -206,7 +203,10 @@ class PromptTextBox(Box):
                 if autocomplete_matches else
             CommandsList(commands, self.state['selected_idx'])
                 if commands and self.state['text'] else
-            Shortcuts(self.state['bash_mode'])
+            Box(flex=Flex.HORIZONTAL)[
+                Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), width=1.0, margin={'left': 2}),
+                Text(self.props['model'].api.display_name + Colors.hex(f" {self.props['model'].name}", Theme.GRAY), margin={'right': 2})
+            ]
         ]
 
 
@@ -391,8 +391,9 @@ class App(Box):
         else:
             return PromptTextBox(
                 history=self.config['history'],
+                model=self.state['model'],
                 handle_submit=self.handle_submit,
-                handle_exit=self.exit,
+                handle_exit=self.exit
             )
 
     def contents(self) -> list[Component | None]:
