@@ -205,7 +205,8 @@ class PromptTextBox(Box):
                 if commands and self.state['text'] else
             Box(flex=Flex.HORIZONTAL)[
                 Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), width=1.0, margin={'left': 2}),
-                Text(self.props['model'].api.display_name + Colors.hex(f" {self.props['model'].name}", Theme.GRAY), margin={'right': 2})
+                Text(Colors.hex(self.props['model'].api.display_name, Theme.WHITE)),
+                Text(Colors.hex(self.props['model'].name, Theme.GRAY), margin={'left': 2, 'right': 2})
             ]
         ]
 
