@@ -126,7 +126,7 @@ class PromptTextBox(Box):
             prefix, start_pos = self.get_current_word_prefix(self.state['text'], cursor_pos)
             matches = self.find_path_matches(prefix)
             if len(matches) == 1:
-                completion = matches[0] + ('/' if (Path(prefix).parent / matches[0]).is_dir() else '')
+                completion = matches[0] + ('/' if (Path(prefix).parent / matches[0]).is_dir() else ' ')
                 self.state['text'] = self.state['text'][:start_pos] + completion + self.state['text'][cursor_pos:]
                 self.state['autocomplete_matches'] = []
             elif len(matches) > 1:
