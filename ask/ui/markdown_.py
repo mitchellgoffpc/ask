@@ -1,18 +1,19 @@
 import re
 from io import StringIO
-from typing import Any, cast
+from typing import Any, Callable, cast
 from markdown import Markdown, Extension
 from markdown.blockprocessors import BlockProcessor
 from markdown.util import AtomicString
 from pygments import highlight
-from pygments.lexers import get_lexer_by_name, guess_lexer
+from pygments.lexer import Lexer
+from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, guess_lexer
 from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
 from pygments.util import ClassNotFound
 from xml.etree.ElementTree import Element, SubElement
 
 from ask.ui.styles import Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
 
-def highlight_code(code: str, language: str) -> str:
+def highlight_code(code: str, *, language: str = '', file_path: str = '') -> str:
     formatter: Any
     if ANSI_16M_SUPPORT:
         formatter = TerminalTrueColorFormatter()
@@ -21,11 +22,16 @@ def highlight_code(code: str, language: str) -> str:
     else:
         formatter = TerminalFormatter()
 
-    try:
-        lexer = get_lexer_by_name(language)
-    except ClassNotFound:
-        lexer = guess_lexer(code)
-    return cast(str, highlight(code, lexer, formatter))
+    lexer = None
+    lexer_fns: list[tuple[Callable[[str], Lexer], str]] = [(get_lexer_by_name, language), (get_lexer_for_filename, file_path), (guess_lexer, code)]
+    for get_lexer, arg in lexer_fns:
+        if arg:
+            try:
+                lexer = get_lexer(arg)
+                break
+            except ClassNotFound:
+                pass
+    return cast(str, highlight(code, lexer, formatter)) if lexer else code
 
 
 # Codeblock parsing extension
@@ -80,7 +86,7 @@ class ANSIExtension(Extension):
         language = element.attrib.get('language', '')
         code = element.text or ''
 
-        return highlight_code(code, language) + (element.tail or "")
+        return highlight_code(code, language=language) + (element.tail or "")
 
     def render_basic_element(self, element: Element, stream: StringIO, indent: int) -> None:
         start, end = self.HTML_TO_ANSI.get(element.tag, ('', ''))

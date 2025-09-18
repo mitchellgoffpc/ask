@@ -23,7 +23,7 @@ class WriteTool(Tool):
     def render_response(self, args: dict[str, Any], response: str) -> str:
         num_lines = args['new_content'].count('\n') + 1
         status_line = f"Wrote {Styles.bold(str(num_lines))} lines to {Styles.bold(get_relative_path(args['file_path']))}"
-        return f"{status_line}\n{highlight_code(response, '')}"
+        return f"{status_line}\n{highlight_code(response, file_path=str(args['file_path']))}"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

@@ -82,7 +82,7 @@ class PythonApproval(BaseApproval):
         return [
             Box(width=1.0, border_color=Colors.HEX(Theme.BLUE), border_style=Borders.ROUND, padding={'left': 1, 'right': 1}, margin={'top': 1})[
                 Text(Styles.bold(Colors.hex("Python code", Theme.BLUE)), margin={'bottom': 1}),
-                Text(highlight_code(self.props['tool_call'].arguments['code'], 'python'), margin={'left': 2}),
+                Text(highlight_code(self.props['tool_call'].arguments['code'], language='python'), margin={'left': 2}),
                 Text(Colors.hex(description, Theme.GRAY), margin={'left': 2, 'bottom': 1}) if description else None,
                 Text("Do you want to proceed?"),
                 OptionsList(self.options, self.state['selected_idx']),
@@ -110,7 +110,7 @@ class EditApproval(BaseApproval):
                 Text(Styles.bold(Colors.hex(title, Theme.BLUE))),
                 Box(width=1.0, border_color=Colors.HEX(Theme.DARK_GRAY), border_style=Borders.ROUND, padding={'left': 1, 'right': 1})[
                     Text(Styles.bold(get_relative_path(args['file_path'])), margin={'bottom': 1}),
-                    Diff(diff=args['diff']) if args['old_content'] else Text(highlight_code(args['new_content'], '')),
+                    Diff(diff=args['diff']) if args['old_content'] else Text(highlight_code(args['new_content'], file_path=str(args['file_path']))),
                 ],
                 Text(f"Do you want to {operation} {Styles.bold(get_relative_path(args['file_path']))}?"),
                 OptionsList(self.options, self.state['selected_idx']),
