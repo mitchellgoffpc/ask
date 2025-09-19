@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ask"
 version = "0.1.0"
-description = "ask questions to a chatbot"
+description = "CLI tool for coding and researching with LLMs"
 authors = [
     {name = "Mitchell Goff", email = "mitchellgoffpc@gmail.com"},
 ]
@@ -18,11 +18,9 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp",
-    "beautifulsoup4",
     "markdown",
     "pygments",
     "tqdm",
-    "types-beautifulsoup4",
     "types-markdown",
     "types-pygments",
 ]
