@@ -419,6 +419,6 @@ class App(Box):
 
         return [
             *messages,
-            Spinner() if self.state['pending'] else None,
+            Spinner() if self.state['pending'] and not self.state['approvals'] else None,
             self.prompt_contents(),
         ]
