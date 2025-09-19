@@ -61,6 +61,15 @@ class FilesCommand(SlashCommand):
             messages.append(Message(role='user', content=Text(self.command)))
         return messages
 
+@dataclass
+class DocsCommand(Command):
+    file_path: Path
+    file_contents: str
+
+    def messages(self) -> list[Message]:
+        content = load_prompt_file('docs.toml')['prompt'].format(file_path=self.file_path.resolve(), file_contents=self.file_contents)
+        return [Message(role='user', content=Text(content))]
+
 
 # Helper functions
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
+import re
 import sys
 from pathlib import Path
 from uuid import uuid4
@@ -10,7 +11,7 @@ from ask.prompts import load_system_prompt
 from ask.tools import TOOLS, Tool
 from ask.tools.read import read_file
 from ask.ui.app import App
-from ask.ui.commands import FilesCommand
+from ask.ui.commands import FilesCommand, DocsCommand
 from ask.ui.render import render_root
 
 
@@ -41,11 +42,18 @@ def main() -> None:
         question = f'{stdin}\n\n{question}' if question else stdin
     question = question.strip()
 
-    # Read any attached files
+    # Read any AGENTS.md files from current directory up to root
     messages = {}
-    if args.file:
-        prompt = question or f'Read {len(args.file)} files'
-        file_contents = {Path(fn): read_file(Path(fn)) for fn in args.file}
+    for parent in (Path.cwd(), *Path.cwd().parents):
+        agents_file = parent / "AGENTS.md"
+        if agents_file.exists():
+            messages[uuid4()] = Message(role='user', content=DocsCommand(command='', file_path=agents_file, file_contents=agents_file.read_text()))
+
+    # Read any attached files
+    attached_files = args.file + [Path(m[1:]) for m in re.findall(r'@\S+', question) if Path(m[1:]).is_file()]
+    if attached_files:
+        prompt = question or f'Read {len(attached_files)} files'
+        file_contents = {Path(fn): read_file(Path(fn)) for fn in attached_files}
         messages[uuid4()] = Message(role='user', content=FilesCommand(command=prompt, file_contents=file_contents))
     elif question:
         messages[uuid4()] = Message(role='user', content=Text(question))
