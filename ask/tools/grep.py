@@ -80,7 +80,7 @@ class GrepTool(Tool):
         pattern = args.get('pattern', '')
         if len(pattern) > 50:
             pattern = pattern[:47] + "..."
-        path = get_relative_path(args['path'])
+        path = get_relative_path(args['pathspec'])
         return f'pattern: "{pattern}", path: "{path}"'
 
     def render_short_response(self, args: dict[str, Any], response: str) -> str:
