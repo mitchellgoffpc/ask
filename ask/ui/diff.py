@@ -1,5 +1,5 @@
 from ask.ui.components import Component, Text, Box
-from ask.ui.styles import Colors, Theme
+from ask.ui.styles import Colors, Flex, Theme
 
 
 def Diff(diff: list[str], rejected: bool = False) -> Component:
@@ -18,21 +18,29 @@ def Diff(diff: list[str], rejected: bool = False) -> Component:
                 components.append(Text(f"{Colors.hex(' ... ', Theme.GRAY)}"))
         elif line.startswith('-'):
             line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
-            delta = Colors.bg_hex(Colors.hex(f'-  {delta}', Theme.WHITE), Theme.FADED_RED if rejected else Theme.DARK_RED)
-            components.append(Text(f"{line_num} {delta}"))
+            bg_color = Theme.FADED_RED if rejected else Theme.DARK_RED
+            components.append(Box(flex=Flex.HORIZONTAL)[
+                Text(f'{line_num} '),
+                Text(Colors.bg_hex(Colors.hex('-  ', Theme.WHITE), bg_color)),
+                Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color))
+            ])
             old_line_num += 1
         elif line.startswith('+'):
             line_num = Colors.hex(f"{new_line_num:>4}", Theme.GRAY)
-            delta = Colors.bg_hex(Colors.hex(f'+  {delta}', Theme.WHITE), Theme.FADED_GREEN if rejected else Theme.DARK_GREEN)
-            components.append(Text(f"{line_num} {delta}"))
+            bg_color = Theme.FADED_GREEN if rejected else Theme.DARK_GREEN
+            components.append(Box(flex=Flex.HORIZONTAL)[
+                Text(f'{line_num} '),
+                Text(Colors.bg_hex(Colors.hex('+  ', Theme.WHITE), bg_color)),
+                Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color))
+            ])
             new_line_num += 1
         elif line.startswith(' '):
             line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
             delta = Colors.hex(f'   {delta}', Theme.WHITE)
-            components.append(Text(f"{line_num} {delta}"))
+            components.append(Box(flex=Flex.HORIZONTAL)[Text(f'{line_num} '), Text(delta)])
             old_line_num += 1
             new_line_num += 1
         if not line.endswith('\n'):
-            components.append(Text(f"{line_num} \\ No newline at end of file"))
+            components.append(Box(flex=Flex.HORIZONTAL)[Text(f'{line_num} '), Text('\\ No newline at end of file')])
 
     return Box()[components]
