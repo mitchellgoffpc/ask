@@ -30,12 +30,17 @@ class ShellCommand(Command):
 @dataclass
 class SlashCommand(Command):
     output: str = ''
+    error: str = ''
 
     def messages(self) -> list[Message]:
-        return [
+        messages = [
             Message(role='user', content=Text(COMMAND_CAVEAT_MESSAGE)),
-            Message(role='user', content=Text(f"<slash-command>{self.command}</slash-command>")),
-            Message(role='user', content=Text(f"<slash-command-output>\n{self.output}\n</slash-command-output>"))]
+            Message(role='user', content=Text(f"<slash-command>{self.command}</slash-command>"))]
+        if self.output or not self.error:
+            messages.append(Message(role='user', content=Text(f"<slash-command-output>\n{self.output}\n</slash-command-output>")))
+        if self.error:
+            messages.append(Message(role='user', content=Text(f"<slash-command-error>\n{self.error}\n</slash-command-error>")))
+        return messages
 
 @dataclass
 class InitCommand(SlashCommand):

@@ -22,6 +22,7 @@ from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCa
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.settings import ModelSelector
 from ask.ui.textbox import TextBox
+from ask.ui.cursor import hide_cursor
 
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
@@ -33,7 +34,8 @@ COMMANDS = {
     '/init': 'Generate an AGENTS.md file with codebase documentation',
     '/model': 'Select a model',
     '/exit': 'Exit the REPL',
-    '/quit': 'Exit the REPL'}
+    '/quit': 'Exit the REPL',
+    '/edit': 'Open file in vim'}
 
 def CommandName(name: str, active: bool) -> Text:
     return Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
@@ -359,6 +361,12 @@ class App(Box):
         elif value == '/init':
             self.add_message('user', InitCommand(command='/init'))
             self.tasks.append(asyncio.create_task(self.query()))
+        elif value.startswith('/edit'):
+            if path := value.removeprefix('/edit'):
+                os.system(f"vim {path}")
+                hide_cursor()
+            else:
+                self.add_message('user', SlashCommand(command='/edit', error='No file path supplied'))
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:

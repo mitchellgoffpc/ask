@@ -122,7 +122,11 @@ def SlashCommandMessage(command: SlashCommand) -> Component:
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
             Text(Colors.hex(command.output, Theme.GRAY))
-        ] if command.output else None
+        ] if command.output else None,
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(Colors.hex(command.error, Theme.RED))
+        ] if command.error else None,
     ]
 
 def ShellCommandMessage(command: ShellCommand, elapsed: float, expanded: bool = True) -> Component:
