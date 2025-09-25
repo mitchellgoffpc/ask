@@ -12,6 +12,7 @@ from ask.tools import TOOLS, Tool
 from ask.tools.read import read_file
 from ask.ui.app import App
 from ask.ui.commands import FilesCommand, DocsCommand
+from ask.ui.config import CONFIG_DIR
 from ask.ui.render import render_root
 
 
@@ -42,12 +43,13 @@ def main() -> None:
         question = f'{stdin}\n\n{question}' if question else stdin
     question = question.strip()
 
-    # Read any AGENTS.md files from current directory up to root
+    # Attach USER.md / AGENTS.md files
     messages = {}
+    if (user_file := CONFIG_DIR / 'USER.md').exists():
+        messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='user', file_path=user_file, file_contents=user_file.read_text()))
     for parent in (Path.cwd(), *Path.cwd().parents):
-        agents_file = parent / "AGENTS.md"
-        if agents_file.exists():
-            messages[uuid4()] = Message(role='user', content=DocsCommand(command='', file_path=agents_file, file_contents=agents_file.read_text()))
+        if (agents_file := parent / "AGENTS.md").exists():
+            messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='agents', file_path=agents_file, file_contents=agents_file.read_text()))
 
     # Read any attached files
     attached_files = args.file + [Path(m[1:]) for m in re.findall(r'@\S+', question) if Path(m[1:]).is_file()]

@@ -1,4 +1,17 @@
-prompt = """
+user = """
+As you answer the user's questions, you can use the following context:
+
+The following are the contents of {file_path}, which contains some important information from the user.
+
+```
+{file_contents}
+```
+
+This context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.
+"""
+
+
+agents = """
 As you answer the user's questions, you can use the following context:
 
 The following are the contents of {file_path}, which contains codebase documentation and instructions for any agents operating in this codebase.
