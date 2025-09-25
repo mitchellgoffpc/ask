@@ -12,13 +12,16 @@ from ask.tools import TOOLS, Tool
 from ask.tools.read import read_file
 from ask.ui.app import App
 from ask.ui.commands import FilesCommand, DocsCommand
-from ask.ui.config import CONFIG_DIR
+from ask.ui.config import CONFIG_DIR, Config
 from ask.ui.render import render_root
 
 
 def main() -> None:
+    config = Config()
+    default_model = config.data.get('default_model', 'sonnet')
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', type=str, default='sonnet', help="Model to use for the query")
+    parser.add_argument('-m', '--model', type=str, default=default_model, help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-s', '--system', type=str, default=load_system_prompt(), help="System prompt for the model")
     parser.add_argument('question', nargs=argparse.REMAINDER)
