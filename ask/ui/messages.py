@@ -25,7 +25,7 @@ def get_shell_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: 
         return stdout, stderr or "Bash exited with non-zero exit code"
     elif status is ToolCallStatus.COMPLETED:
         result = stdout + stderr
-        if not result:
+        if not result.strip():
             return Colors.hex("(No content)", Theme.GRAY), ''
         elif expanded:
             return result, ''
@@ -43,7 +43,8 @@ def get_tool_result(tool: Tool, args: dict[str, Any], result: TextContent | Imag
         assert isinstance(result, TextContent)
         return Colors.hex(tool.render_error(result.text), Theme.RED)
     elif status is ToolCallStatus.COMPLETED:
-        if not result:
+        assert result is not None
+        if isinstance(result, TextContent) and not result.text.strip():
             return Colors.hex("(No content)", Theme.GRAY)
         elif isinstance(result, Image):
             return tool.render_image_response(args, result.data)
