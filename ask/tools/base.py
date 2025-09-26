@@ -83,6 +83,9 @@ class Tool(metaclass=ABCMeta):
     def get_input_schema(self) -> dict[str, Any]:
         return self.get_parameters_schema(self.parameters)
 
+    def render_name(self) -> str:
+        return self.name
+
     @abstractmethod
     def render_args(self, args: dict[str, Any]) -> str: ...
 

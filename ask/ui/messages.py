@@ -107,7 +107,7 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("● ", STATUS_COLORS[status])),
-            Text(Styles.bold(tool.name) + (f"({args_str})" if args_str else ''))
+            Text(Styles.bold(tool.render_name()) + (f"({args_str})" if args_str else ''))
         ],
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),

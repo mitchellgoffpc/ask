@@ -17,6 +17,9 @@ class BashTool(Tool):
             "Input: npm install\nOutput: Installs package dependencies\n\n"
             "Input: mkdir foo\nOutput: Creates directory 'foo'", ParameterType.String, required=False)]
 
+    def render_name(self):
+        return "Bash"
+
     def render_args(self, args: dict[str, str]) -> str:
         return args['command']
 

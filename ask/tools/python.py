@@ -81,6 +81,9 @@ class PythonTool(Tool):
         except Exception:
             pass
 
+    def render_name(self) -> str:
+        return "Python"
+
     def render_args(self, args: dict[str, Any]) -> str:
         description: str = args.get('description', '')
         if description:
