@@ -83,7 +83,7 @@ class PromptTextBox(Box):
             self.state['show_exit_prompt'] = False
 
     def get_matching_commands(self) -> dict[str, str]:
-        return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text']) or cmd == self.state['text'].rstrip(' ')}
+        return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text']) or cmd == self.state['text']}
 
     def get_current_word_prefix(self, text: str, cursor_pos: int) -> tuple[str, int]:
         if cursor_pos > len(text):
@@ -322,9 +322,14 @@ class App(Box):
 
     def handle_mount(self) -> None:
         messages = list(self.state['messages'].values())
-        if messages and messages[-1].role == 'user' and isinstance(messages[-1].content, TextContent):
-            self.tasks.append(asyncio.create_task(self.query()))
-            self.config['history'] = [*self.config['history'], messages[-1].content.text]
+        if messages and messages[-1].role == 'user':
+            match messages[-1].content:
+                case TextContent(text): prompt = text
+                case FilesCommand(command): prompt = command
+                case _: prompt = ''
+            if prompt:
+                self.tasks.append(asyncio.create_task(self.query()))
+                self.config['history'] = [*self.config['history'], prompt]
 
     def handle_select_model(self, model: Model) -> None:
         if model != self.state['model']:
@@ -349,10 +354,11 @@ class App(Box):
             return False
 
         self.config['history'] = [*self.config['history'], value]
+        value = value.rstrip()
         if value in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
         elif value == '/clear':
-            self.state['messages'] = {}
+            self.state['messages'] = {uuid4(): Message(role='user', content=SlashCommand(command='/clear'))}
         elif value == '/model':
             self.state['show_model_selector'] = True
         elif value == '/cost':

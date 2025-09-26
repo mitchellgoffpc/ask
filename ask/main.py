@@ -57,9 +57,8 @@ def main() -> None:
     # Read any attached files
     attached_files = args.file + [Path(m[1:]) for m in re.findall(r'@\S+', question) if Path(m[1:]).is_file()]
     if attached_files:
-        prompt = question or f'Read {len(attached_files)} files'
         file_contents = {Path(fn): read_file(Path(fn)) for fn in attached_files}
-        messages[uuid4()] = Message(role='user', content=FilesCommand(command=prompt, file_contents=file_contents))
+        messages[uuid4()] = Message(role='user', content=FilesCommand(command=question, file_contents=file_contents))
     elif question:
         messages[uuid4()] = Message(role='user', content=Text(question))
 

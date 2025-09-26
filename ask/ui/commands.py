@@ -54,6 +54,9 @@ class FilesCommand(SlashCommand):
     def __post_init__(self) -> None:
         self.output = '\n'.join(f'Read {get_relative_path(path)}' for path in self.file_contents.keys())
 
+    def render_command(self) -> str:
+        return self.command or f'Attached {len(self.file_contents)} files'
+
     def messages(self) -> list[Message]:
         file_list = '\n'.join(f'- {path}' for path in self.file_contents.keys())
         messages = [Message(role='user', content=Text(f"Take a look at these files:\n{file_list}"))]

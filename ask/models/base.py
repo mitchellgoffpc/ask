@@ -65,6 +65,9 @@ class ToolResponse:
 class Command(metaclass=ABCMeta):
     command: str
 
+    def render_command(self) -> str:
+        return self.command
+
     @abstractmethod
     def messages(self) -> list[Message]: ...
 

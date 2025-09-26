@@ -118,7 +118,7 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
 
 def SlashCommandMessage(command: SlashCommand) -> Component:
     return Box()[
-        PromptMessage(TextContent(command.command)),
+        PromptMessage(TextContent(command.render_command())),
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
             Text(Colors.hex(command.output, Theme.GRAY))
