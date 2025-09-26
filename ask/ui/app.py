@@ -53,6 +53,7 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
 class Spinner(Box):
     initial_state = {'spinner_state': 0}
     frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    text = "Loading…"
 
     def handle_mount(self) -> None:
         super().handle_mount()
@@ -61,11 +62,21 @@ class Spinner(Box):
     async def spin(self) -> None:
         while self.mounted:
             self.state['spinner_state'] += 1
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(0.05)
 
     def contents(self) -> list[Component | None]:
-        spinner_text = f"{self.frames[self.state['spinner_state'] % len(self.frames)]} Waiting…"
-        return [Text(Colors.hex(spinner_text, Theme.ORANGE), margin={'top': 1})]
+        spinner_char = self.frames[(self.state['spinner_state'] // 2) % len(self.frames)]
+
+        # Calculate highlight position
+        cycle_length = len(self.text) + 17
+        highlight_pos = (self.state['spinner_state'] % cycle_length) - 2
+        before = self.text[:max(0, highlight_pos)]
+        window = self.text[max(0, highlight_pos):min(len(self.text), highlight_pos + 3)]
+        after = self.text[min(len(self.text), highlight_pos + 3):]
+
+        highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
+        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text}"
+        return [Text(spinner_text, margin={'top': 1})]
 
 
 class PromptTextBox(Box):
