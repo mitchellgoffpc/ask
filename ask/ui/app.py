@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Command, Error
+from ask.models import Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.tools.read import read_file
@@ -321,10 +321,10 @@ class App(Box):
             self.add_message('user', response)
 
     def handle_mount(self) -> None:
-        if self.state['messages']:
-            prompt = list(self.state['messages'].values())[-1]
-            if prompt.role == 'user' and isinstance(prompt.content, (TextContent, Command)):
-                self.tasks.append(asyncio.create_task(self.query()))
+        messages = list(self.state['messages'].values())
+        if messages and messages[-1].role == 'user' and isinstance(messages[-1].content, TextContent):
+            self.tasks.append(asyncio.create_task(self.query()))
+            self.config['history'] = [*self.config['history'], messages[-1].content.text]
 
     def handle_select_model(self, model: Model) -> None:
         if model != self.state['model']:
