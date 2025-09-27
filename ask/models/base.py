@@ -16,7 +16,9 @@ def get_message_groups(messages: list['Message']) -> list[tuple[str, list[Conten
     current_role = messages[0].role
     current_group = [messages[0].content]
     for message in messages[1:]:
-        if message.role == current_role:
+        if isinstance(message.content, Usage):
+            continue
+        elif message.role == current_role:
             current_group.append(message.content)
         else:
             groups.append((current_role, current_group))
@@ -52,7 +54,7 @@ class ToolRequest:
     call_id: str
     tool: str
     arguments: dict[str, str]
-    processed_arguments: dict[str, str] | None = None
+    processed_arguments: dict[str, Any] | None = None
 
 @dataclass
 class ToolResponse:

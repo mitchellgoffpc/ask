@@ -7,29 +7,39 @@ from base64 import b64decode
 from dataclasses import replace
 from pathlib import Path
 from uuid import UUID, uuid4
+from typing import Any
 
 from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
-from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
+from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
+from ask.ui.core.components import Component, Box, Text, Line
+from ask.ui.core.cursor import hide_cursor
+from ask.ui.core.styles import Colors, Flex, Theme
 from ask.ui.approvals import Approval
 from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
-from ask.ui.core.components import Component, Box, Text, Line
 from ask.ui.config import Config
-from ask.ui.core.cursor import hide_cursor
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
-from ask.ui.core.styles import Colors, Theme
 from ask.ui.textbox import PromptTextBox
 
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
     "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
 
+def ToDoMessage(todos: dict[str, Any]) -> Component:
+    return Box(margin={'top': 1})[
+        Text(Colors.hex("To Do", Theme.GRAY)),
+        Text(TOOLS[ToDoTool.name].render_response(todos, ''))
+    ]
+
 
 class Spinner(Box):
     initial_state = {'spinner_state': 0}
     frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
     text = "Loading…"
+
+    def __init__(self, todos: dict[str, Any] | None, expanded: bool) -> None:
+        super().__init__(todos=todos, expanded=expanded)
 
     async def spin(self) -> None:
         while self.mounted:
@@ -52,11 +62,18 @@ class Spinner(Box):
 
         highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
         spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
-        return [Text(spinner_text, margin={'top': 1})]
+        todos, todo_tool = self.props['todos'], TOOLS[ToDoTool.name]
+        return [
+            Text(spinner_text, margin={'top': 1}),
+            Box(flex=Flex.HORIZONTAL)[
+                Text("  ⎿  "),
+                Text(todo_tool.render_response(todos, '') if self.props['expanded'] else todo_tool.render_short_response(todos, ''))
+            ] if self.props['todos'] else None,
+        ]
 
 
 class App(Box):
-    initial_state = {'expanded': False, 'exiting': False, 'pending': 0, 'elapsed': 0, 'approvals': {}}
+    initial_state = {'expanded': False, 'exiting': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'show_todos': False}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
@@ -114,10 +131,7 @@ class App(Box):
                     contents[uuid4()] = content
                 text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                 if text or contents:
-                    assert len(contents | text_content) > 0
                     self.state['messages'] = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
-            if not contents:
-                raise Exception(f"Wtf, no contents? {text} {contents}")
         except asyncio.CancelledError:
             self.add_message('user', Error("Request interrupted by user"))
         except Exception as e:
@@ -181,6 +195,8 @@ class App(Box):
             self.state['expanded'] = False
         elif ch == '\x12':  # Ctrl+R
             self.state['expanded'] = not self.state['expanded']
+        elif ch == '\x14':  # Ctrl+T
+            self.state['show_todos'] = not self.state['show_todos']
         elif ch == '\x1b' and not self.state['approvals']:  # Escape key
             for task in self.tasks:
                 if not task.done():
@@ -253,7 +269,12 @@ class App(Box):
                 handle_exit=self.exit)
 
     def contents(self) -> list[Component | None]:
+        tool_requests = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolRequest)}
         tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
+        if latest_todos := next((c.processed_arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
+            if not any(todo['status'] in ['pending', 'in_progress'] for todo in latest_todos['todos']):
+                latest_todos = None
+
         messages = []
         for uuid, msg in self.state['messages'].items():
             match (msg.role, msg.content):
@@ -268,14 +289,18 @@ class App(Box):
                 case ('assistant', TextContent()):
                     messages.append(ResponseMessage(text=msg.content))
                 case ('assistant', ToolRequest()):
-                    approved = uuid not in self.state['approvals']
-                    response = tool_responses.get(msg.content.call_id)
-                    messages.append(ToolCallMessage(request=msg.content, response=response, approved=approved, expanded=self.state['expanded']))
+                    if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
+                        approved = uuid not in self.state['approvals']
+                        response = tool_responses.get(msg.content.call_id)
+                        messages.append(ToolCallMessage(request=msg.content, response=response, approved=approved, expanded=self.state['expanded']))
                 case _:
                     pass
 
-        return [
+        return[
             *messages,
-            Spinner() if self.state['pending'] and not self.state['approvals'] else None,
+            Spinner(todos=latest_todos, expanded=self.state['show_todos'])
+                if self.state['pending'] and not self.state['approvals'] else
+            ToDoMessage(latest_todos)
+                if latest_todos and self.state['show_todos'] and not self.state['approvals'] else None,
             self.textbox(),
         ]
