@@ -12,7 +12,8 @@ from multiprocessing import Queue, Process
 from typing import Any
 
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
+from ask.ui.markdown_ import highlight_code
 
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.
@@ -85,19 +86,19 @@ class PythonTool(Tool):
         return "Python"
 
     def render_args(self, args: dict[str, Any]) -> str:
-        description: str = args.get('description', '')
-        if description:
-            return description
-        code_snippet: str = args['code'][:50]
-        if len(args['code']) > 50:
-            code_snippet += "..."
-        return code_snippet
+        return ''
+
+    def render_short_code(self, args: dict[str, Any]) -> str:
+        return abbreviate(self.render_code(args), max_lines=6)
+
+    def render_code(self, args: dict[str, Any]) -> str:
+        return highlight_code(args['code'], language='python')
 
     def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        lines = response.strip().split('\n')
-        if len(lines) <= 3:
-            return response.strip()
-        return f"Python output ({len(lines)} lines)"
+        return abbreviate(self.render_response(args, response), max_lines=6)
+
+    def render_response(self, args: dict[str, Any], response: str) -> str:
+        return response.strip()
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

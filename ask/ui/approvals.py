@@ -78,12 +78,10 @@ class PythonApproval(BaseApproval):
         'No, and give instructions on what to do differently': 'esc'}
 
     def contents(self) -> list[Component | None]:
-        description = self.props['tool_call'].arguments.get('description')
         return [
             Box(width=1.0, border_color=Colors.HEX(Theme.BLUE), border_style=Borders.ROUND, padding={'left': 1, 'right': 1}, margin={'top': 1})[
                 Text(Styles.bold(Colors.hex("Python code", Theme.BLUE)), margin={'bottom': 1}),
-                Text(highlight_code(self.props['tool_call'].arguments['code'], language='python'), margin={'left': 2}),
-                Text(Colors.hex(description, Theme.GRAY), margin={'left': 2, 'bottom': 1}) if description else None,
+                Text(highlight_code(self.props['tool_call'].arguments['code'], language='python'), margin={'left': 2, 'bottom': 1}),
                 Text("Do you want to proceed?"),
                 OptionsList(self.options, self.state['selected_idx']),
             ]

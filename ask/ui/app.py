@@ -75,7 +75,7 @@ class Spinner(Box):
         after = self.text[min(len(self.text), highlight_pos + 3):]
 
         highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
-        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text}"
+        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
         return [Text(spinner_text, margin={'top': 1})]
 
 
@@ -395,20 +395,18 @@ class App(Box):
             self.tasks.append(asyncio.create_task(self.query()))
         return True
 
-    def prompt_contents(self) -> Component:
+    def prompt(self) -> Component:
         if self.state['exiting']:
             wall_time = time.monotonic() - self.start_time
             return Text(Colors.hex(get_usage_message(self.state['messages'], self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
         elif approval_uuid := next(iter(self.state['approvals'].keys()), None):
             return Approval(
                 tool_call=self.state['messages'][approval_uuid].content,
-                future=self.state['approvals'][approval_uuid]
-            )
+                future=self.state['approvals'][approval_uuid])
         elif self.state['show_model_selector']:
             return ModelSelector(
                 active_model=self.state['model'],
-                handle_select=self.handle_select_model
-            )
+                handle_select=self.handle_select_model)
         elif self.state['expanded']:
             return Box()[
                 Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
@@ -419,13 +417,12 @@ class App(Box):
                 history=self.config['history'],
                 model=self.state['model'],
                 handle_submit=self.handle_submit,
-                handle_exit=self.exit
-            )
+                handle_exit=self.exit)
 
     def contents(self) -> list[Component | None]:
         tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
         messages = []
-        for msg in self.state['messages'].values():
+        for uuid, msg in self.state['messages'].items():
             match (msg.role, msg.content):
                 case ('user', TextContent()):
                     messages.append(PromptMessage(text=msg.content))
@@ -438,12 +435,14 @@ class App(Box):
                 case ('assistant', TextContent()):
                     messages.append(ResponseMessage(text=msg.content))
                 case ('assistant', ToolRequest()):
-                    messages.append(ToolCallMessage(request=msg.content, response=tool_responses.get(msg.content.call_id), expanded=self.state['expanded']))
+                    approved = uuid not in self.state['approvals']
+                    response = tool_responses.get(msg.content.call_id)
+                    messages.append(ToolCallMessage(request=msg.content, response=response, approved=approved, expanded=self.state['expanded']))
                 case _:
                     pass
 
         return [
             *messages,
             Spinner() if self.state['pending'] and not self.state['approvals'] else None,
-            self.prompt_contents(),
+            self.prompt(),
         ]
