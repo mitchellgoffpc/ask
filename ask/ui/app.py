@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from ask.models import Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
+from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.tools.read import read_file
@@ -20,7 +20,7 @@ from ask.ui.components import Component, Box, Text, Line
 from ask.ui.config import Config
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
 from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
-from ask.ui.settings import ModelSelector
+
 from ask.ui.textbox import TextBox
 from ask.ui.cursor import hide_cursor
 
@@ -32,10 +32,10 @@ COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
     '/cost': 'Show the total cost and token usage for current session',
     '/init': 'Generate an AGENTS.md file with codebase documentation',
-    '/model': 'Select a model',
+    '/model': 'Switch to a different model',
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL',
-    '/edit': 'Open file in vim'}
+    '/edit': 'Open file in editor'}
 
 def CommandName(name: str, active: bool) -> Text:
     return Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
@@ -93,9 +93,6 @@ class PromptTextBox(Box):
             await asyncio.sleep(1)
             self.state['show_exit_prompt'] = False
 
-    def get_matching_commands(self) -> dict[str, str]:
-        return {cmd: desc for cmd, desc in COMMANDS.items() if cmd.startswith(self.state['text']) or cmd == self.state['text']}
-
     def get_current_word_prefix(self, text: str, cursor_pos: int) -> tuple[str, int]:
         if cursor_pos > len(text):
             cursor_pos = len(text)
@@ -104,7 +101,16 @@ class PromptTextBox(Box):
             start -= 1
         return text[start:cursor_pos], start
 
-    def find_path_matches(self, prefix: str) -> list[str]:
+    def get_matching_commands(self) -> dict[str, str]:
+        return {cmd: desc for cmd, desc in COMMANDS.items() if self.state['text'] and cmd.startswith(self.state['text'])}
+
+    def get_matching_models(self) -> list[str]:
+        if not self.state['text'].startswith('/model '):
+            return []
+        model_prefix = self.state['text'].removeprefix('/model ').lstrip()
+        return [name for name in MODELS_BY_NAME if name.startswith(model_prefix)]
+
+    def get_matching_paths(self, prefix: str) -> list[str]:
         if not prefix:
             return []
         try:
@@ -131,22 +137,27 @@ class PromptTextBox(Box):
 
         # Tab completion
         matching_commands = self.get_matching_commands()
-        items = self.state['autocomplete_matches'] or (list(matching_commands.keys()) if matching_commands and self.state['text'] else [])
+        matching_models = self.get_matching_models()
+        items = self.state['autocomplete_matches'] or list(matching_commands.keys()) or matching_models
         if ch == '\t':
-            if matching_commands and self.state['text']:
+            if matching_commands:
                 self.state['text'] = list(matching_commands.keys())[self.state['selected_idx']] + ' '
                 return False
+            elif matching_models:
+                self.state['text'] = f"/model {matching_models[self.state['selected_idx']]} "
+                return False
+
             prefix, start_pos = self.get_current_word_prefix(self.state['text'], cursor_pos)
-            matches = self.find_path_matches(prefix)
-            if len(matches) == 1:
-                completion = matches[0] + ('/' if (Path(prefix).parent / matches[0]).is_dir() else ' ')
+            matching_paths = self.get_matching_paths(prefix)
+            if len(matching_paths) == 1:
+                completion = matching_paths[0] + ('/' if (Path(prefix).parent / matching_paths[0]).is_dir() else ' ')
                 self.state['text'] = self.state['text'][:start_pos] + completion + self.state['text'][cursor_pos:]
                 self.state['autocomplete_matches'] = []
-            elif len(matches) > 1:
+            elif len(matching_paths) > 1:
                 if self.state['autocomplete_matches']:
                     self.state['selected_idx'] = (self.state['selected_idx'] + 1) % len(self.state['autocomplete_matches'])
                 else:
-                    self.state['autocomplete_matches'] = matches
+                    self.state['autocomplete_matches'] = matching_paths
                     self.state['selected_idx'] = 0
             return False
         elif ch == '\x1b[Z':  # Shift+Tab
@@ -182,9 +193,11 @@ class PromptTextBox(Box):
             self.state['text'] = self.state['text'][:start_pos] + selected_match + self.state['text'][len(self.state['text']):]
             self.state['autocomplete_matches'] = []
             return False
+        elif matching_commands := self.get_matching_commands():
+            value = f"{list(matching_commands.keys())[self.state['selected_idx']]} "
+        elif matching_models := self.get_matching_models():
+            value = f"/model {matching_models[self.state['selected_idx']]} "
 
-        if self.state['text'] and (matching_commands := self.get_matching_commands()):
-            value = list(matching_commands.keys())[self.state['selected_idx']]
         if self.props['handle_submit'](f"{'!' if self.state['bash_mode'] else ''}{value}"):
             self.state.update({'text': '', 'bash_mode': False, 'autocomplete_matches': []})
             return True
@@ -194,7 +207,8 @@ class PromptTextBox(Box):
         bash_color = Theme.PINK if self.state['bash_mode'] else Theme.GRAY
         border_color = Theme.PINK if self.state['bash_mode'] else Theme.DARK_GRAY
         marker = Colors.hex('!', Theme.PINK) if self.state['bash_mode'] else '>'
-        commands = self.get_matching_commands()
+        matching_commands = self.get_matching_commands()
+        matching_models = self.get_matching_models()
         autocomplete_matches = self.state['autocomplete_matches']
 
         return [
@@ -214,8 +228,10 @@ class PromptTextBox(Box):
                 if self.state['show_exit_prompt'] else
             CommandsList({match: '' for match in autocomplete_matches}, self.state['selected_idx'])
                 if autocomplete_matches else
-            CommandsList(commands, self.state['selected_idx'])
-                if commands and self.state['text'] else
+            CommandsList({model: MODELS_BY_NAME[model].api.display_name for model in matching_models}, self.state['selected_idx'])
+                if matching_models else
+            CommandsList(matching_commands, self.state['selected_idx'])
+                if matching_commands else
             Box(flex=Flex.HORIZONTAL)[
                 Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), width=1.0, margin={'left': 2}),
                 Text(Colors.hex(self.props['model'].api.display_name, Theme.WHITE)),
@@ -225,7 +241,7 @@ class PromptTextBox(Box):
 
 
 class App(Box):
-    initial_state = {'expanded': False, 'exiting': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'show_model_selector': False}
+    initial_state = {'expanded': False, 'exiting': False, 'pending': 0, 'elapsed': 0, 'approvals': {}}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
@@ -283,7 +299,10 @@ class App(Box):
                     contents[uuid4()] = content
                 text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                 if text or contents:
+                    assert len(contents | text_content) > 0
                     self.state['messages'] = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
+            if not contents:
+                raise Exception(f"Wtf, no contents? {text} {contents}")
         except asyncio.CancelledError:
             self.add_message('user', Error("Request interrupted by user"))
         except Exception as e:
@@ -342,16 +361,9 @@ class App(Box):
                 self.tasks.append(asyncio.create_task(self.query()))
                 self.config['history'] = [*self.config['history'], prompt]
 
-    def handle_select_model(self, model: Model) -> None:
-        if model != self.state['model']:
-            # We have to remove all reasoning messages because they generally aren't compatible across models
-            self.state['messages'] = {uuid: msg for uuid, msg in self.state['messages'].items() if not isinstance(msg.content, Reasoning)}
-        self.state['model'] = model
-        self.state['show_model_selector'] = False
-
     def handle_raw_input(self, ch: str) -> None:
         if ch == '\x03':  # Ctrl+C
-            self.state.update({'show_model_selector': False, 'expanded': False})
+            self.state['expanded'] = False
         elif ch == '\x12':  # Ctrl+R
             self.state['expanded'] = not self.state['expanded']
         elif ch == '\x1b' and not self.state['approvals']:  # Escape key
@@ -370,8 +382,18 @@ class App(Box):
             self.exit()
         elif value == '/clear':
             self.state['messages'] = {uuid4(): Message(role='user', content=SlashCommand(command='/clear'))}
-        elif value == '/model':
-            self.state['show_model_selector'] = True
+        elif value.startswith('/model'):
+            model_name = value.removeprefix('/model').lstrip()
+            if not model_name:
+                model_list = '\n'.join(f"  {name} ({model.api.display_name})" for name, model in MODELS_BY_NAME.items())
+                self.add_message('user', SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
+            elif model_name not in MODELS_BY_NAME:
+                self.add_message('user', SlashCommand(command=value, error=f"Unknown model: {model_name}"))
+            elif model_name != self.state['model'].name:
+                self.add_message('user', SlashCommand(command=value, output=f"Switched from {self.state['model'].name} to {model_name}"))
+                self.state['model'] = MODELS_BY_NAME[model_name]
+                # We have to remove all reasoning messages because they generally aren't compatible across models
+                self.state['messages'] = {uuid: msg for uuid, msg in self.state['messages'].items() if not isinstance(msg.content, Reasoning)}
         elif value == '/cost':
             output = get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time)
             self.add_message('user', SlashCommand(command='/cost', output=output))
@@ -403,10 +425,7 @@ class App(Box):
             return Approval(
                 tool_call=self.state['messages'][approval_uuid].content,
                 future=self.state['approvals'][approval_uuid])
-        elif self.state['show_model_selector']:
-            return ModelSelector(
-                active_model=self.state['model'],
-                handle_select=self.handle_select_model)
+
         elif self.state['expanded']:
             return Box()[
                 Line(width=1.0, color=Colors.HEX(Theme.GRAY), margin={'top': 1}),
