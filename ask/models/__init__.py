@@ -18,6 +18,7 @@ MODELS = [
     Model(name='gpt-5', api=APIS['openai'], pricing=Pricing(1.25, 1.25, 0.125, 10.00), shortcuts=['gpt5', '5'], stream=False),
     Model(name='gpt-5-mini', api=APIS['openai'], pricing=Pricing(0.25, 0.25, 0.025, 2.00), shortcuts=['gpt5m', '5m'], stream=False),
     Model(name='gpt-5-nano', api=APIS['openai'], pricing=Pricing(0.05, 0.05, 0.005, 0.4), shortcuts=['gpt5n', '5n'], stream=False),
+    Model(name='gpt-5-codex', api=APIS['openai'], pricing=Pricing(1.00, 1.00, 0.10, 4.00), shortcuts=['gpt5c', '5c'], stream=False),
     Model(name='o1', api=APIS['openai'], pricing=Pricing(15.00, 15.00, 7.50, 60.00), shortcuts=['o1']),
     Model(name='o1-pro', api=APIS['openai'], pricing=Pricing(150.00, 150.00, 150.00, 600.00), shortcuts=['o1p']),
     Model(name='o3-mini', api=APIS['openai'], pricing=Pricing(0.60, 0.75, 0.06, 3.00), shortcuts=['o3m'], supports_images=False),

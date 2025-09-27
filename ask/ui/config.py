@@ -3,6 +3,7 @@ from pathlib import Path
 
 CONFIG_DIR = Path('~/.ask/').expanduser()
 CONFIG_PATH = CONFIG_DIR / 'ask.json'
+DEFAULT_CONFIG = {'history': [], 'editor': 'vim', 'default_model': 'sonnet'}
 
 class Config:
     def __init__(self):
@@ -10,8 +11,7 @@ class Config:
         CONFIG_DIR.mkdir(parents=False, exist_ok=True)
         if CONFIG_PATH.is_file():
             self.data = json.loads(CONFIG_PATH.read_text() or '{}')
-        if not self.data:
-            self.data = {'history': []}
+        self.data = DEFAULT_CONFIG | self.data
 
     def __getitem__(self, key):
         return self.data[key]

@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import shlex
 import sys
 import time
 from base64 import b64decode
@@ -232,8 +233,9 @@ class App(Box):
             self.add_message('user', InitCommand(command='/init'))
             self.tasks.append(asyncio.create_task(self.query()))
         elif value.startswith('/edit'):
-            if path := value.removeprefix('/edit'):
-                os.system(f"vim {path}")
+            if path := value.removeprefix('/edit').strip():
+                editor = self.config['editor']
+                os.system(f"{editor} {shlex.quote(path)}")
                 hide_cursor()
             else:
                 self.add_message('user', SlashCommand(command='/edit', error='No file path supplied'))
