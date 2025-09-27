@@ -1,7 +1,7 @@
 from typing import Any, Literal, Iterable, Optional, Self, Union, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
+from ask.ui.core.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]

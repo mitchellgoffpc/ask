@@ -3,7 +3,7 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
-from ask.ui.styles import Styles
+from ask.ui.core.styles import Styles
 
 IGNORED_PATHS = [
     '.build', '.dart_tool', '.deno', '.env', '.gradle', '.pub-cache', '.tox', '.venv',

@@ -1,7 +1,7 @@
 import unittest
-from ask.ui.components import Box, Text, nodes, children, parents
-from ask.ui.render import render, mount
-from ask.ui.styles import Flex
+from ask.ui.core.components import Box, Text, nodes, children, parents
+from ask.ui.core.render import render, mount
+from ask.ui.core.styles import Flex
 
 
 class TestRender(unittest.TestCase):

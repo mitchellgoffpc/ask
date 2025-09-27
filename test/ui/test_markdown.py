@@ -1,6 +1,6 @@
 import unittest
-from ask.ui.markdown_ import render_markdown
-from ask.ui.styles import Colors, Styles, Theme
+from ask.ui.core.markdown_ import render_markdown
+from ask.ui.core.styles import Colors, Styles, Theme
 
 
 class TestRenderMarkdown(unittest.TestCase):

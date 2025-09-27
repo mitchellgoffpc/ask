@@ -3,7 +3,7 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt
 from ask.tools.base import Tool, Parameter, ParameterType
-from ask.ui.styles import Colors, Styles, Theme
+from ask.ui.core.styles import Colors, Styles, Theme
 
 def parse_response(response: str) -> Any:
     _, todo_list_json = response.split('\n\n', 1)

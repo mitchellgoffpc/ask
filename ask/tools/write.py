@@ -4,8 +4,8 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
-from ask.ui.styles import Styles
-from ask.ui.markdown_ import highlight_code
+from ask.ui.core.styles import Styles
+from ask.ui.core.markdown_ import highlight_code
 
 class WriteTool(Tool):
     name = "Write"

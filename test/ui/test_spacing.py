@@ -1,6 +1,6 @@
 import unittest
-from ask.ui.components import Box, Side, Spacing, apply_sizing, apply_spacing, apply_borders, apply_boxing, get_spacing_dict
-from ask.ui.styles import Borders, BorderStyle, Colors, ansi_len
+from ask.ui.core.components import Box, Side, Spacing, apply_sizing, apply_spacing, apply_borders, apply_boxing, get_spacing_dict
+from ask.ui.core.styles import Borders, BorderStyle, Colors, ansi_len
 
 
 class TestApplySizing(unittest.TestCase):

@@ -13,7 +13,7 @@ from ask.tools.read import read_file
 from ask.ui.app import App
 from ask.ui.commands import FilesCommand, DocsCommand
 from ask.ui.config import CONFIG_DIR, Config
-from ask.ui.render import render_root
+from ask.ui.core.render import render_root
 
 
 def main() -> None:

@@ -11,9 +11,9 @@ from itertools import zip_longest
 from types import MethodType
 from uuid import UUID
 
-from ask.ui.components import Component, get_rendered_width, dirty, nodes, parents, children
-from ask.ui.cursor import hide_cursor, show_cursor, erase_line, cursor_up
-from ask.ui.styles import Flex
+from ask.ui.core.components import Component, get_rendered_width, dirty, nodes, parents, children
+from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
+from ask.ui.core.styles import Flex
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager

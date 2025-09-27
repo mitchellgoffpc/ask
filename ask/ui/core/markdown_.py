@@ -11,7 +11,7 @@ from pygments.formatters import TerminalFormatter, Terminal256Formatter, Termina
 from pygments.util import ClassNotFound
 from xml.etree.ElementTree import Element, SubElement
 
-from ask.ui.styles import Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
+from ask.ui.core.styles import Colors, Styles, Theme, ANSI_256_SUPPORT, ANSI_16M_SUPPORT
 
 def highlight_code(code: str, *, language: str = '', file_path: str = '') -> str:
     formatter: Any

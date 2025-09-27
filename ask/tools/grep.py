@@ -6,7 +6,7 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
-from ask.ui.styles import Styles
+from ask.ui.core.styles import Styles
 
 def get_content_matches(file_path: Path, content: mmap.mmap, regex: re.Pattern, show_line_nums: bool, before: int, after: int) -> tuple[int, list[str]]:
     if not regex.search(content):

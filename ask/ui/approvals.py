@@ -2,10 +2,10 @@ import asyncio
 
 from ask.models import ToolRequest
 from ask.prompts import get_relative_path
-from ask.ui.components import Component, Box, Text
+from ask.ui.core.components import Component, Box, Text
 from ask.ui.diff import Diff
-from ask.ui.markdown_ import highlight_code
-from ask.ui.styles import Borders, Colors, Styles, Theme
+from ask.ui.core.markdown_ import highlight_code
+from ask.ui.core.styles import Borders, Colors, Styles, Theme
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 
 

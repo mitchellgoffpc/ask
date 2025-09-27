@@ -4,10 +4,10 @@ from ask.models import Text as TextContent, Image, ToolRequest, ToolResponse, Er
 from ask.prompts import get_relative_path
 from ask.tools import TOOLS, Tool, ToolCallStatus, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.ui.commands import ShellCommand, SlashCommand
-from ask.ui.components import Component, Box, Text
+from ask.ui.core.components import Component, Box, Text
 from ask.ui.diff import Diff
-from ask.ui.markdown_ import render_markdown
-from ask.ui.styles import Flex, Colors, Styles, Theme
+from ask.ui.core.markdown_ import render_markdown
+from ask.ui.core.styles import Flex, Colors, Styles, Theme
 
 NUM_PREVIEW_LINES = 5
 STATUS_COLORS = {

@@ -16,13 +16,12 @@ from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEdit
 from ask.tools.read import read_file
 from ask.ui.approvals import Approval
 from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
-from ask.ui.components import Component, Box, Text, Line
+from ask.ui.core.components import Component, Box, Text, Line
 from ask.ui.config import Config
+from ask.ui.core.cursor import hide_cursor
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
-from ask.ui.styles import Borders, Colors, Flex, Styles, Theme
-
-from ask.ui.textbox import TextBox
-from ask.ui.cursor import hide_cursor
+from ask.ui.core.styles import Borders, Colors, Flex, Styles, Theme
+from ask.ui.core.textbox import TextBox
 
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "

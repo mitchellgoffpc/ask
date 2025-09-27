@@ -1,8 +1,8 @@
 from collections import deque
 from typing import Any, Callable, cast
 
-from ask.ui.components import Box, Size
-from ask.ui.styles import Styles, Colors, wrap_lines
+from ask.ui.core.components import Box, Size
+from ask.ui.core.styles import Styles, Colors, wrap_lines
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 

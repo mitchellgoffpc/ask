@@ -13,7 +13,7 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
-from ask.ui.markdown_ import highlight_code
+from ask.ui.core.markdown_ import highlight_code
 
 # NOTE: It would be great if we could just use a thread for this, but as far as I know
 # there's no way to capture stdout/stderr without interfering with the main thread.

@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import Mock
-from ask.ui.components import Spacing
-from ask.ui.styles import Borders, ansi_len, ansi_strip
-from ask.ui.textbox import TextBox
+from ask.ui.core.components import Spacing
+from ask.ui.core.styles import Borders, ansi_len, ansi_strip
+from ask.ui.core.textbox import TextBox
 
 
 class TestTextBoxCreation(unittest.TestCase):

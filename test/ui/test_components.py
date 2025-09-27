@@ -1,5 +1,5 @@
 import unittest
-from ask.ui.components import Box, Text
+from ask.ui.core.components import Box, Text
 
 
 class TestBox(unittest.TestCase):

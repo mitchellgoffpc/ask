@@ -4,7 +4,7 @@ from typing import Any
 
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import Tool, Parameter, ParameterType, ToolError
-from ask.ui.styles import Styles
+from ask.ui.core.styles import Styles
 
 
 class GlobTool(Tool):

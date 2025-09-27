@@ -4,7 +4,7 @@ from enum import Enum, member, nonmember
 from pathlib import Path
 from typing import Any, Callable, ClassVar, Coroutine, Union
 
-from ask.ui.styles import Colors, Theme
+from ask.ui.core.styles import Colors, Theme
 
 def abbreviate(text: str, max_lines: int) -> str:
     lines = text.strip().split('\n')

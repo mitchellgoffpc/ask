@@ -4,7 +4,7 @@ from typing import Any, Literal, Union, TYPE_CHECKING
 
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
-from ask.ui.styles import Styles
+from ask.ui.core.styles import Styles
 
 if TYPE_CHECKING:
     from ask.models.base import Text, Image
