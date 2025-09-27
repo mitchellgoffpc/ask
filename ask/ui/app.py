@@ -19,7 +19,7 @@ from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Flex, Theme
 from ask.ui.approvals import Approval
 from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
-from ask.ui.config import Config
+from ask.ui.config import Config, History
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
 from ask.ui.textbox import PromptTextBox
 
@@ -81,6 +81,7 @@ class App(Box):
         self.state['messages'] = messages
         self.state['model'] = model
         self.config = Config()
+        self.history = History()
         self.tasks: list[asyncio.Task] = []
         self.start_time = time.monotonic()
         self.query_time = 0.
@@ -189,7 +190,7 @@ class App(Box):
                 case _: prompt = ''
             if prompt:
                 self.tasks.append(asyncio.create_task(self.query()))
-                self.config['history'] = [*self.config['history'], prompt]
+                self.history.append(prompt)
 
     def handle_raw_input(self, ch: str) -> None:
         if ch == '\x03':  # Ctrl+C
@@ -208,7 +209,7 @@ class App(Box):
         if any(not task.done() for task in self.tasks):
             return False
 
-        self.config['history'] = [*self.config['history'], value]
+        self.history.append(value)
         value = value.rstrip()
         if value in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
@@ -265,7 +266,7 @@ class App(Box):
             ]
         else:
             return PromptTextBox(
-                history=self.config['history'],
+                history=list(self.history),
                 model=self.state['model'],
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
