@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 CONFIG_DIR = Path('~/.ask/').expanduser()
-CONFIG_PATH = CONFIG_DIR / 'ask.json'
+CONFIG_PATH = CONFIG_DIR / 'config.json'
 DEFAULT_CONFIG = {'history': [], 'editor': 'vim', 'default_model': 'sonnet'}
 
 class Config:
