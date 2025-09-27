@@ -1,5 +1,6 @@
 import os
 import re
+from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
@@ -102,13 +103,10 @@ def ansi_strip(text: str) -> str:
     return re.sub(r'\u001B\[[0-9;]+m', '', text)
 
 def ansi_slice(string: str, start: int, end: int) -> str:
-    color_names = ['BLACK', 'RED', 'GREEN', 'YELLOW', 'BLUE', 'MAGENTA', 'CYAN', 'WHITE']
-    color_codes = [getattr(Colors, c) for c in color_names] + [getattr(Colors, f'{c}_BRIGHT') for c in color_names]
-    bgcolor_codes = [getattr(Colors, f'BG_{c}') for c in color_names] + [getattr(Colors, f'BG_{c}_BRIGHT') for c in color_names]
     style_starts = {v: k for k, v in Styles.__dict__.items() if k.isupper() and not k.endswith('_END')}
     style_stops = {v: k.removesuffix('_END') for k, v in Styles.__dict__.items() if k.endswith('_END')}
 
-    ansi_pattern = re.compile(r'\u001B\[[0-9;]+m')
+    ansi_pattern = re.compile(r'\u001B\[([0-9;]+)m')
     chunks = []
     last_pos = 0
 
@@ -127,25 +125,37 @@ def ansi_slice(string: str, start: int, end: int) -> str:
     active_bgcolor = None
 
     for chunk in chunks:
-        if ansi_pattern.match(chunk):
+        if match_ := ansi_pattern.match(chunk):
             if current_pos >= start:
                 result.append(chunk)
-            if chunk == Styles.RESET:
-                active_styles.clear()
-                active_color = None
-                active_bgcolor = None
-            elif chunk in style_starts:
-                active_styles.add(chunk)
-            elif chunk in style_stops:
-                active_styles.discard(Styles.__dict__[style_stops[chunk]])
-            elif chunk == Colors.END:
-                active_color = None
-            elif chunk == Colors.BG_END:
-                active_bgcolor = None
-            elif chunk in color_codes or chunk.startswith('\u001B[38;5;') or chunk.startswith('\u001B[38;2;'):
-                active_color = chunk
-            elif chunk in bgcolor_codes or chunk.startswith('\u001B[48;5;') or chunk.startswith('\u001B[48;2;'):
-                active_bgcolor = chunk
+            codes = deque(match_.group(1).split(';'))
+            while codes:
+                code = int(codes.popleft())
+                ansi_code = f'\u001B[{code}m'
+                if code in (38, 48) and codes:
+                    if codes[0] == '5' and len(codes) >= 2:
+                        _, color_code = codes.popleft(), codes.popleft()
+                        ansi_code = f'\u001B[{code};5;{color_code}m'
+                    elif codes[0] == '2' and len(codes) >= 4:
+                        _, r, g, b = codes.popleft(), codes.popleft(), codes.popleft(), codes.popleft()
+                        ansi_code = f'\u001B[{code};2;{r};{g};{b}m'
+
+                if code == 0:
+                    active_styles.clear()
+                    active_color = None
+                    active_bgcolor = None
+                elif code in range(30, 39) or code in range(90, 98):
+                    active_color = ansi_code
+                elif code in range(40, 49) or code in range(100, 108):
+                    active_bgcolor = ansi_code
+                elif code == 39:
+                    active_color = None
+                elif code == 49:
+                    active_bgcolor = None
+                elif ansi_code in style_starts:
+                    active_styles.add(ansi_code)
+                elif ansi_code in style_stops:
+                    active_styles.discard(Styles.__dict__[style_stops[ansi_code]])
 
         else:
             chunk_end = current_pos + len(chunk)
@@ -165,10 +175,19 @@ def ansi_slice(string: str, start: int, end: int) -> str:
                     if active_bgcolor:
                         result.append(active_bgcolor)
                 result.append(chunk[slice_start:slice_end])
+            if chunk_end >= end:
+                break
 
             current_pos = chunk_end
 
-    return ''.join(result) + (Styles.RESET if result and (active_styles or active_color or active_bgcolor) else '')
+    reset = ''
+    if active_color:
+        reset += Colors.END
+    if active_bgcolor:
+        reset += Colors.BG_END
+    if active_styles:
+        reset += Styles.RESET
+    return ''.join(result) + reset
 
 def wrap_lines(content: str, max_width: int) -> str:
     lines = []

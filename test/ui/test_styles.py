@@ -33,7 +33,7 @@ class TestAnsiSlice(unittest.TestCase):
             ("ansi256 colors", f"{ansi256(196)}hello{Colors.END} world", 0, 5, f"{ansi256(196)}hello{Colors.END}"),
             ("ansi16m colors", f"{ansi16m(255, 0, 0)}hello{Colors.END} world", 0, 5, f"{ansi16m(255, 0, 0)}hello{Colors.END}"),
             ("background colors", f"{Colors.BG_RED}hello{Colors.BG_END} world", 0, 5, f"{Colors.BG_RED}hello{Colors.BG_END}"),
-            ("styles", f"{Styles.BOLD}hello{Styles.BOLD_END} world", 0, 5, f"{Styles.BOLD}hello{Styles.BOLD_END}"),
+            ("styles", f"{Styles.BOLD}hello{Styles.BOLD_END} world", 0, 5, f"{Styles.BOLD}hello{Styles.RESET}"),
             ("slice inside styled section", f"{Colors.RED}hello world{Colors.END}", 2, 8, f"{Colors.RED}llo wo{Colors.END}"),
             ("slice across styled sections", f"{Colors.RED}hello{Colors.END} {Colors.BLUE}world{Colors.END}", 3, 8,
                                              f"{Colors.RED}lo{Colors.END} {Colors.BLUE}wo{Colors.END}"),
@@ -53,7 +53,7 @@ class TestWrapLines(unittest.TestCase):
         self.assertEqual(len(lines), 3)
         self.assertEqual(ansi_len(lines[0]), 20)
         self.assertEqual(ansi_len(lines[1]), 20)
-        self.assertEqual(lines[0], f"{Colors.RED}This is a very {Styles.BOLD}long {Styles.BOLD_END}{Styles.RESET}")
+        self.assertEqual(lines[0], f"{Colors.RED}This is a very {Styles.BOLD}long {Colors.END}{Styles.RESET}")
         self.assertEqual(lines[1], f"{Styles.BOLD}{Colors.RED}red text{Styles.BOLD_END} that should{Colors.END}")
         self.assertEqual(lines[2], f"{Colors.RED} wrap{Colors.END}")
 
