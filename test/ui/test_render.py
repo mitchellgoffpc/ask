@@ -10,6 +10,16 @@ class TestRender(unittest.TestCase):
         children.clear()
         parents.clear()
 
+    def test_empty_box(self):
+        """Test empty box."""
+        box = Box()[
+            Box(),
+            Text("Hello"),
+        ]
+        mount(box)
+        result = render(box, 100)
+        self.assertEqual(result, "Hello")
+
     def test_width_types(self):
         """Test components with different width value types."""
         test_cases: list[tuple[str, int | None, list]] = [

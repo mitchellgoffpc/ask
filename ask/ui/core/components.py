@@ -193,7 +193,7 @@ class Box(Component):
 
     def render(self, contents: list[str], max_width: int) -> str:
         if self.props['flex'] is Flex.VERTICAL:
-            content = '\n'.join(contents)
+            content = '\n'.join(x for x in contents if x)
         elif self.props['flex'] is Flex.HORIZONTAL:
             max_child_height = max((child.count('\n') + 1 for child in contents), default=0)
             contents = [apply_sizing(child, width=get_rendered_width(child), height=max_child_height) for child in contents]
