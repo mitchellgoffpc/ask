@@ -299,11 +299,13 @@ class App(Box):
                 case _:
                     pass
 
-        return[
-            *messages,
-            Spinner(todos=latest_todos, expanded=self.state['show_todos'])
-                if self.state['pending'] and not self.state['approvals'] else
-            ToDoMessage(latest_todos)
-                if latest_todos and self.state['show_todos'] and not self.state['approvals'] else None,
+        return [
+            Box()[*messages],
+            Box()[
+                Spinner(todos=latest_todos, expanded=self.state['show_todos'])
+                    if self.state['pending'] and not self.state['approvals'] else None,
+                ToDoMessage(latest_todos)
+                    if latest_todos and self.state['show_todos'] and not self.state['approvals'] else None,
+            ],
             self.textbox(),
         ]

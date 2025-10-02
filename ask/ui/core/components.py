@@ -9,7 +9,7 @@ Size = int | float | None
 
 dirty: set[UUID] = set()
 nodes: dict[UUID, 'Component'] = {}
-parents: dict[UUID, 'Component'] = {}
+parents: dict[UUID, UUID] = {}
 children: dict[UUID, list[Optional['Component']]] = {}
 
 def get_rendered_width(contents: str) -> int:

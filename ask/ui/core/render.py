@@ -41,7 +41,7 @@ def mount(component):
     component.handle_mount()
     for child in contents:
         if child:
-            parents[child.uuid] = component
+            parents[child.uuid] = component.uuid
             mount(child)
 
 # Remove a component and all its children from the tree
@@ -70,7 +70,7 @@ def update(uuid, component, new_to_old):
                 children[uuid].append(new_child)
             else:
                 children[uuid][i] = new_child
-            parents[new_child.uuid] = component
+            parents[new_child.uuid] = uuid
             nodes[new_child.uuid] = new_child
             mount(new_child)
         elif not new_child:
@@ -81,7 +81,7 @@ def update(uuid, component, new_to_old):
             # Class changed, replace the child
             unmount(old_child)
             children[uuid][i] = new_child
-            parents[new_child.uuid] = component
+            parents[new_child.uuid] = uuid
             nodes[new_child.uuid] = new_child
             mount(new_child)
         else:
@@ -132,7 +132,7 @@ def render(component, width):
 def depth(node, root):
     depth = 0
     while node is not root:
-        node = parents[node.uuid]
+        node = nodes[parents[node.uuid]]
         depth += 1
     return depth
 
