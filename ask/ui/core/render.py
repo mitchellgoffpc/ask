@@ -182,7 +182,7 @@ async def render_root(root: Component) -> None:
 
             # Check if we need to clear screen due to large difference in output size
             if len(previous_render_lines) - len(new_render_lines) > min(terminal_size.lines / 2, terminal_size.lines - 20):
-                sys.stdout.write('\033[2J\033[H')
+                sys.stdout.write('\033c')
                 previous_render_lines = []
 
             # Pad new render to match the number of previous lines
