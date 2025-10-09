@@ -3,11 +3,10 @@ import asyncio
 from ask.models import ToolRequest
 from ask.prompts import get_relative_path
 from ask.ui.core.components import Component, Box, Text
+from ask.ui.core.diff import Diff
 from ask.ui.core.markdown_ import highlight_code
 from ask.ui.core.styles import Borders, Colors, Styles, Theme
-from ask.ui.diff import Diff
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
-
 
 def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -> Text:
     if active:
@@ -18,7 +17,7 @@ def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -
 def OptionsList(options: dict[str, str | None], selected_idx: int) -> Box:
     return Box()[(Option(option, idx, idx == selected_idx, keybinding) for idx, (option, keybinding) in enumerate(options.items()))]
 
-def Approval(tool_call: ToolRequest, future: asyncio.Future) -> Component:
+def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> Component:
     components = {
         BashTool.name: BashApproval,
         EditTool.name: EditApproval,
@@ -28,7 +27,7 @@ def Approval(tool_call: ToolRequest, future: asyncio.Future) -> Component:
     return components[tool_call.tool](tool_call, future)
 
 
-class BaseApproval(Box):
+class SelectionDialog(Box):
     options: dict[str, str | None]
     initial_state = {'selected_idx': 0}
 
@@ -52,7 +51,9 @@ class BaseApproval(Box):
                 self.props['future'].cancel()
 
 
-class BashApproval(BaseApproval):
+# Approval dialogs
+
+class BashApproval(SelectionDialog):
     options = {
         'Yes': None,
         'Yes, allow all bash commands during this session': 'shift+tab',
@@ -70,8 +71,7 @@ class BashApproval(BaseApproval):
             ]
         ]
 
-
-class PythonApproval(BaseApproval):
+class PythonApproval(SelectionDialog):
     options = {
         'Yes': None,
         'Yes, allow all Python commands during this session': 'shift+tab',
@@ -87,8 +87,7 @@ class PythonApproval(BaseApproval):
             ]
         ]
 
-
-class EditApproval(BaseApproval):
+class EditApproval(SelectionDialog):
     options = {
         'Yes': None,
         'Yes, allow all edits during this session': 'shift+tab',

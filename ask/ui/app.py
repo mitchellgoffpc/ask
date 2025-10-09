@@ -17,7 +17,7 @@ from ask.tools.read import read_file
 from ask.ui.core.components import Component, Box, Text, Line
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Flex, Theme
-from ask.ui.approvals import Approval
+from ask.ui.dialogs import ApprovalDialog
 from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.config import Config, History
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
@@ -256,7 +256,7 @@ class App(Box):
             wall_time = time.monotonic() - self.start_time
             return Text(Colors.hex(get_usage_message(self.state['messages'], self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
         elif approval_uuid := next(iter(self.state['approvals'].keys()), None):
-            return Approval(
+            return ApprovalDialog(
                 tool_call=self.state['messages'][approval_uuid].content,
                 future=self.state['approvals'][approval_uuid])
         elif self.state['expanded']:
