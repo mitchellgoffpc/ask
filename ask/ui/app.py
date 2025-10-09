@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from typing import Any
 
 from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
+from ask.prompts import get_agents_md_path
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
@@ -240,6 +241,14 @@ class App(Box):
                 hide_cursor()
             else:
                 self.add_message('user', SlashCommand(command='/edit', error='No file path supplied'))
+        elif value.startswith('#'):
+            agents_path = get_agents_md_path()
+            content = agents_path.read_text() if agents_path else ''
+            if content and not content.endswith('\n'):
+                content += '\n'
+            agents_path = agents_path or Path.cwd() / "AGENTS.md"
+            agents_path.write_text(content + f"- {value.removeprefix('#').strip()}\n")
+            self.add_message('user', SlashCommand(command=value, output=f"Memorized to {agents_path}"))
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:

@@ -1,6 +1,7 @@
 import asyncio
 import glob
 import os
+from enum import Enum
 from pathlib import Path
 from typing import Callable
 
@@ -8,6 +9,26 @@ from ask.models import MODELS_BY_NAME, Model
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
+
+class Mode(Enum):
+    TEXT = 'text'
+    BASH = 'bash'
+    MEMORIZE = 'memorize'
+
+COLORS = {
+    Mode.BASH: Theme.PINK,
+    Mode.MEMORIZE: Theme.BLUE}
+PREFIXES = {
+    Mode.BASH: '!',
+    Mode.MEMORIZE: '#'}
+SHORTCUTS = {
+    Mode.BASH: '! for bash mode',
+    Mode.MEMORIZE: '# to memorize',
+    Mode.TEXT: '! for bash mode · / for commands'}
+PLACEHOLDERS = {
+    Mode.BASH: "Run bash command. Try 'ls -la'",
+    Mode.MEMORIZE: "Add to memory. Try 'Always use descriptive variable names'",
+    Mode.TEXT: "Try 'how do I log an error?'"}
 
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
@@ -32,7 +53,7 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
 
 
 class PromptTextBox(Box):
-    initial_state = {'text': '', 'bash_mode': False, 'show_exit_prompt': False, 'selected_idx': 0, 'autocomplete_matches': []}
+    initial_state = {'text': '', 'mode': Mode.TEXT, 'show_exit_prompt': False, 'selected_idx': 0, 'autocomplete_matches': []}
 
     def __init__(self, history: list[str], model: Model, handle_submit: Callable[[str], bool], handle_exit: Callable[[], None]) -> None:
         super().__init__(history=history, model=model, handle_submit=handle_submit, handle_exit=handle_exit)
@@ -80,11 +101,13 @@ class PromptTextBox(Box):
             asyncio.create_task(self.confirm_exit())
 
     def handle_input(self, ch: str, cursor_pos: int) -> bool:
-        # Bash mode
         if cursor_pos == 0 and ch in ('\x7f', '\x1b\x7f'):
-            self.state['bash_mode'] = False
+            self.state['mode'] = Mode.TEXT
         elif cursor_pos == 0 and ch == '!':
-            self.state['bash_mode'] = True
+            self.state['mode'] = Mode.BASH
+            return False
+        elif cursor_pos == 0 and ch == '#':
+            self.state['mode'] = Mode.MEMORIZE
             return False
 
         # Tab completion
@@ -127,12 +150,15 @@ class PromptTextBox(Box):
         return True
 
     def handle_page(self, _: int) -> None:
-        self.state['bash_mode'] = False
+        self.state['mode'] = Mode.TEXT
 
     def handle_change(self, value: str) -> None:
         if value.startswith('!'):
             value = value.removeprefix('!')
-            self.state['bash_mode'] = True
+            self.state['mode'] = Mode.BASH
+        elif value.startswith('#'):
+            value = value.removeprefix('#')
+            self.state['mode'] = Mode.MEMORIZE
         if value != self.state['text']:
             self.state['selected_idx'] = 0
             self.state['autocomplete_matches'] = []
@@ -150,27 +176,25 @@ class PromptTextBox(Box):
         elif matching_models := self.get_matching_models():
             value = f"/model {matching_models[self.state['selected_idx']]} "
 
-        if self.props['handle_submit'](f"{'!' if self.state['bash_mode'] else ''}{value}"):
-            self.state.update({'text': '', 'bash_mode': False, 'autocomplete_matches': []})
+        prefix = PREFIXES.get(self.state['mode'], '')
+        if self.props['handle_submit'](f"{prefix}{value}"):
+            self.state.update({'text': '', 'mode': Mode.TEXT, 'autocomplete_matches': []})
             return True
         return False
 
     def contents(self) -> list[Component | None]:
-        bash_color = Theme.PINK if self.state['bash_mode'] else Theme.GRAY
-        border_color = Theme.PINK if self.state['bash_mode'] else Theme.DARK_GRAY
-        marker = Colors.hex('!', Theme.PINK) if self.state['bash_mode'] else '>'
         matching_commands = self.get_matching_commands()
         matching_models = self.get_matching_models()
         autocomplete_matches = self.state['autocomplete_matches']
 
         return [
-            Box(border_color=Colors.HEX(border_color), border_style=Borders.ROUND, flex=Flex.HORIZONTAL, margin={'top': 1})[
-                Text(marker, margin={'left': 1, 'right': 1}, width=3),
+            Box(border_color=Colors.HEX(COLORS.get(self.state['mode'], Theme.DARK_GRAY)), border_style=Borders.ROUND, flex=Flex.HORIZONTAL, margin={'top': 1})[
+                Text(Colors.hex(PREFIXES.get(self.state['mode'], '>'), COLORS.get(self.state['mode'], Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 TextBox(
                     width=1.0,
                     text=self.state['text'],
                     history=self.props['history'],
-                    placeholder="Try 'how do I log an error?'",
+                    placeholder=PLACEHOLDERS[self.state['mode']],
                     handle_input=self.handle_input,
                     handle_page=self.handle_page,
                     handle_change=self.handle_change,
@@ -185,7 +209,7 @@ class PromptTextBox(Box):
             CommandsList(matching_commands, self.state['selected_idx'])
                 if matching_commands else
             Box(flex=Flex.HORIZONTAL)[
-                Text(Colors.hex('! for bash mode', bash_color) + Colors.hex(' · / for commands', Theme.GRAY), width=1.0, margin={'left': 2}),
+                Text(Colors.hex(SHORTCUTS[self.state['mode']], COLORS.get(self.state['mode'], Theme.GRAY)), width=1.0, margin={'left': 2}),
                 Text(Colors.hex(self.props['model'].api.display_name, Theme.WHITE)),
                 Text(Colors.hex(self.props['model'].name, Theme.GRAY), margin={'left': 2, 'right': 2})
             ]
