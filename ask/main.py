@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text
-from ask.prompts import load_system_prompt
+from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS, Tool
 from ask.tools.read import read_file
 from ask.ui.app import App
@@ -49,9 +49,8 @@ def main() -> None:
     messages = {}
     if (user_file := CONFIG_DIR / 'USER.md').exists():
         messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='user', file_path=user_file, file_contents=user_file.read_text()))
-    for parent in (Path.cwd(), *Path.cwd().parents):
-        if (agents_file := parent / "AGENTS.md").exists():
-            messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='agents', file_path=agents_file, file_contents=agents_file.read_text()))
+    if agents_file := get_agents_md_path():
+        messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='agents', file_path=agents_file, file_contents=agents_file.read_text()))
 
     # Read any attached files
     attached_files = args.file + [Path(m[1:]) for m in re.findall(r'@\S+', question) if Path(m[1:]).is_file()]

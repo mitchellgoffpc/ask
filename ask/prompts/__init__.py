@@ -34,5 +34,11 @@ def load_system_prompt() -> str:
         os_version=f"{os.uname().sysname.lower()} {os.uname().release}",
         current_date=date.today().strftime('%Y-%m-%d'))
 
+def get_agents_md_path() -> Path | None:
+    for parent in (Path.cwd(), *Path.cwd().parents):
+        if (agents_file := parent / "AGENTS.md").exists():
+            return agents_file
+    return None
+
 def load_tool_prompt(tool_name: str, key: str = "prompt") -> str:
     return load_prompt_file(f'tools/{tool_name}.toml')[key].strip()
