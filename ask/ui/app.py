@@ -19,9 +19,9 @@ from ask.ui.core.components import Component, Box, Text, Line
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Flex, Theme
 from ask.ui.dialogs import ApprovalDialog
-from ask.ui.commands import ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
+from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.config import Config, History
-from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage
+from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage, MemorizeCommandMessage
 from ask.ui.textbox import PromptTextBox
 
 TOOL_REJECTED_MESSAGE = (
@@ -248,7 +248,7 @@ class App(Box):
                 content += '\n'
             agents_path = agents_path or Path.cwd() / "AGENTS.md"
             agents_path.write_text(content + f"- {value.removeprefix('#').strip()}\n")
-            self.add_message('user', SlashCommand(command=value, output=f"Memorized to {agents_path}"))
+            self.add_message('user', MemorizeCommand(command=value.removeprefix('#').strip()))
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
         else:
@@ -296,6 +296,8 @@ class App(Box):
                     messages.append(ErrorMessage(error=msg.content))
                 case ('user', ShellCommand()):
                     messages.append(ShellCommandMessage(command=msg.content, elapsed=self.state['elapsed'], expanded=self.state['expanded']))
+                case ('user', MemorizeCommand()):
+                    messages.append(MemorizeCommandMessage(command=msg.content))
                 case ('user', SlashCommand()):
                     messages.append(SlashCommandMessage(command=msg.content))
                 case ('assistant', TextContent()):

@@ -7,7 +7,7 @@ from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.diff import Diff
 from ask.ui.core.markdown_ import render_markdown
 from ask.ui.core.styles import Flex, Colors, Styles, Theme
-from ask.ui.commands import ShellCommand, SlashCommand
+from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand
 
 NUM_PREVIEW_LINES = 5
 STATUS_COLORS = {
@@ -150,4 +150,16 @@ def ShellCommandMessage(command: ShellCommand, elapsed: float, expanded: bool) -
             Text("  ⎿  "),
             Text(Colors.hex(error, Theme.RED))
         ] if error else None,
+    ]
+
+def MemorizeCommandMessage(command: MemorizeCommand) -> Component:
+    return Box(margin={'top': 1})[
+        Box(flex=Flex.HORIZONTAL)[
+            Text(Colors.hex("# ", Theme.BLUE)),
+            Text(Colors.hex(command.command, Theme.GRAY))
+        ],
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(Colors.hex("Noted", Theme.GRAY))
+        ],
     ]
