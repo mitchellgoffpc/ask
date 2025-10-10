@@ -67,11 +67,11 @@ class ToolResponse:
 class Command(metaclass=ABCMeta):
     command: str
 
-    def render_command(self) -> str:
-        return self.command
-
     @abstractmethod
     def messages(self) -> list[Message]: ...
+
+    def render_command(self) -> str:
+        return self.command
 
 @dataclass
 class Usage:
@@ -137,27 +137,20 @@ class API(metaclass=ABCMeta):
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]: ...
 
     def render_content(self, role: str, content: Content, model: Model) -> list[dict[str, Any]]:
-        if isinstance(content, Usage):
-            return []
-        elif isinstance(content, Text):
-            return [self.render_response_text(content) if role == 'assistant' else self.render_text(content)]
-        elif isinstance(content, Image):
-            if not model.supports_images:
+        match content:
+            case Usage(): return []
+            case Text(): return [self.render_response_text(content) if role == 'assistant' else self.render_text(content)]
+            case Image() if not model.supports_images:
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
-            return [self.render_image(content)]
-        elif isinstance(content, ToolRequest):
-            return [self.render_tool_request(content)]
-        elif isinstance(content, ToolResponse):
-            if isinstance(content.response, Image) and not self.supports_image_tools:
+            case Image(): return [self.render_image(content)]
+            case Reasoning(): return [self.render_reasoning(content)]
+            case ToolRequest(): return [self.render_tool_request(content)]
+            case ToolResponse(response=Image() as response) if not self.supports_image_tools:
                 return [
                     self.render_tool_response(replace(content, response=Text(TOOL_IMAGE_ERROR_MSG))),
-                    self.render_image(content.response)]
-            else:
-                return [self.render_tool_response(content)]
-        elif isinstance(content, Reasoning):
-            return [self.render_reasoning(content)]
-        else:
-            raise TypeError(f"Unsupported message content: {type(content)}")
+                    self.render_image(response)]
+            case ToolResponse(): return [self.render_tool_response(content)]
+            case _: raise TypeError(f"Unsupported message content: {type(content)}")
 
     @abstractmethod
     def render_tool(self, tool: Tool) -> dict[str, Any]: ...
