@@ -329,6 +329,8 @@ class Theme:
     DARK_GREEN = '#225C2B'
     FADED_GREEN = '#47584A'
     BLUE = '#B1B9F9'
+    PURPLE = '#A669FF'
+    DARK_PURPLE = '#482F70'
     PINK = '#FD5DB1'
     GRAY = '#AAAAAA'
     DARK_GRAY = '#888888'

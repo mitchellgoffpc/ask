@@ -29,6 +29,7 @@ def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> Component:
 
 class SelectionDialog(Box):
     options: dict[str, str | None]
+    autoapprovals: set[str] = set()
     initial_state = {'selected_idx': 0}
 
     def __init__(self, tool_call: ToolRequest, future: asyncio.Future) -> None:
@@ -44,9 +45,13 @@ class SelectionDialog(Box):
             self.state['selected_idx'] = min(selected_idx + 1, len(self.options) - 1)
         elif ch == '\x1b':  # Escape key
             self.props['future'].cancel()
+        elif ch == '\x1b[Z':  # Shift+Tab
+            self.props['future'].set_result(self.autoapprovals)
         elif ch == '\r':  # Enter key
-            if selected_idx in (0, 1):  # 'Yes' or 'Yes, and always allow' option
-                self.props['future'].set_result(True)
+            if selected_idx == 0:  # 'Yes' option
+                self.props['future'].set_result(set())
+            elif selected_idx == 1:  # 'Yes, and always allow' option
+                self.props['future'].set_result(self.autoapprovals)
             else:  # 'No' option
                 self.props['future'].cancel()
 
@@ -54,6 +59,7 @@ class SelectionDialog(Box):
 # Approval dialogs
 
 class BashApproval(SelectionDialog):
+    autoapprovals = {BashTool.name}
     options = {
         'Yes': None,
         'Yes, allow all bash commands during this session': 'shift+tab',
@@ -72,6 +78,7 @@ class BashApproval(SelectionDialog):
         ]
 
 class PythonApproval(SelectionDialog):
+    autoapprovals = {PythonTool.name}
     options = {
         'Yes': None,
         'Yes, allow all Python commands during this session': 'shift+tab',
@@ -88,6 +95,7 @@ class PythonApproval(SelectionDialog):
         ]
 
 class EditApproval(SelectionDialog):
+    autoapprovals = {EditTool.name, MultiEditTool.name, WriteTool.name}
     options = {
         'Yes': None,
         'Yes, allow all edits during this session': 'shift+tab',

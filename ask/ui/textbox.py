@@ -9,6 +9,7 @@ from ask.models import MODELS_BY_NAME, Model
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.styles import Borders, Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
+from ask.ui.dialogs import EditApproval
 
 class Mode(Enum):
     TEXT = 'text'
@@ -55,8 +56,15 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
 class PromptTextBox(Box):
     initial_state = {'text': '', 'mode': Mode.TEXT, 'show_exit_prompt': False, 'selected_idx': 0, 'autocomplete_matches': []}
 
-    def __init__(self, history: list[str], model: Model, handle_submit: Callable[[str], bool], handle_exit: Callable[[], None]) -> None:
-        super().__init__(history=history, model=model, handle_submit=handle_submit, handle_exit=handle_exit)
+    def __init__(
+        self,
+        model: Model,
+        history: list[str],
+        autoapprovals: set[str],
+        handle_submit: Callable[[str], bool],
+        handle_exit: Callable[[], None]
+    ) -> None:
+        super().__init__(model=model, history=history, autoapprovals=autoapprovals, handle_submit=handle_submit, handle_exit=handle_exit)
 
     async def confirm_exit(self) -> None:
         if self.state['show_exit_prompt']:
@@ -94,6 +102,11 @@ class PromptTextBox(Box):
             return sorted(matches)[:10]
         except Exception:
             return []
+
+    def get_shortcuts_text(self) -> str:
+        if self.state['mode'] == Mode.TEXT and EditApproval.autoapprovals & self.props['autoapprovals']:
+            return Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
+        return Colors.hex(SHORTCUTS[self.state['mode']], COLORS.get(self.state['mode'], Theme.GRAY))
 
     def handle_raw_input(self, ch: str) -> None:
         if ch == '\x03':  # Ctrl+C
@@ -209,7 +222,7 @@ class PromptTextBox(Box):
             CommandsList(matching_commands, self.state['selected_idx'])
                 if matching_commands else
             Box(flex=Flex.HORIZONTAL)[
-                Text(Colors.hex(SHORTCUTS[self.state['mode']], COLORS.get(self.state['mode'], Theme.GRAY)), width=1.0, margin={'left': 2}),
+                Text(self.get_shortcuts_text(), width=1.0, margin={'left': 2}),
                 Text(Colors.hex(self.props['model'].api.display_name, Theme.WHITE)),
                 Text(Colors.hex(self.props['model'].name, Theme.GRAY), margin={'left': 2, 'right': 2})
             ]

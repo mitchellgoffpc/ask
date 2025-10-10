@@ -18,7 +18,7 @@ from ask.tools.read import read_file
 from ask.ui.core.components import Component, Box, Text, Line
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Flex, Theme
-from ask.ui.dialogs import ApprovalDialog
+from ask.ui.dialogs import ApprovalDialog, EditApproval
 from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.config import Config, History
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage, MemorizeCommandMessage
@@ -75,7 +75,7 @@ class Spinner(Box):
 
 
 class App(Box):
-    initial_state = {'expanded': False, 'exiting': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'show_todos': False}
+    initial_state = {'expanded': False, 'exiting': False, 'show_todos': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'autoapprovals': set()}
 
     def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
         super().__init__(model=model, tools=tools, system_prompt=system_prompt)
@@ -160,11 +160,10 @@ class App(Box):
             tool = TOOLS[request.tool]
             args = tool.check(request.arguments)
             self.update_message(request_uuid, replace(request, processed_arguments=args))
-            if tool.name in (BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name):
-                future = asyncio.get_running_loop().create_future()
-                self.state['approvals'] = self.state['approvals'] | {request_uuid: future}
+            if tool.name in {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name} - self.state['autoapprovals']:
+                self.state['approvals'] = self.state['approvals'] | {request_uuid: asyncio.get_running_loop().create_future()}
                 try:
-                    await future
+                    self.state['autoapprovals'] = self.state['autoapprovals'] | await self.state['approvals'][request_uuid]
                 finally:
                     self.state['approvals'] = {k:v for k,v in self.state['approvals'].items() if k != request_uuid}
             output = await tool.run(**args)
@@ -200,6 +199,11 @@ class App(Box):
             self.state['expanded'] = not self.state['expanded']
         elif ch == '\x14':  # Ctrl+T
             self.state['show_todos'] = not self.state['show_todos']
+        elif ch == '\x1b[Z' and not self.state['approvals']:  # Shift+Tab
+            if EditApproval.autoapprovals & self.state['autoapprovals']:
+                self.state['autoapprovals'] = self.state['autoapprovals'] - EditApproval.autoapprovals
+            else:
+                self.state['autoapprovals'] = self.state['autoapprovals'] | EditApproval.autoapprovals
         elif ch == '\x1b' and not self.state['approvals']:  # Escape key
             for task in self.tasks:
                 if not task.done():
@@ -275,8 +279,9 @@ class App(Box):
             ]
         else:
             return PromptTextBox(
-                history=list(self.history),
                 model=self.state['model'],
+                history=list(self.history),
+                autoapprovals=self.state['autoapprovals'],
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
 
