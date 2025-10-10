@@ -178,7 +178,9 @@ class PromptTextBox(Box):
         self.state['text'] = value
 
     def handle_submit(self, value: str) -> bool:
-        if self.state['autocomplete_matches']:
+        if not value:
+            return False
+        elif self.state['autocomplete_matches']:
             selected_match = self.state['autocomplete_matches'][self.state['selected_idx']]
             _, start_pos = self.get_current_word_prefix(self.state['text'], len(self.state['text']))
             self.state['text'] = self.state['text'][:start_pos] + selected_match + self.state['text'][len(self.state['text']):]
