@@ -1,7 +1,8 @@
+from __future__ import annotations
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, AsyncIterator, Union
 
 from ask.tools import Tool, ToolCallStatus
 
@@ -9,7 +10,7 @@ TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not su
 
 Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'Command', 'Usage', 'Error']
 
-def get_message_groups(messages: list['Message']) -> list[tuple[str, list[Content]]]:
+def get_message_groups(messages: list[Message]) -> list[tuple[str, list[Content]]]:
     if not messages:
         return []
     groups = []
@@ -79,7 +80,7 @@ class Usage:
     cache_write: int
     cache_read: int
     output: int
-    model: Optional['Model'] = None
+    model: Model | None = None
 
 @dataclass
 class Error:
@@ -98,7 +99,7 @@ class Pricing:
 @dataclass
 class Model:
     name: str
-    api: 'API'
+    api: API
     shortcuts: list[str]
     pricing: Pricing | None = None
     stream: bool = True

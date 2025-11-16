@@ -17,7 +17,7 @@ from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEdit
 from ask.tools.read import read_file
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.cursor import hide_cursor
-from ask.ui.core.styles import Borders, Colors, Flex, Theme
+from ask.ui.core.styles import Colors, Flex, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApproval
 from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.config import Config, History
@@ -273,7 +273,7 @@ class App(Box):
                 tool_call=self.state['messages'][approval_uuid].content,
                 future=self.state['approvals'][approval_uuid])
         elif self.state['expanded']:
-            return Box(border=['top'], border_style=Borders.SINGLE)[
+            return Box(border={'top'})[
                 Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
             ]
         else:

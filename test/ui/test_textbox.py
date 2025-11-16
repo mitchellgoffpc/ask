@@ -1,9 +1,10 @@
 import unittest
+from typing import get_args
 from unittest.mock import Mock
-from ask.ui.core.components import Spacing
-from ask.ui.core.styles import Borders, ansi_len, ansi_strip
-from ask.ui.core.textbox import TextBox
 
+from ask.ui.core.components import Side, Spacing
+from ask.ui.core.styles import ansi_len, ansi_strip
+from ask.ui.core.textbox import TextBox
 
 class TestTextBoxCreation(unittest.TestCase):
     def test_textbox_creation(self):
@@ -293,7 +294,7 @@ class TestTextBoxRendering(unittest.TestCase):
         ]
         for width, padding, content, placeholder, description in test_cases:
             with self.subTest(msg=description):
-                textbox = TextBox(width=width, padding=padding, placeholder=placeholder, border_style=Borders.ROUND)
+                textbox = TextBox(width=width, padding=padding, placeholder=placeholder, border=get_args(Side))
                 textbox.state['text'] = content
                 textbox.state['cursor_pos'] = len(content)
                 rendered = textbox.render([], max_width=100)

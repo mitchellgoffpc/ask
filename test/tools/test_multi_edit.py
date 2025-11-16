@@ -1,9 +1,9 @@
 import tempfile
 import unittest
 from pathlib import Path
+
 from ask.tools.multi_edit import MultiEditTool
 from ask.tools.base import ToolError
-
 
 class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from ask.tools.glob_ import GlobTool
 
+from ask.tools.glob_ import GlobTool
 
 class TestGlobTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

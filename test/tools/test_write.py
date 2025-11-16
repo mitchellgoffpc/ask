@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from ask.tools.write import WriteTool
 
+from ask.tools.write import WriteTool
 
 class TestWriteTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

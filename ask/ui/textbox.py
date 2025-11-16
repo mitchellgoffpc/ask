@@ -7,7 +7,7 @@ from typing import Callable
 
 from ask.models import MODELS_BY_NAME, Model
 from ask.ui.core.components import Component, Box, Text
-from ask.ui.core.styles import Borders, Colors, Flex, Styles, Theme
+from ask.ui.core.styles import Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
 from ask.ui.dialogs import EditApproval
 
@@ -203,9 +203,7 @@ class PromptTextBox(Box):
         autocomplete_matches = self.state['autocomplete_matches']
 
         return [
-            Box(flex=Flex.HORIZONTAL, margin={'top': 1}, border=('top', 'bottom'),
-                border_color=Colors.HEX(COLORS.get(self.state['mode'], Theme.DARK_GRAY)), border_style=Borders.ROUND
-            )[
+            Box(flex=Flex.HORIZONTAL, margin={'top': 1}, border=('top', 'bottom'), border_color=Colors.HEX(COLORS.get(self.state['mode'], Theme.DARK_GRAY)))[
                 Text(Colors.hex(PREFIXES.get(self.state['mode'], '>'), COLORS.get(self.state['mode'], Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 TextBox(
                     width=1.0,

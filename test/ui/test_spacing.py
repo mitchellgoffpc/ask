@@ -1,7 +1,8 @@
 import unittest
+from typing import get_args
+
 from ask.ui.core.components import Box, Side, Spacing, apply_sizing, apply_spacing, apply_borders, apply_boxing, get_spacing_dict
 from ask.ui.core.styles import Borders, BorderStyle, Colors, ansi_len
-
 
 class TestApplySizing(unittest.TestCase):
     def test_apply_sizing_truncation_and_padding(self):
@@ -59,7 +60,7 @@ class TestApplySpacing(unittest.TestCase):
 class TestApplyBorders(unittest.TestCase):
     def test_apply_no_border(self):
         """Test that apply_borders returns content unchanged when no border is specified."""
-        self.assertEqual(apply_borders("Hello", 5, {'top', 'bottom', 'left', 'right'}, None, None), "Hello")
+        self.assertEqual(apply_borders("Hello", 5, set(), Borders.ROUND, None), "Hello")
 
     def test_apply_borders_with_invalid_content(self):
         """Test that apply_borders raises an error if content lines do not match the specified width."""
@@ -143,17 +144,17 @@ class TestApplyBoxing(unittest.TestCase):
     def test_apply_boxing_with_borders_and_spacing(self):
         """Test apply_boxing with borders, padding, and margin combinations."""
         content = "Hello World"
-        test_cases: list[tuple[Spacing, Spacing, BorderStyle | None, str]] = [
+        test_cases: list[tuple[Spacing, Spacing, tuple[Side, ...], BorderStyle, str]] = [
             # (padding, margin, border_style, description)
-            (2, 1, Borders.SINGLE, "with padding, margin, and single border"),
-            ({'left': 3, 'right': 1}, {'top': 2, 'bottom': 1}, Borders.ROUND, "asymmetric spacing with round border"),
-            (0, {'left': 2, 'right': 2}, Borders.DOUBLE, "no padding, horizontal margin, double border"),
-            (1, 0, None, "padding only, no border or margin"),
+            (2, 1, get_args(Side), Borders.SINGLE, "with padding, margin, and single border"),
+            ({'left': 3, 'right': 1}, {'top': 2, 'bottom': 1}, get_args(Side), Borders.ROUND, "asymmetric spacing with round border"),
+            (0, {'left': 2, 'right': 2}, get_args(Side), Borders.DOUBLE, "no padding, horizontal margin, double border"),
+            (1, 0, (), Borders.ROUND, "padding only, no border or margin"),
         ]
 
-        for padding, margin, border_style, description in test_cases:
+        for padding, margin, border, border_style, description in test_cases:
             with self.subTest(description=description):
-                box = Box(width=20, height=3, padding=padding, margin=margin, border_style=border_style)
+                box = Box(width=20, height=3, padding=padding, margin=margin, border=border, border_style=border_style)
                 box.render([content], max_width=100)
                 lines = apply_boxing(content, 50, box).split('\n')
 
@@ -170,7 +171,7 @@ class TestApplyBoxing(unittest.TestCase):
                     self.assertTrue(line.endswith(' ' * margin_dict['right']))
 
                 # Check border presence if specified
-                if border_style is not None:
+                if border:
                     self.assertTrue(any(
                         border_style.top_left in line or border_style.top_right in line or
                         border_style.bottom_left in line or border_style.bottom_right in line

@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from ask.tools.grep import GrepTool
 
+from ask.tools.grep import GrepTool
 
 class TestGrepTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

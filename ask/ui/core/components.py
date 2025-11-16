@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Literal, Iterable, Self, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.core.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
+from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
@@ -30,14 +30,14 @@ def apply_spacing(content: str, spacing: dict[Side, int]) -> str:
     line_width = ansi_len(lines[0]) if lines else 0
     assert all(ansi_len(line) == line_width for line in lines), "All lines must have the same width for spacing to be applied"
     width = line_width + spacing['left'] + spacing['right']
-    top_spacing = (' ' * width + '\n') * spacing.get('top', 0)
-    bottom_spacing = ('\n' + ' ' * width) * spacing.get('bottom', 0)
-    left_spacing = ' ' * spacing.get('left', 0)
-    right_spacing = ' ' * spacing.get('right', 0)
+    top_spacing = (' ' * width + '\n') * spacing['top']
+    bottom_spacing = ('\n' + ' ' * width) * spacing['bottom']
+    left_spacing = ' ' * spacing['left']
+    right_spacing = ' ' * spacing['right']
     return top_spacing + '\n'.join(left_spacing + line + right_spacing for line in lines) + bottom_spacing
 
-def apply_borders(content: str, width: int, borders: set[Side], border_style: BorderStyle | None, border_color: str | None) -> str:
-    if border_style is None:
+def apply_borders(content: str, width: int, borders: set[Side], border_style: BorderStyle, border_color: str | None) -> str:
+    if not borders:
         return content
     color_code = border_color or ''
     lines = content.split('\n') if content else []
@@ -67,8 +67,7 @@ def apply_boxing(content: str, max_width: int, component: Component) -> str:
 
     content = apply_sizing(content, content_width, content_height)
     content = apply_spacing(content, component.padding)
-    content = apply_borders(content, padded_width, set(component.props.get('border', get_args(Side))),
-                            component.props.get('border_style'), component.props.get('border_color'))
+    content = apply_borders(content, padded_width, set(component.props['border']), component.props['border_style'], component.props['border_color'])
     content = apply_spacing(content, component.margin)
     return content
 
@@ -114,15 +113,15 @@ class Component:
 
     @property
     def margin(self) -> dict[Side, int]:
-        return get_spacing_dict(self.props.get('margin', 0))
+        return get_spacing_dict(self.props['margin'])
 
     @property
     def padding(self) -> dict[Side, int]:
-        return get_spacing_dict(self.props.get('padding', 0))
+        return get_spacing_dict(self.props['padding'])
 
     @property
     def border(self) -> dict[Side, int]:
-        return {side: 1 if self.props.get('border_style') is not None and side in self.props.get('border', []) else 0 for side in get_args(Side)}
+        return {side: int(side in self.props['border']) for side in get_args(Side)}
 
     def get_content_width(self, width: int) -> int:
         horizontal_padding = self.padding['left'] + self.padding['right']
@@ -161,9 +160,9 @@ class Text(Component):
         height: Size = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
+        border: Iterable[Side] = (),
+        border_style: BorderStyle = Borders.ROUND,
         border_color: str | None = None,
-        border_style: BorderStyle | None = None,
-        border: Iterable[Side] = get_args(Side),
     ) -> None:
         super().__init__(text=text, width=width, height=height, margin=margin, padding=padding,
                          border=border, border_color=border_color, border_style=border_style)
@@ -181,9 +180,9 @@ class Box(Component):
         height: Size = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
+        border: Iterable[Side] = (),
         border_color: str | None = None,
-        border_style: BorderStyle | None = None,
-        border: Iterable[Side] = ('top', 'bottom', 'left', 'right'),
+        border_style: BorderStyle = Borders.ROUND,
         **props: Any
     ) -> None:
         super().__init__(flex=flex, width=width, height=height, margin=margin, padding=padding,

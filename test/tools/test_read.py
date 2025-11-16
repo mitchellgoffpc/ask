@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from ask.tools.read import ReadTool
 
+from ask.tools.read import ReadTool
 
 class TestReadTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

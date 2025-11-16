@@ -1,8 +1,8 @@
 import asyncio
 import unittest
+
 from ask.tools.base import ToolError
 from ask.tools.bash import BashTool
-
 
 class TestBashTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

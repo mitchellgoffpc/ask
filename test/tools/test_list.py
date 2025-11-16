@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from ask.tools.list import ListTool
 
+from ask.tools.list import ListTool
 
 class TestListTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

@@ -1,11 +1,12 @@
 import asyncio
+from typing import get_args
 
 from ask.models import ToolRequest
 from ask.prompts import get_relative_path
-from ask.ui.core.components import Component, Box, Text
+from ask.ui.core.components import Side, Component, Box, Text
 from ask.ui.core.diff import Diff
 from ask.ui.core.markdown_ import highlight_code
-from ask.ui.core.styles import Borders, Colors, Styles, Theme
+from ask.ui.core.styles import Colors, Styles, Theme
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 
 def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -> Text:
@@ -68,7 +69,7 @@ class BashApproval(SelectionDialog):
     def contents(self) -> list[Component | None]:
         description = self.props['tool_call'].arguments.get('description')
         return [
-            Box(width=1.0, border_color=Colors.HEX(Theme.BLUE), border_style=Borders.ROUND, padding={'left': 1, 'right': 1}, margin={'top': 1})[
+            Box(width=1.0, padding={'left': 1, 'right': 1}, margin={'top': 1}, border=get_args(Side), border_color=Colors.HEX(Theme.BLUE))[
                 Text(Styles.bold(Colors.hex("Bash command", Theme.BLUE)), margin={'bottom': 1}),
                 Text(self.props['tool_call'].arguments['command'], margin={'left': 2}),
                 Text(Colors.hex(description, Theme.GRAY), margin={'left': 2, 'bottom': 1}) if description else None,
@@ -86,7 +87,7 @@ class PythonApproval(SelectionDialog):
 
     def contents(self) -> list[Component | None]:
         return [
-            Box(width=1.0, border_color=Colors.HEX(Theme.BLUE), border_style=Borders.ROUND, padding={'left': 1, 'right': 1}, margin={'top': 1})[
+            Box(width=1.0, padding={'left': 1, 'right': 1}, margin={'top': 1}, border=get_args(Side), border_color=Colors.HEX(Theme.BLUE))[
                 Text(Styles.bold(Colors.hex("Python code", Theme.BLUE)), margin={'bottom': 1}),
                 Text(highlight_code(self.props['tool_call'].arguments['code'], language='python'), margin={'left': 2, 'bottom': 1}),
                 Text("Do you want to proceed?"),
@@ -111,9 +112,9 @@ class EditApproval(SelectionDialog):
             title, operation = "Edit file", "make this edit to"
 
         return [
-            Box(width=1.0, border_color=Colors.HEX(Theme.BLUE), border_style=Borders.ROUND, padding={'left': 1, 'right': 1}, margin={'top': 1})[
+            Box(width=1.0, padding={'left': 1, 'right': 1}, margin={'top': 1}, border=get_args(Side), border_color=Colors.HEX(Theme.BLUE))[
                 Text(Styles.bold(Colors.hex(title, Theme.BLUE))),
-                Box(width=1.0, border_color=Colors.HEX(Theme.DARK_GRAY), border_style=Borders.ROUND, padding={'left': 1, 'right': 1})[
+                Box(width=1.0, padding={'left': 1, 'right': 1}, border=get_args(Side), border_color=Colors.HEX(Theme.DARK_GRAY))[
                     Text(Styles.bold(get_relative_path(args['file_path'])), margin={'bottom': 1}),
                     Diff(diff=args['diff']) if args['old_content'] else Text(highlight_code(args['new_content'], file_path=str(args['file_path']))),
                 ],
