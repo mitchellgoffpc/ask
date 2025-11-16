@@ -59,14 +59,32 @@ class TestApplySpacing(unittest.TestCase):
 class TestApplyBorders(unittest.TestCase):
     def test_apply_no_border(self):
         """Test that apply_borders returns content unchanged when no border is specified."""
-        self.assertEqual(apply_borders("Hello", 5, None, None), "Hello")
+        self.assertEqual(apply_borders("Hello", 5, {'top', 'bottom', 'left', 'right'}, None, None), "Hello")
 
     def test_apply_borders_with_invalid_content(self):
         """Test that apply_borders raises an error if content lines do not match the specified width."""
         with self.assertRaises(AssertionError):
-            apply_borders("Short line\nlonger line", 10, Borders.SINGLE, None)
+            apply_borders("Short line\nlonger line", 10, {'top', 'bottom', 'left', 'right'}, Borders.SINGLE, None)
 
-    def test_apply_borders(self):
+    def test_apply_border_sides(self):
+        """Test apply_borders function with different border sides."""
+        content = "Hello\nWorld"
+        width = 5
+        border_style = Borders.SINGLE
+
+        result = apply_borders(content, width, {'top'}, border_style, None)
+        self.assertEqual(result, border_style.top * width + '\n' + content)
+
+        lines = apply_borders(content, width, {'left'}, border_style, None).split('\n')
+        self.assertEqual(lines[0], border_style.left + "Hello")
+        self.assertEqual(lines[1], border_style.left + "World")
+
+        lines = apply_borders(content, width, {'bottom', 'right'}, border_style, None).split('\n')
+        self.assertEqual(lines[0], "Hello" + border_style.right)
+        self.assertEqual(lines[1], "World" + border_style.right)
+        self.assertEqual(lines[2], border_style.bottom * width + border_style.bottom_right)
+
+    def test_apply_border_styles(self):
         """Test apply_borders function with different border styles."""
         test_cases = [
             # (content, width, border_style, border_color, description)
@@ -78,7 +96,7 @@ class TestApplyBorders(unittest.TestCase):
 
         for content, width, border_style, border_color, description in test_cases:
             with self.subTest(description=description):
-                lines = apply_borders(content, width, border_style, border_color).split('\n')
+                lines = apply_borders(content, width, {'top', 'bottom', 'left', 'right'}, border_style, border_color).split('\n')
 
                 # Check line and column counts
                 content_lines = content.split('\n') if content else []

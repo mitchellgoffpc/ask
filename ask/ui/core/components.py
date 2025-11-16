@@ -1,4 +1,5 @@
-from typing import Any, Literal, Iterable, Optional, Self, Union, get_args
+from __future__ import annotations
+from typing import Any, Literal, Iterable, Self, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
@@ -8,9 +9,9 @@ Spacing = int | dict[Side, int]
 Size = int | float | None
 
 dirty: set[UUID] = set()
-nodes: dict[UUID, 'Component'] = {}
+nodes: dict[UUID, Component] = {}
 parents: dict[UUID, UUID] = {}
-children: dict[UUID, list[Optional['Component']]] = {}
+children: dict[UUID, list[Component | None]] = {}
 
 def get_rendered_width(contents: str) -> int:
     return max(ansi_len(line) for line in contents.split('\n'))
@@ -35,19 +36,25 @@ def apply_spacing(content: str, spacing: dict[Side, int]) -> str:
     right_spacing = ' ' * spacing.get('right', 0)
     return top_spacing + '\n'.join(left_spacing + line + right_spacing for line in lines) + bottom_spacing
 
-def apply_borders(content: str, width: int, border_style: BorderStyle | None, border_color: str | None) -> str:
+def apply_borders(content: str, width: int, borders: set[Side], border_style: BorderStyle | None, border_color: str | None) -> str:
     if border_style is None:
         return content
     color_code = border_color or ''
     lines = content.split('\n') if content else []
     assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for borders to be applied"
-    top_border = Colors.ansi(border_style.top_left + border_style.top * width + border_style.top_right, color_code)
-    bottom_border = Colors.ansi(border_style.bottom_left + border_style.bottom * width + border_style.bottom_right, color_code)
-    left_border = Colors.ansi(border_style.left, color_code)
-    right_border = Colors.ansi(border_style.right, color_code)
-    return '\n'.join([top_border] + [left_border + line + right_border for line in lines] + [bottom_border])
 
-def apply_boxing(content: str, max_width: int, component: 'Component') -> str:
+    top_left = border_style.top_left if borders >= {'top', 'left'} else ''
+    top_right = border_style.top_right if borders >= {'top', 'right'} else ''
+    bottom_left = border_style.bottom_left if borders >= {'bottom', 'left'} else ''
+    bottom_right = border_style.bottom_right if borders >= {'bottom', 'right'} else ''
+
+    top_border = [Colors.ansi(top_left + border_style.top * width + top_right, color_code)] if 'top' in borders else []
+    bottom_border = [Colors.ansi(bottom_left + border_style.bottom * width + bottom_right, color_code)] if 'bottom' in borders else []
+    left_border = Colors.ansi(border_style.left, color_code) if 'left' in borders else ''
+    right_border = Colors.ansi(border_style.right, color_code) if 'right' in borders else ''
+    return '\n'.join(top_border + [left_border + line + right_border for line in lines] + bottom_border)
+
+def apply_boxing(content: str, max_width: int, component: Component) -> str:
     max_content_width = component.get_content_width(max_width)
     if isinstance(component.props.get('width'), int):
         content_width = min(max_content_width, component.get_content_width(component.props['width'] + component.margin['left'] + component.margin['right']))
@@ -60,7 +67,8 @@ def apply_boxing(content: str, max_width: int, component: 'Component') -> str:
 
     content = apply_sizing(content, content_width, content_height)
     content = apply_spacing(content, component.padding)
-    content = apply_borders(content, padded_width, component.props.get('border_style'), component.props.get('border_color'))
+    content = apply_borders(content, padded_width, set(component.props.get('border', get_args(Side))),
+                            component.props.get('border_style'), component.props.get('border_color'))
     content = apply_spacing(content, component.margin)
     return content
 
@@ -91,14 +99,14 @@ class Component:
     initial_state: dict[str, Any] = {}
 
     def __init__(self, **props: Any) -> None:
-        self.children: list[Optional['Component']] = []
+        self.children: list[Component | None] = []
         self.uuid = uuid4()
         self.props = props
         self.state = State(self.uuid, self.initial_state)
         self.mounted = False
         self.rendered_width = 0
 
-    def __getitem__(self, args: Union['Component', Iterable[Optional['Component']], None]) -> Self:
+    def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         if self.leaf:
             raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
         self.children = [args] if isinstance(args, Component) else list(args) if args else []
@@ -113,15 +121,16 @@ class Component:
         return get_spacing_dict(self.props.get('padding', 0))
 
     @property
-    def border_thickness(self) -> int:
-        return 1 if self.props.get('border_style') is not None else 0
+    def border(self) -> dict[Side, int]:
+        return {side: 1 if self.props.get('border_style') is not None and side in self.props.get('border', []) else 0 for side in get_args(Side)}
 
     def get_content_width(self, width: int) -> int:
         horizontal_padding = self.padding['left'] + self.padding['right']
         horizontal_margin = self.margin['left'] + self.margin['right']
-        return max(0, width - horizontal_padding - horizontal_margin - self.border_thickness * 2)
+        horizontal_border = self.border['left'] + self.border['right']
+        return max(0, width - horizontal_padding - horizontal_margin - horizontal_border)
 
-    def contents(self) -> list[Optional['Component']]:
+    def contents(self) -> list[Component | None]:
         if self.leaf:
             return []
         raise NotImplementedError(f"{self.__class__.__name__} component must implement `contents` method")
@@ -142,18 +151,6 @@ class Component:
         pass
 
 
-class Line(Component):
-    leaf = True
-
-    def __init__(self, width: Size = None, color: str | None = None, margin: Spacing = 0, **props: Any) -> None:
-        super().__init__(width=width, color=color, margin=margin, **props)
-
-    def render(self, _: list[str], max_width: int) -> str:
-        width = self.get_content_width(max_width)
-        line = Colors.ansi('─' * width, self.props['color'] or '') if width > 0 else ''
-        return apply_spacing(line, self.margin) if line else ''
-
-
 class Text(Component):
     leaf = True
 
@@ -166,8 +163,10 @@ class Text(Component):
         padding: Spacing = 0,
         border_color: str | None = None,
         border_style: BorderStyle | None = None,
+        border: Iterable[Side] = get_args(Side),
     ) -> None:
-        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style)
+        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding,
+                         border=border, border_color=border_color, border_style=border_style)
 
     def render(self, _: list[str], max_width: int) -> str:
         wrapped = wrap_lines(self.props['text'], max_width)
@@ -184,9 +183,11 @@ class Box(Component):
         padding: Spacing = 0,
         border_color: str | None = None,
         border_style: BorderStyle | None = None,
+        border: Iterable[Side] = ('top', 'bottom', 'left', 'right'),
         **props: Any
     ) -> None:
-        super().__init__(flex=flex, width=width, height=height, margin=margin, padding=padding, border_color=border_color, border_style=border_style, **props)
+        super().__init__(flex=flex, width=width, height=height, margin=margin, padding=padding,
+                         border=border, border_color=border_color, border_style=border_style, **props)
 
     def contents(self) -> list[Component | None]:
         return self.children

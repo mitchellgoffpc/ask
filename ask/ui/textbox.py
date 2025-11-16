@@ -203,7 +203,9 @@ class PromptTextBox(Box):
         autocomplete_matches = self.state['autocomplete_matches']
 
         return [
-            Box(border_color=Colors.HEX(COLORS.get(self.state['mode'], Theme.DARK_GRAY)), border_style=Borders.ROUND, flex=Flex.HORIZONTAL, margin={'top': 1})[
+            Box(flex=Flex.HORIZONTAL, margin={'top': 1}, border=('top', 'bottom'),
+                border_color=Colors.HEX(COLORS.get(self.state['mode'], Theme.DARK_GRAY)), border_style=Borders.ROUND
+            )[
                 Text(Colors.hex(PREFIXES.get(self.state['mode'], '>'), COLORS.get(self.state['mode'], Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 TextBox(
                     width=1.0,
