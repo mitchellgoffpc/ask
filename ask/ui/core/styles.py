@@ -194,13 +194,16 @@ def wrap_lines(content: str, max_width: int) -> str:
     pos = 0
     while line := ansi_slice(content, pos, pos + max_width):
         line_len = max_width
-        if (newline_pos := line.find('\n')) >= 0:
+        newline_pos = line.find('\n')
+        if newline_pos >= 0:
             first_line = line[:newline_pos]
             first_line_len = ansi_len(first_line)
             line = ansi_slice(content, pos, pos + first_line_len)
             line_len = first_line_len + 1
         lines.append(line)
         pos += line_len
+    if newline_pos >= 0:  # If the last line ends in a newline, add an empty line
+        lines.append('')
     return '\n'.join(lines)
 
 
