@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import os
 import re
@@ -5,23 +6,24 @@ import shlex
 import sys
 import time
 from base64 import b64decode
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any
+from typing import Any, ClassVar
 
 from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
-from ask.ui.core.components import Component, Box, Text
+from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.cursor import hide_cursor
-from ask.ui.core.styles import Colors, Flex, Theme
-from ask.ui.dialogs import ApprovalDialog, EditApproval
+from ask.ui.core.styles import Colors, Theme
+from ask.ui.dialogs import ApprovalDialog, EditApprovalController
 from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
 from ask.ui.config import Config, History
 from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage, MemorizeCommandMessage
+from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 
 TOOL_REJECTED_MESSAGE = (
@@ -34,53 +36,28 @@ def ToDoMessage(todos: dict[str, Any]) -> Component:
         Text(TOOLS[ToDoTool.name].render_response(todos, ''))
     ]
 
+@dataclass
+class App(Widget):
+    __controller__: ClassVar = lambda _: AppController
+    model: Model
+    messages: dict[UUID, Message]
+    tools: list[Tool]
+    system_prompt: str
 
-class Spinner(Box):
-    initial_state = {'spinner_state': 0}
-    frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-    text = "Loading…"
+class AppController(Controller[App]):
+    state = ['expanded', 'exiting', 'show_todos', 'pending', 'elapsed', 'approvals', 'autoapprovals', 'messages', 'model']
+    expanded = False
+    exiting = False
+    show_todos = False
+    pending = 0
+    elapsed = 0.0
+    approvals: dict[UUID, asyncio.Future] = {}
+    autoapprovals: set[str] = set()
 
-    def __init__(self, todos: dict[str, Any] | None, expanded: bool) -> None:
-        super().__init__(todos=todos, expanded=expanded)
-
-    async def spin(self) -> None:
-        while self.mounted:
-            self.state['spinner_state'] += 1
-            await asyncio.sleep(0.05)
-
-    def handle_mount(self) -> None:
-        super().handle_mount()
-        asyncio.create_task(self.spin())
-
-    def contents(self) -> list[Component | None]:
-        spinner_char = self.frames[(self.state['spinner_state'] // 2) % len(self.frames)]
-
-        # Calculate highlight position
-        cycle_length = len(self.text) + 17
-        highlight_pos = (self.state['spinner_state'] % cycle_length) - 2
-        before = self.text[:max(0, highlight_pos)]
-        window = self.text[max(0, highlight_pos):min(len(self.text), highlight_pos + 3)]
-        after = self.text[min(len(self.text), highlight_pos + 3):]
-
-        highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
-        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
-        todos, todo_tool = self.props['todos'], TOOLS[ToDoTool.name]
-        return [
-            Text(spinner_text, margin={'top': 1}),
-            Box(flex=Flex.HORIZONTAL)[
-                Text("  ⎿  "),
-                Text(todo_tool.render_response(todos, '') if self.props['expanded'] else todo_tool.render_short_response(todos, ''))
-            ] if self.props['todos'] else None,
-        ]
-
-
-class App(Box):
-    initial_state = {'expanded': False, 'exiting': False, 'show_todos': False, 'pending': 0, 'elapsed': 0, 'approvals': {}, 'autoapprovals': set()}
-
-    def __init__(self, model: Model, messages: dict[UUID, Message], tools: list[Tool], system_prompt: str) -> None:
-        super().__init__(model=model, tools=tools, system_prompt=system_prompt)
-        self.state['messages'] = messages
-        self.state['model'] = model
+    def __init__(self, props: App) -> None:
+        super().__init__(props)
+        self.messages = self.props.messages
+        self.model = self.props.model
         self.config = Config()
         self.history = History()
         self.tasks: list[asyncio.Task] = []
@@ -88,25 +65,25 @@ class App(Box):
         self.query_time = 0.
 
     def exit(self) -> None:
-        self.state['exiting'] = True
+        self.exiting = True
         asyncio.get_running_loop().call_later(0.1, sys.exit, 0)
 
     def add_message(self, role: str, content: Content) -> UUID:
         message_uuid = uuid4()
-        self.state['messages'] = self.state['messages'] | {message_uuid: Message(role=role, content=content)}
+        self.messages = self.messages | {message_uuid: Message(role=role, content=content)}
         return message_uuid
 
     def update_message(self, uuid: UUID, content: Content) -> None:
-        self.state['messages'] = self.state['messages'] | {uuid: replace(self.state['messages'][uuid], content=content)}
+        self.messages = self.messages | {uuid: replace(self.messages[uuid], content=content)}
 
     async def tick(self, interval: float) -> None:
         try:
             start_time = time.time()
             while True:
-                self.state['elapsed'] = time.time() - start_time
+                self.elapsed = time.time() - start_time
                 await asyncio.sleep(interval)
         except asyncio.CancelledError:
-            self.state['elapsed'] = 0
+            self.elapsed = 0
 
     async def shell(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
@@ -123,18 +100,18 @@ class App(Box):
         self.update_message(message_uuid, shell_command)
 
     async def query(self) -> None:
-        self.state['pending'] += 1
-        messages = self.state['messages'].copy()
+        self.pending += 1
+        messages = self.messages.copy()
         text, contents = '', {}
         start_time = time.monotonic()
         try:
-            async for delta, content in query(self.state['model'], list(messages.values()), self.props['tools'], self.props['system_prompt']):
+            async for delta, content in query(self.model, list(messages.values()), self.props.tools, self.props.system_prompt):
                 text = text + delta
                 if content:
                     contents[uuid4()] = content
                 text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                 if text or contents:
-                    self.state['messages'] = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
+                    self.messages = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
         except asyncio.CancelledError:
             self.add_message('user', Error("Request interrupted by user"))
         except Exception as e:
@@ -152,20 +129,21 @@ class App(Box):
         except asyncio.CancelledError:
             pass
         finally:
-            self.state['pending'] -= 1
+            self.pending -= 1
 
     async def tool_call(self, request_uuid: UUID) -> None:
-        request = self.state['messages'][request_uuid].content
+        request = self.messages[request_uuid].content
+        assert isinstance(request, ToolRequest)
         try:
             tool = TOOLS[request.tool]
             args = tool.check(request.arguments)
             self.update_message(request_uuid, replace(request, processed_arguments=args))
-            if tool.name in {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name} - self.state['autoapprovals']:
-                self.state['approvals'] = self.state['approvals'] | {request_uuid: asyncio.get_running_loop().create_future()}
+            if tool.name in {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name} - self.autoapprovals:
+                self.approvals = self.approvals | {request_uuid: asyncio.get_running_loop().create_future()}
                 try:
-                    self.state['autoapprovals'] = self.state['autoapprovals'] | await self.state['approvals'][request_uuid]
+                    self.autoapprovals = self.autoapprovals | await self.approvals[request_uuid]
                 finally:
-                    self.state['approvals'] = {k:v for k,v in self.state['approvals'].items() if k != request_uuid}
+                    self.approvals = {k:v for k,v in self.approvals.items() if k != request_uuid}
             output = await tool.run(**args)
             output_content: TextContent | Image
             if args.get('file_type') == 'image':
@@ -182,7 +160,7 @@ class App(Box):
             self.add_message('user', response)
 
     def handle_mount(self) -> None:
-        messages = list(self.state['messages'].values())
+        messages = list(self.messages.values())
         if messages and messages[-1].role == 'user':
             match messages[-1].content:
                 case TextContent(text): prompt = text
@@ -194,17 +172,17 @@ class App(Box):
 
     def handle_raw_input(self, ch: str) -> None:
         if ch == '\x03':  # Ctrl+C
-            self.state['expanded'] = False
+            self.expanded = False
         elif ch == '\x12':  # Ctrl+R
-            self.state['expanded'] = not self.state['expanded']
+            self.expanded = not self.expanded
         elif ch == '\x14':  # Ctrl+T
-            self.state['show_todos'] = not self.state['show_todos']
-        elif ch == '\x1b[Z' and not self.state['approvals']:  # Shift+Tab
-            if EditApproval.autoapprovals & self.state['autoapprovals']:
-                self.state['autoapprovals'] = self.state['autoapprovals'] - EditApproval.autoapprovals
+            self.show_todos = not self.show_todos
+        elif ch == '\x1b[Z' and not self.approvals:  # Shift+Tab
+            if EditApprovalController.autoapprovals & self.autoapprovals:
+                self.autoapprovals = self.autoapprovals - EditApprovalController.autoapprovals
             else:
-                self.state['autoapprovals'] = self.state['autoapprovals'] | EditApproval.autoapprovals
-        elif ch == '\x1b' and not self.state['approvals']:  # Escape key
+                self.autoapprovals = self.autoapprovals | EditApprovalController.autoapprovals
+        elif ch == '\x1b' and not self.approvals:  # Escape key
             for task in self.tasks:
                 if not task.done():
                     task.cancel()
@@ -219,7 +197,7 @@ class App(Box):
         if value in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
         elif value == '/clear':
-            self.state['messages'] = {uuid4(): Message(role='user', content=SlashCommand(command='/clear'))}
+            self.messages = {uuid4(): Message(role='user', content=SlashCommand(command='/clear'))}
         elif value.startswith('/model'):
             model_name = value.removeprefix('/model').lstrip()
             if not model_name:
@@ -227,13 +205,13 @@ class App(Box):
                 self.add_message('user', SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
             elif model_name not in MODELS_BY_NAME:
                 self.add_message('user', SlashCommand(command=value, error=f"Unknown model: {model_name}"))
-            elif model_name != self.state['model'].name:
-                self.add_message('user', SlashCommand(command=value, output=f"Switched from {self.state['model'].name} to {model_name}"))
-                self.state['model'] = MODELS_BY_NAME[model_name]
+            elif model_name != self.model.name:
+                self.add_message('user', SlashCommand(command=value, output=f"Switched from {self.model.name} to {model_name}"))
+                self.model = MODELS_BY_NAME[model_name]
                 # We have to remove all reasoning messages because they generally aren't compatible across models
-                self.state['messages'] = {uuid: msg for uuid, msg in self.state['messages'].items() if not isinstance(msg.content, Reasoning)}
+                self.messages = {uuid: msg for uuid, msg in self.messages.items() if not isinstance(msg.content, Reasoning)}
         elif value == '/cost':
-            output = get_usage_message(self.state['messages'], self.query_time, time.monotonic() - self.start_time)
+            output = get_usage_message(self.messages, self.query_time, time.monotonic() - self.start_time)
             self.add_message('user', SlashCommand(command='/cost', output=output))
         elif value == '/init':
             self.add_message('user', InitCommand(command='/init'))
@@ -265,41 +243,43 @@ class App(Box):
         return True
 
     def textbox(self) -> Component:
-        if self.state['exiting']:
+        if self.exiting:
             wall_time = time.monotonic() - self.start_time
-            return Text(Colors.hex(get_usage_message(self.state['messages'], self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
-        elif approval_uuid := next(iter(self.state['approvals'].keys()), None):
+            return Text(Colors.hex(get_usage_message(self.messages, self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+        elif approval_uuid := next(iter(self.approvals.keys()), None):
+            tool_call = self.messages[approval_uuid].content
+            assert isinstance(tool_call, ToolRequest)
             return ApprovalDialog(
-                tool_call=self.state['messages'][approval_uuid].content,
-                future=self.state['approvals'][approval_uuid])
-        elif self.state['expanded']:
+                tool_call=tool_call,
+                future=self.approvals[approval_uuid])
+        elif self.expanded:
             return Box(border={'top'})[
                 Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
             ]
         else:
             return PromptTextBox(
-                model=self.state['model'],
+                model=self.model,
                 history=list(self.history),
-                autoapprovals=self.state['autoapprovals'],
+                autoapprovals=self.autoapprovals,
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
 
     def contents(self) -> list[Component | None]:
-        tool_requests = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolRequest)}
-        tool_responses = {msg.content.call_id: msg.content for msg in self.state['messages'].values() if isinstance(msg.content, ToolResponse)}
+        tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values() if isinstance(msg.content, ToolRequest)}
+        tool_responses = {msg.content.call_id: msg.content for msg in self.messages.values() if isinstance(msg.content, ToolResponse)}
         if latest_todos := next((c.processed_arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
             if not any(todo['status'] in ['pending', 'in_progress'] for todo in latest_todos['todos']):
                 latest_todos = None
 
         messages = []
-        for uuid, msg in self.state['messages'].items():
+        for uuid, msg in self.messages.items():
             match (msg.role, msg.content):
                 case ('user', TextContent()):
                     messages.append(PromptMessage(text=msg.content))
                 case ('user', Error()):
                     messages.append(ErrorMessage(error=msg.content))
                 case ('user', ShellCommand()):
-                    messages.append(ShellCommandMessage(command=msg.content, elapsed=self.state['elapsed'], expanded=self.state['expanded']))
+                    messages.append(ShellCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
                 case ('user', MemorizeCommand()):
                     messages.append(MemorizeCommandMessage(command=msg.content))
                 case ('user', SlashCommand()):
@@ -308,19 +288,19 @@ class App(Box):
                     messages.append(ResponseMessage(text=msg.content))
                 case ('assistant', ToolRequest()):
                     if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
-                        approved = uuid not in self.state['approvals']
+                        approved = uuid not in self.approvals
                         response = tool_responses.get(msg.content.call_id)
-                        messages.append(ToolCallMessage(request=msg.content, response=response, approved=approved, expanded=self.state['expanded']))
+                        messages.append(ToolCallMessage(request=msg.content, response=response, approved=approved, expanded=self.expanded))
                 case _:
                     pass
 
         return [
             Box()[*messages],
             Box()[
-                Spinner(todos=latest_todos, expanded=self.state['show_todos'])
-                    if self.state['pending'] and not self.state['approvals'] else None,
+                Spinner(todos=latest_todos, expanded=self.show_todos)
+                    if self.pending and not self.approvals else None,
                 ToDoMessage(latest_todos)
-                    if latest_todos and self.state['show_todos'] and not self.state['approvals'] else None,
+                    if latest_todos and self.show_todos and not self.approvals else None,
             ],
             self.textbox(),
         ]

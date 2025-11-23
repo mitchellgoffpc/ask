@@ -1,78 +1,78 @@
 from collections import deque
-from typing import Any, Callable, cast
+from dataclasses import dataclass
+from typing import Callable, ClassVar
 
-from ask.ui.core.components import Box, Size
-from ask.ui.core.styles import Styles, Colors, wrap_lines
+from ask.ui.core.components import Component, Controller, Size, Text, Widget
+from ask.ui.core.styles import Styles, Colors
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
 def is_stop_char(ch: str) -> bool:
     return ch in ' \t\n<>@/|&;(){}[]"\'`'
 
+@dataclass
+class TextBox(Widget):
+    __controller__: ClassVar = lambda _: TextBoxController
+    width: Size = 1.0
+    text: str | None = None
+    placeholder: str = ""
+    history: list[str] | None = None
+    handle_input: Callable[[str, int], bool] | None = None
+    handle_page: Callable[[int], None] | None = None
+    handle_change: Callable[[str], None] | None = None
+    handle_submit: Callable[[str], bool] | None = None
 
-class TextBox(Box):
-    leaf = True
-    initial_state = {'text': '', 'cursor_pos': 0}
 
-    def __init__(
-        self,
-        width: Size = 1.0,
-        text: str | None = None,
-        placeholder: str = "",
-        handle_input: Callable[[str, int], bool] | None = None,
-        handle_page: Callable[[int], None] | None = None,
-        handle_change: Callable[[str], None] | None = None,
-        handle_submit: Callable[[str], bool] | None = None,
-        history: list[str] | None = None,
-        **props: Any
-    ) -> None:
-        super().__init__(width=width, text=text, placeholder=placeholder, history=history,
-                         handle_input=handle_input, handle_page=handle_page, handle_change=handle_change, handle_submit=handle_submit, **props)
-        assert width is not None, "TextBox width must be specified"
-        self.state['history'] = [*(history or []), text or '']
-        self.state['history_idx'] = len(self.state['history']) - 1
+class TextBoxController(Controller[TextBox]):
+    state = ['text', 'cursor_pos', 'history', 'history_idx']
+    _text = ''
+    _cursor_pos = 0
+
+    def __init__(self, props: TextBox):
+        super().__init__(props)
+        self.history = (props.history or []) + [props.text or '']
+        self.history_idx = len(self.history) - 1
         self.undo_stack: deque[tuple[str, int]] = deque(maxlen=1000)
+
+    def __call__(self, new_props: TextBox) -> None:
+        if new_props.text is not None and new_props.text != self._text:
+            self._text = new_props.text
+            self._cursor_pos = len(new_props.text)
+        if new_props.history is not None and new_props.history != self.props.history:
+            self.history = [*(new_props.history or []), new_props.text if new_props.text is not None else self._text]
+            self.history_idx = len(self.history) - 1
+        super().__call__(new_props)
 
     @property
     def content_width(self) -> int:
-        return self.get_content_width(self.rendered_width)
+        return self.textbox_ref.get_content_width(self.textbox_ref.rendered_width)
 
     @property
     def cursor_pos(self) -> int:
-        return min(cast(int, self.state['cursor_pos']), len(self.text))
+        return min(self._cursor_pos, len(self.text))
 
     @property
     def text(self) -> str:
-        return cast(str, self.props['text'] if self.props['text'] is not None else self.state['text'])
+        return self.props.text if self.props.text is not None else self._text
 
     @text.setter
     def text(self, text: str) -> None:
-        self.state['text'] = text
-        if self.props['handle_change'] is not None:
-            self.props['handle_change'](text)
-        history = self.state['history']
-        history_idx = self.state['history_idx']
-        self.state['history'] = [*history[:history_idx], text, *history[history_idx + 1:]]
+        self._text = text
+        if self.props.handle_change:
+            self.props.handle_change(text)
+        self.history = [*self.history[:self.history_idx], text, *self.history[self.history_idx + 1:]]
 
-    def handle_update(self, new_props: dict[str, Any]) -> None:
-        if 'text' in new_props and new_props['text'] != self.state['text']:
-            self.state['cursor_pos'] = len(new_props['text'])
-            self.state['text'] = new_props['text']
-        if 'history' in new_props and new_props['history'] != self.props['history']:
-            self.state['history'] = [*(new_props['history'] or []), new_props['text'] if new_props['text'] is not None else self.state['text']]
-            self.state['history_idx'] = len(self.state['history']) - 1
-
-    def handle_raw_input(self, ch: str) -> None:
-        if self.props.get('handle_input'):
-            if not self.props['handle_input'](ch, self.cursor_pos):
+    def handle_input(self, ch: str) -> None:
+        if self.props.handle_input:
+            if not self.props.handle_input(ch, self.cursor_pos):
                 return
 
         text = self.text
         cursor_pos = self.cursor_pos
-        history_idx = self.state['history_idx']
+        history_idx = self.history_idx
 
         if ch == '\r':  # Enter, submit
-            if self.props['handle_submit'] and self.props['handle_submit'](text):
+            if self.props.handle_submit and self.props.handle_submit(text):
                 self.undo_stack.clear()
         elif ch == '\x7f':  # Backspace
             if cursor_pos > 0:
@@ -112,7 +112,7 @@ class TextBox(Box):
         elif ch == '\x1f':  # Ctrl+/ - undo
             if self.undo_stack:
                 text, cursor_pos = self.undo_stack.pop()
-                self.state['cursor_pos'] = cursor_pos
+                self._cursor_pos = cursor_pos
                 if text != self.text:
                     self.text = text
                 return
@@ -126,14 +126,15 @@ class TextBox(Box):
         # Yes, it does need to be done in this particular order
         if text != self.text:
             self.undo_stack.append((self.text, self.cursor_pos))
-        self.state.update({'cursor_pos': cursor_pos, 'history_idx': history_idx})
+        self._cursor_pos = cursor_pos
+        self.history_idx = history_idx
         if text != self.text:
             self.text = text
 
     def handle_escape_input(self, ch: str) -> tuple[str, int, int]:
         text = self.text
         cursor_pos = self.cursor_pos
-        history_idx = self.state['history_idx']
+        history_idx = self.history_idx
 
         if ch.startswith('['):  # Arrow keys and other sequences
             direction = ch[1:]
@@ -178,12 +179,12 @@ class TextBox(Box):
         return text, cursor_pos, history_idx
 
     def change_history_idx(self, direction: int) -> tuple[str, int, int]:
-        history = self.state['history']
-        history_idx = self.state['history_idx']
+        history = self.history
+        history_idx = self.history_idx
         new_history_idx = max(0, min(len(history) - 1, history_idx + direction))
         if new_history_idx != history_idx:
-            if self.props.get('handle_page'):
-                self.props['handle_page'](new_history_idx)
+            if self.props.handle_page:
+                self.props.handle_page(new_history_idx)
             history_idx = new_history_idx
             cursor_pos = len(history[new_history_idx])
             text = history[new_history_idx]
@@ -200,8 +201,8 @@ class TextBox(Box):
         if new_line != current_line:
             line_start = self.get_line_start_position(new_line)
             cursor_pos = min(line_start + current_col, self.get_line_end_position(new_line))
-            return self.text, cursor_pos, self.state['history_idx']
-        return self.text, self.cursor_pos, self.state['history_idx']
+            return self.text, cursor_pos, self.history_idx
+        return self.text, self.cursor_pos, self.history_idx
 
     def get_cursor_line_col(self) -> tuple[int, int]:
         paragraphs = self.text[:self.cursor_pos].split('\n')
@@ -241,18 +242,18 @@ class TextBox(Box):
 
         return position
 
-    def render_text(self) -> str:
-        if not self.text and self.props['placeholder']:
-            return Styles.inverse(self.props['placeholder'][0]) + Colors.hex(self.props['placeholder'][1:], '#999999')
+    def contents(self) -> list[Component | None]:
+        if not self.text and self.props.placeholder:
+            styled_text = Styles.inverse(self.props.placeholder[0]) + Colors.hex(self.props.placeholder[1:], '#999999')
+        else:
+            cursor_pos = self.cursor_pos + self.text.count('\n', 0, self.cursor_pos)
+            text = self.text.replace('\n', ' \n')
+            if text[cursor_pos:cursor_pos + 1] == '\n':
+                cursor_pos -= 1
+            before = text[:cursor_pos]
+            after = text[cursor_pos + 1:]
+            under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
+            styled_text = before + Styles.inverse(under) + after
 
-        cursor_pos = self.cursor_pos + self.text.count('\n', 0, self.cursor_pos)
-        text = self.text.replace('\n', ' \n')
-        if text[cursor_pos:cursor_pos + 1] == '\n':
-            cursor_pos -= 1
-        before = text[:cursor_pos]
-        after = text[cursor_pos + 1:]
-        under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
-        return before + Styles.inverse(under) + after
-
-    def render(self, _: list[str], max_width: int) -> str:
-        return super().render([wrap_lines(self.render_text(), self.get_content_width(max_width))], max_width)
+        self.textbox_ref = Text(styled_text)
+        return [self.textbox_ref]

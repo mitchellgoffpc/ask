@@ -1,15 +1,16 @@
 import asyncio
 import glob
 import os
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable
+from typing import Callable, ClassVar
 
 from ask.models import MODELS_BY_NAME, Model
-from ask.ui.core.components import Component, Box, Text
+from ask.ui.core.components import Component, Box, Text, Widget, Controller
 from ask.ui.core.styles import Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
-from ask.ui.dialogs import EditApproval
+from ask.ui.dialogs import EditApprovalController
 
 class Mode(Enum):
     TEXT = 'text'
@@ -53,26 +54,31 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
     ]
 
 
-class PromptTextBox(Box):
-    initial_state = {'text': '', 'mode': Mode.TEXT, 'show_exit_prompt': False, 'selected_idx': 0, 'autocomplete_matches': []}
+@dataclass
+class PromptTextBox(Widget):
+    __controller__: ClassVar = lambda _: PromptTextBoxController
+    model: Model
+    history: list[str]
+    autoapprovals: set[str]
+    handle_submit: Callable[[str], bool]
+    handle_exit: Callable[[], None]
 
-    def __init__(
-        self,
-        model: Model,
-        history: list[str],
-        autoapprovals: set[str],
-        handle_submit: Callable[[str], bool],
-        handle_exit: Callable[[], None]
-    ) -> None:
-        super().__init__(model=model, history=history, autoapprovals=autoapprovals, handle_submit=handle_submit, handle_exit=handle_exit)
+
+class PromptTextBoxController(Controller):
+    state = ['text', 'mode', 'show_exit_prompt', 'selected_idx', 'autocomplete_matches']
+    text = ''
+    mode = Mode.TEXT
+    show_exit_prompt = False
+    selected_idx = 0
+    autocomplete_matches: list[str] = []
 
     async def confirm_exit(self) -> None:
-        if self.state['show_exit_prompt']:
-            self.props['handle_exit']()
+        if self.show_exit_prompt:
+            self.props.handle_exit()
         else:
-            self.state['show_exit_prompt'] = True
+            self.show_exit_prompt = True
             await asyncio.sleep(1)
-            self.state['show_exit_prompt'] = False
+            self.show_exit_prompt = False
 
     def get_current_word_prefix(self, text: str, cursor_pos: int) -> tuple[str, int]:
         if cursor_pos > len(text):
@@ -83,12 +89,12 @@ class PromptTextBox(Box):
         return text[start:cursor_pos], start
 
     def get_matching_commands(self) -> dict[str, str]:
-        return {cmd: desc for cmd, desc in COMMANDS.items() if self.state['text'] and cmd.startswith(self.state['text'])}
+        return {cmd: desc for cmd, desc in COMMANDS.items() if self.text and cmd.startswith(self.text)}
 
     def get_matching_models(self) -> list[str]:
-        if not self.state['text'].startswith('/model '):
+        if not self.text.startswith('/model '):
             return []
-        model_prefix = self.state['text'].removeprefix('/model ').lstrip()
+        model_prefix = self.text.removeprefix('/model ').lstrip()
         return [name for name in MODELS_BY_NAME if name.startswith(model_prefix)]
 
     def get_matching_paths(self, prefix: str) -> list[str]:
@@ -104,128 +110,130 @@ class PromptTextBox(Box):
             return []
 
     def get_shortcuts_text(self) -> str:
-        if self.state['mode'] == Mode.TEXT and EditApproval.autoapprovals & self.props['autoapprovals']:
+        if self.mode == Mode.TEXT and EditApprovalController.autoapprovals & self.props.autoapprovals:
             return Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
-        return Colors.hex(SHORTCUTS[self.state['mode']], COLORS.get(self.state['mode'], Theme.GRAY))
+        return Colors.hex(SHORTCUTS[self.mode], COLORS.get(self.mode, Theme.GRAY))
 
-    def handle_raw_input(self, ch: str) -> None:
+    def handle_input(self, ch: str) -> None:
         if ch == '\x03':  # Ctrl+C
-            self.state['text'] = ''
+            self.text = ''
             asyncio.create_task(self.confirm_exit())
 
-    def handle_input(self, ch: str, cursor_pos: int) -> bool:
+    def handle_textbox_input(self, ch: str, cursor_pos: int) -> bool:
         if cursor_pos == 0 and ch in ('\x7f', '\x1b\x7f'):
-            self.state['mode'] = Mode.TEXT
+            self.mode = Mode.TEXT
         elif cursor_pos == 0 and ch == '!':
-            self.state['mode'] = Mode.BASH
+            self.mode = Mode.BASH
             return False
         elif cursor_pos == 0 and ch == '#':
-            self.state['mode'] = Mode.MEMORIZE
+            self.mode = Mode.MEMORIZE
             return False
 
         # Tab completion
         matching_commands = self.get_matching_commands()
         matching_models = self.get_matching_models()
-        items = self.state['autocomplete_matches'] or list(matching_commands.keys()) or matching_models
+        items = self.autocomplete_matches or list(matching_commands.keys()) or matching_models
         if ch == '\t':
             if matching_commands:
-                self.state['text'] = list(matching_commands.keys())[self.state['selected_idx']] + ' '
+                self.text = list(matching_commands.keys())[self.selected_idx] + ' '
                 return False
             elif matching_models:
-                self.state['text'] = f"/model {matching_models[self.state['selected_idx']]} "
+                self.text = f"/model {matching_models[self.selected_idx]} "
                 return False
 
-            prefix, start_pos = self.get_current_word_prefix(self.state['text'], cursor_pos)
+            prefix, start_pos = self.get_current_word_prefix(self.text, cursor_pos)
             matching_paths = self.get_matching_paths(prefix)
             if len(matching_paths) == 1:
                 completion = matching_paths[0] + ('/' if (Path(prefix).parent / matching_paths[0]).is_dir() else ' ')
-                self.state['text'] = self.state['text'][:start_pos] + completion + self.state['text'][cursor_pos:]
-                self.state['autocomplete_matches'] = []
+                self.text = self.text[:start_pos] + completion + self.text[cursor_pos:]
+                self.autocomplete_matches = []
             elif len(matching_paths) > 1:
-                if self.state['autocomplete_matches']:
-                    self.state['selected_idx'] = (self.state['selected_idx'] + 1) % len(self.state['autocomplete_matches'])
+                if self.autocomplete_matches:
+                    self.selected_idx = (self.selected_idx + 1) % len(self.autocomplete_matches)
                 else:
-                    self.state['autocomplete_matches'] = matching_paths
-                    self.state['selected_idx'] = 0
+                    self.autocomplete_matches = matching_paths
+                    self.selected_idx = 0
             return False
         elif ch == '\x1b[Z':  # Shift+Tab
-            if self.state['autocomplete_matches']:
-                self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(self.state['autocomplete_matches'])
+            if self.autocomplete_matches:
+                self.selected_idx = (self.selected_idx - 1) % len(self.autocomplete_matches)
             return False
 
         # Navigation for commands and autocomplete items
         if items and ch in ('\x1b[A', '\x10', '\x1b[B', '\x0e'):  # Up/Down arrows or Ctrl+P/N
             if ch in ('\x1b[A', '\x10'):
-                self.state['selected_idx'] = (self.state['selected_idx'] - 1) % len(items)
+                self.selected_idx = (self.selected_idx - 1) % len(items)
             else:
-                self.state['selected_idx'] = (self.state['selected_idx'] + 1) % len(items)
+                self.selected_idx = (self.selected_idx + 1) % len(items)
             return False
         return True
 
-    def handle_page(self, _: int) -> None:
-        self.state['mode'] = Mode.TEXT
+    def handle_textbox_page(self, _: int) -> None:
+        self.mode = Mode.TEXT
 
-    def handle_change(self, value: str) -> None:
+    def handle_textbox_change(self, value: str) -> None:
         if value.startswith('!'):
             value = value.removeprefix('!')
-            self.state['mode'] = Mode.BASH
+            self.mode = Mode.BASH
         elif value.startswith('#'):
             value = value.removeprefix('#')
-            self.state['mode'] = Mode.MEMORIZE
-        if value != self.state['text']:
-            self.state['selected_idx'] = 0
-            self.state['autocomplete_matches'] = []
-        self.state['text'] = value
+            self.mode = Mode.MEMORIZE
+        if value != self.text:
+            self.selected_idx = 0
+            self.autocomplete_matches = []
+        self.text = value
 
-    def handle_submit(self, value: str) -> bool:
+    def handle_textbox_submit(self, value: str) -> bool:
         if not value:
             return False
-        elif self.state['autocomplete_matches']:
-            selected_match = self.state['autocomplete_matches'][self.state['selected_idx']]
-            _, start_pos = self.get_current_word_prefix(self.state['text'], len(self.state['text']))
-            self.state['text'] = self.state['text'][:start_pos] + selected_match + self.state['text'][len(self.state['text']):]
-            self.state['autocomplete_matches'] = []
+        elif self.autocomplete_matches:
+            selected_match = self.autocomplete_matches[self.selected_idx]
+            _, start_pos = self.get_current_word_prefix(self.text, len(self.text))
+            self.text = self.text[:start_pos] + selected_match + self.text[len(self.text):]
+            self.autocomplete_matches = []
             return False
         elif matching_commands := self.get_matching_commands():
-            value = f"{list(matching_commands.keys())[self.state['selected_idx']]} "
+            value = f"{list(matching_commands.keys())[self.selected_idx]} "
         elif matching_models := self.get_matching_models():
-            value = f"/model {matching_models[self.state['selected_idx']]} "
+            value = f"/model {matching_models[self.selected_idx]} "
 
-        prefix = PREFIXES.get(self.state['mode'], '')
-        if self.props['handle_submit'](f"{prefix}{value}"):
-            self.state.update({'text': '', 'mode': Mode.TEXT, 'autocomplete_matches': []})
+        prefix = PREFIXES.get(self.mode, '')
+        if self.props.handle_submit(f"{prefix}{value}"):
+            self.text = ''
+            self.mode = Mode.TEXT
+            self.autocomplete_matches = []
             return True
         return False
 
     def contents(self) -> list[Component | None]:
         matching_commands = self.get_matching_commands()
         matching_models = self.get_matching_models()
-        autocomplete_matches = self.state['autocomplete_matches']
+        autocomplete_matches = self.autocomplete_matches
 
         return [
-            Box(flex=Flex.HORIZONTAL, margin={'top': 1}, border=('top', 'bottom'), border_color=Colors.HEX(COLORS.get(self.state['mode'], Theme.DARK_GRAY)))[
-                Text(Colors.hex(PREFIXES.get(self.state['mode'], '>'), COLORS.get(self.state['mode'], Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
+            Box(flex=Flex.HORIZONTAL, width=1.0, margin={'top': 1}, border=('top', 'bottom'), border_color=Colors.HEX(COLORS.get(self.mode, Theme.DARK_GRAY)))[
+                Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 TextBox(
                     width=1.0,
-                    text=self.state['text'],
-                    history=self.props['history'],
-                    placeholder=PLACEHOLDERS[self.state['mode']],
-                    handle_input=self.handle_input,
-                    handle_page=self.handle_page,
-                    handle_change=self.handle_change,
-                    handle_submit=self.handle_submit)
+                    text=self.text,
+                    history=self.props.history,
+                    placeholder=PLACEHOLDERS[self.mode],
+                    handle_input=self.handle_textbox_input,
+                    handle_page=self.handle_textbox_page,
+                    handle_change=self.handle_textbox_change,
+                    handle_submit=self.handle_textbox_submit)
             ],
             Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
-                if self.state['show_exit_prompt'] else
-            CommandsList({match: '' for match in autocomplete_matches}, self.state['selected_idx'])
+                if self.show_exit_prompt else
+            CommandsList({match: '' for match in autocomplete_matches}, self.selected_idx)
                 if autocomplete_matches else
-            CommandsList({model: MODELS_BY_NAME[model].api.display_name for model in matching_models}, self.state['selected_idx'])
+            CommandsList({model: MODELS_BY_NAME[model].api.display_name for model in matching_models}, self.selected_idx)
                 if matching_models else
-            CommandsList(matching_commands, self.state['selected_idx'])
+            CommandsList(matching_commands, self.selected_idx)
                 if matching_commands else
             Box(flex=Flex.HORIZONTAL)[
                 Text(self.get_shortcuts_text(), width=1.0, margin={'left': 2}),
-                Text(Colors.hex(self.props['model'].api.display_name, Theme.WHITE)),
-                Text(Colors.hex(self.props['model'].name, Theme.GRAY), margin={'left': 2, 'right': 2})
+                Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
+                Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2})
             ]
         ]

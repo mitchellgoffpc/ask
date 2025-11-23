@@ -1,6 +1,6 @@
 import unittest
 
-from ask.ui.core.components import Box, Text
+from ask.ui.core.components import Box, Element, Text
 
 class TestBox(unittest.TestCase):
     def test_box_with_children(self):
@@ -13,7 +13,7 @@ class TestBox(unittest.TestCase):
         self.assertIn(text1, box.children)
         self.assertIn(text2, box.children)
 
-        rendered = box.render([child.render([], max_width=100) for child in box.children if child], max_width=100)
+        rendered = box.render([child.render([], max_width=100) for child in box.children if child and isinstance(child, Element)], max_width=100)
         self.assertIn("Hello", rendered)
         self.assertIn("World", rendered)
 
@@ -35,7 +35,6 @@ class TestText(unittest.TestCase):
     def test_text_cannot_have_children(self):
         """Test that Text component cannot have children."""
         text_comp = Text("Hello")
-        self.assertTrue(text_comp.leaf)
         self.assertEqual(text_comp.contents(), [])
         with self.assertRaises(ValueError):
             text_comp[Text("Child"),]

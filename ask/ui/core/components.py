@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Literal, Iterable, Self, get_args
+from typing import Callable, ClassVar, Generic, Literal, Iterable, Self, TypeVar, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
@@ -54,74 +54,54 @@ def apply_borders(content: str, width: int, borders: set[Side], border_style: Bo
     right_border = Colors.ansi(border_style.right, color_code) if 'right' in borders else ''
     return '\n'.join(top_border + [left_border + line + right_border for line in lines] + bottom_border)
 
-def apply_boxing(content: str, max_width: int, component: Component) -> str:
-    max_content_width = component.get_content_width(max_width)
-    if isinstance(component.props.get('width'), int):
-        content_width = min(max_content_width, component.get_content_width(component.props['width'] + component.margin['left'] + component.margin['right']))
-    elif isinstance(component.props.get('width'), float):
+def apply_boxing(content: str, max_width: int, element: Element) -> str:
+    max_content_width = element.get_content_width(max_width)
+    if isinstance(element.width, int):
+        content_width = min(max_content_width, element.get_content_width(element.width + element.margin['left'] + element.margin['right']))
+    elif isinstance(element.width, float):
         content_width = max_content_width
     else:
         content_width = min(max_content_width, get_rendered_width(content))
-    content_height: int = component.props['height'] if component.props.get('height') is not None else content.count('\n') + 1 if content else 0
-    padded_width = content_width + component.padding['left'] + component.padding['right']
+    content_height: int = element.height if element.height is not None else content.count('\n') + 1 if content else 0
+    padded_width = content_width + element.padding['left'] + element.padding['right']
 
     content = apply_sizing(content, content_width, content_height)
-    content = apply_spacing(content, component.padding)
-    content = apply_borders(content, padded_width, set(component.props['border']), component.props['border_style'], component.props['border_color'])
-    content = apply_spacing(content, component.margin)
+    content = apply_spacing(content, element.padding)
+    content = apply_borders(content, padded_width, {k for k, v in element.border.items() if v}, element.border_style, element.border_color)
+    content = apply_spacing(content, element.margin)
     return content
 
 
-class State:
-    def __init__(self, uuid: UUID, state: dict[str, Any]) -> None:
-        self.uuid = uuid
-        self.state = state.copy()
-
-    def __repr__(self) -> str:
-        return f'State({self.state})'
-
-    def __getitem__(self, key: str) -> Any:
-        return self.state[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if self.state.get(key) != value:
-            dirty.add(self.uuid)
-        self.state[key] = value
-
-    def update(self, state: dict[str, Any]) -> None:
-        for key, value in state.items():
-            self[key] = value
-
-
 class Component:
-    leaf = False
-    initial_state: dict[str, Any] = {}
+    uuid: UUID
+    def contents(self) -> list[Component | None]:
+        raise NotImplementedError()
 
-    def __init__(self, **props: Any) -> None:
+class Element(Component):
+    def __init__(
+        self,
+        width: Size = None,
+        height: int | None = None,
+        margin: Spacing = 0,
+        padding: Spacing = 0,
+        border: Iterable[Side] = (),
+        border_color: str | None = None,
+        border_style: BorderStyle = Borders.ROUND
+    ) -> None:
+        self.width, self.height = width, height
+        self.margin = get_spacing_dict(margin)
+        self.padding = get_spacing_dict(padding)
+        self.border = {side: int(side in border) for side in get_args(Side)}
+        self.border_color = border_color
+        self.border_style = border_style
+
         self.children: list[Component | None] = []
         self.uuid = uuid4()
-        self.props = props
-        self.state = State(self.uuid, self.initial_state)
-        self.mounted = False
         self.rendered_width = 0
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
-        if self.leaf:
-            raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
         self.children = [args] if isinstance(args, Component) else list(args) if args else []
         return self
-
-    @property
-    def margin(self) -> dict[Side, int]:
-        return get_spacing_dict(self.props['margin'])
-
-    @property
-    def padding(self) -> dict[Side, int]:
-        return get_spacing_dict(self.props['padding'])
-
-    @property
-    def border(self) -> dict[Side, int]:
-        return {side: int(side in self.props['border']) for side in get_args(Side)}
 
     def get_content_width(self, width: int) -> int:
         horizontal_padding = self.padding['left'] + self.padding['right']
@@ -130,12 +110,79 @@ class Component:
         return max(0, width - horizontal_padding - horizontal_margin - horizontal_border)
 
     def contents(self) -> list[Component | None]:
-        if self.leaf:
-            return []
-        raise NotImplementedError(f"{self.__class__.__name__} component must implement `contents` method")
+        return self.children
 
     def render(self, contents: list[str], max_width: int) -> str:
-        raise NotImplementedError(f"{self.__class__.__name__} component must implement `render` method")
+        raise NotImplementedError()
+
+
+class Text(Element):
+    def __init__(
+        self,
+        text: str,
+        width: Size = None,
+        height: int | None = None,
+        margin: Spacing = 0,
+        padding: Spacing = 0,
+        border: Iterable[Side] = (),
+        border_style: BorderStyle = Borders.ROUND,
+        border_color: str | None = None,
+    ) -> None:
+        super().__init__(width=width, height=height, margin=margin, padding=padding, border=border, border_color=border_color, border_style=border_style)
+        self.text = text
+
+    def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
+        raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
+
+    def render(self, _: list[str], max_width: int) -> str:
+        wrapped = wrap_lines(self.text, max_width)
+        return apply_boxing(wrapped, max_width, self)
+
+
+class Box(Element):
+    def __init__(
+        self,
+        flex: Flex = Flex.VERTICAL,
+        width: Size = None,
+        height: int | None = None,
+        margin: Spacing = 0,
+        padding: Spacing = 0,
+        border: Iterable[Side] = (),
+        border_color: str | None = None,
+        border_style: BorderStyle = Borders.ROUND,
+    ) -> None:
+        super().__init__(width=width, height=height, margin=margin, padding=padding, border=border, border_color=border_color, border_style=border_style)
+        self.flex = flex
+
+    def render(self, contents: list[str], max_width: int) -> str:
+        if self.flex is Flex.VERTICAL:
+            content = '\n'.join(x for x in contents if x)
+        elif self.flex is Flex.HORIZONTAL:
+            max_child_height = max((child.count('\n') + 1 for child in contents), default=0)
+            contents = [apply_sizing(child, width=get_rendered_width(child), height=max_child_height) for child in contents]
+            lines = [child.split('\n') for child in contents]
+            content = '\n'.join(''.join(columns) for columns in zip(*lines, strict=True))
+
+        return apply_boxing(content, max_width, self)
+
+
+ComponentType = TypeVar('ComponentType')
+
+class Controller(Component, Generic[ComponentType]):
+    state: list[str] = []
+
+    def __init__(self, props: ComponentType) -> None:
+        self.props = props
+        self.uuid = uuid4()
+        self.mounted = False
+
+    def __call__(self, props: ComponentType) -> None:
+        self.props = props
+
+    def __setattr__(self, key, value):
+        if key in self.state:
+            dirty.add(self.uuid)
+        super().__setattr__(key, value)
 
     def handle_mount(self):
         self.mounted = True
@@ -143,61 +190,32 @@ class Component:
     def handle_unmount(self):
         self.mounted = False
 
-    def handle_update(self, new_props: dict[str, Any]) -> None:
+    def handle_input(self, ch: str) -> None:
         pass
-
-    def handle_raw_input(self, ch: str) -> None:
-        pass
-
-
-class Text(Component):
-    leaf = True
-
-    def __init__(
-        self,
-        text: str,
-        width: Size = None,
-        height: Size = None,
-        margin: Spacing = 0,
-        padding: Spacing = 0,
-        border: Iterable[Side] = (),
-        border_style: BorderStyle = Borders.ROUND,
-        border_color: str | None = None,
-    ) -> None:
-        super().__init__(text=text, width=width, height=height, margin=margin, padding=padding,
-                         border=border, border_color=border_color, border_style=border_style)
-
-    def render(self, _: list[str], max_width: int) -> str:
-        wrapped = wrap_lines(self.props['text'], max_width)
-        return apply_boxing(wrapped, max_width, self)
-
-
-class Box(Component):
-    def __init__(
-        self,
-        flex: Flex = Flex.VERTICAL,
-        width: Size = None,
-        height: Size = None,
-        margin: Spacing = 0,
-        padding: Spacing = 0,
-        border: Iterable[Side] = (),
-        border_color: str | None = None,
-        border_style: BorderStyle = Borders.ROUND,
-        **props: Any
-    ) -> None:
-        super().__init__(flex=flex, width=width, height=height, margin=margin, padding=padding,
-                         border=border, border_color=border_color, border_style=border_style, **props)
 
     def contents(self) -> list[Component | None]:
-        return self.children
+        raise NotImplementedError()
 
-    def render(self, contents: list[str], max_width: int) -> str:
-        if self.props['flex'] is Flex.VERTICAL:
-            content = '\n'.join(x for x in contents if x)
-        elif self.props['flex'] is Flex.HORIZONTAL:
-            max_child_height = max((child.count('\n') + 1 for child in contents), default=0)
-            contents = [apply_sizing(child, width=get_rendered_width(child), height=max_child_height) for child in contents]
-            lines = [child.split('\n') for child in contents]
-            content = '\n'.join(''.join(columns) for columns in zip(*lines, strict=True))
+class Widget(Component):
+    __controller__: ClassVar[Callable[[Self], type[Controller]]]
+    __controller_instance__: Controller | None = None
 
-        return apply_boxing(content, max_width, self)
+    @property
+    def controller(self) -> Controller:
+        assert self.__controller_instance__ is not None, "Widget's controller instance is not initialized"
+        return self.__controller_instance__
+
+    @controller.setter
+    def controller(self, value: Controller | None) -> None:
+        self.__controller_instance__ = value
+
+    def contents(self) -> list[Component | None]:
+        return self.controller.contents()
+
+    @property
+    def uuid(self) -> UUID:
+        return self.controller.uuid
+
+    @uuid.setter
+    def uuid(self, value: UUID) -> None:
+        self.controller.uuid = value
