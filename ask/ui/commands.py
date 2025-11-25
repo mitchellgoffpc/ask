@@ -17,7 +17,7 @@ class MemorizeCommand(Command):
         return [Message(role='user', content=Text(f"I've added the following to the AGENTS.md file:\n\n```{self.command}```"))]
 
 @dataclass
-class ShellCommand(Command):
+class BashCommand(Command):
     stdout: str = ''
     stderr: str = ''
     status: ToolCallStatus = ToolCallStatus.PENDING
@@ -31,6 +31,23 @@ class ShellCommand(Command):
             Message(role='user', content=Text(COMMAND_CAVEAT_MESSAGE)),
             Message(role='user', content=Text(f"<bash-stdin>{self.command}</bash-stdin>")),
             Message(role='user', content=Text(output))]
+
+@dataclass
+class PythonCommand(Command):
+    output: str = ''
+    error: str = ''
+    status: ToolCallStatus = ToolCallStatus.PENDING
+
+    def messages(self) -> list[Message]:
+        if self.status is ToolCallStatus.CANCELLED:
+            output = "[Request interrupted by user]"
+        else:
+            output = f"<python-stdout>\n{self.output}\n</python-stdout>\n<python-stderr>\n{self.error}\n</python-stderr>"
+        return [
+            Message(role='user', content=Text(COMMAND_CAVEAT_MESSAGE)),
+            Message(role='user', content=Text(f"<python-code>{self.command}</python-code>")),
+            Message(role='user', content=Text(output))]
+
 
 @dataclass
 class SlashCommand(Command):

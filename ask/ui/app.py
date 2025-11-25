@@ -20,9 +20,10 @@ from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApprovalController
-from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand, FilesCommand, InitCommand, get_usage_message
+from ask.ui.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message
 from ask.ui.config import Config, History
-from ask.ui.messages import PromptMessage, ResponseMessage, ErrorMessage, ToolCallMessage, ShellCommandMessage, SlashCommandMessage, MemorizeCommandMessage
+from ask.ui.messages import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage
+from ask.ui.messages import BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 
@@ -85,19 +86,36 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             self.elapsed = 0
 
-    async def shell(self, command: str) -> None:
+    async def bash(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
-        shell_command = ShellCommand(command=command)
-        message_uuid = self.add_message('user', shell_command)
+        bash_command = BashCommand(command=command)
+        message_uuid = self.add_message('user', bash_command)
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await process.communicate()
             status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
-            shell_command = replace(shell_command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status)
+            bash_command = replace(bash_command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status)
         except asyncio.CancelledError:
-            shell_command = replace(shell_command, status=ToolCallStatus.CANCELLED)
+            bash_command = replace(bash_command, status=ToolCallStatus.CANCELLED)
         ticker.cancel()
-        self.update_message(message_uuid, shell_command)
+        self.update_message(message_uuid, bash_command)
+
+    async def python(self, command: str) -> None:
+        ticker = asyncio.create_task(self.tick(1.0))
+        python_command = PythonCommand(command=command)
+        message_uuid = self.add_message('user', python_command)
+        try:
+            process = await asyncio.create_subprocess_exec(
+                sys.executable, '-c', command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE)
+            stdout, stderr = await process.communicate()
+            status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
+            python_command = replace(python_command, output=stdout.decode().strip('\n'), error=stderr.decode().strip('\n'), status=status)
+        except asyncio.CancelledError:
+            python_command = replace(python_command, status=ToolCallStatus.CANCELLED)
+        ticker.cancel()
+        self.update_message(message_uuid, python_command)
 
     async def query(self) -> None:
         self.pending += 1
@@ -232,7 +250,9 @@ class AppController(Controller[App]):
             agents_path.write_text(content + f"- {value.removeprefix('#').strip()}\n")
             self.add_message('user', MemorizeCommand(command=value.removeprefix('#').strip()))
         elif value.startswith('!'):
-            self.tasks.append(asyncio.create_task(self.shell(value.removeprefix('!'))))
+            self.tasks.append(asyncio.create_task(self.bash(value.removeprefix('!'))))
+        elif value.startswith('$'):
+            self.tasks.append(asyncio.create_task(self.python(value.removeprefix('$'))))
         else:
             file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', value) if Path(m[1:]).is_file()]  # get file attachments
             if file_paths:
@@ -278,10 +298,12 @@ class AppController(Controller[App]):
                     messages.append(PromptMessage(text=msg.content))
                 case ('user', Error()):
                     messages.append(ErrorMessage(error=msg.content))
-                case ('user', ShellCommand()):
-                    messages.append(ShellCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
+                case ('user', BashCommand()):
+                    messages.append(BashCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
                 case ('user', MemorizeCommand()):
                     messages.append(MemorizeCommandMessage(command=msg.content))
+                case ('user', PythonCommand()):
+                    messages.append(PythonCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
                 case ('user', SlashCommand()):
                     messages.append(SlashCommandMessage(command=msg.content))
                 case ('assistant', TextContent()):

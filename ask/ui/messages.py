@@ -7,7 +7,7 @@ from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.diff import Diff
 from ask.ui.core.markdown_ import render_markdown
 from ask.ui.core.styles import Flex, Colors, Styles, Theme
-from ask.ui.commands import MemorizeCommand, ShellCommand, SlashCommand
+from ask.ui.commands import MemorizeCommand, PythonCommand, BashCommand, SlashCommand
 
 NUM_PREVIEW_LINES = 5
 STATUS_COLORS = {
@@ -16,7 +16,7 @@ STATUS_COLORS = {
     ToolCallStatus.CANCELLED: Theme.RED,
     ToolCallStatus.FAILED: Theme.RED}
 
-def get_shell_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float, expanded: bool) -> tuple[str, str]:
+def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float, expanded: bool) -> tuple[str, str]:
     if status is ToolCallStatus.PENDING:
         return Colors.hex("Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), Theme.GRAY), ''
     elif status is ToolCallStatus.CANCELLED:
@@ -135,11 +135,28 @@ def SlashCommandMessage(command: SlashCommand) -> Component:
         ] if command.error else None,
     ]
 
-def ShellCommandMessage(command: ShellCommand, elapsed: float, expanded: bool) -> Component:
-    output, error = get_shell_output(command.stdout, command.stderr, command.status, elapsed, expanded)
+def BashCommandMessage(command: BashCommand, elapsed: float, expanded: bool) -> Component:
+    output, error = get_bash_output(command.stdout, command.stderr, command.status, elapsed, expanded)
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),
+            Text(Colors.hex(command.command, Theme.GRAY))
+        ],
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(output)
+        ] if output else None,
+        Box(flex=Flex.HORIZONTAL)[
+            Text("  ⎿  "),
+            Text(Colors.hex(error, Theme.RED))
+        ] if error else None,
+    ]
+
+def PythonCommandMessage(command: PythonCommand, elapsed: float, expanded: bool) -> Component:
+    output, error = get_bash_output(command.output, command.error, command.status, elapsed, expanded)
+    return Box(margin={'top': 1})[
+        Box(flex=Flex.HORIZONTAL)[
+            Text(Colors.hex(">>> ", Theme.GREEN)),
             Text(Colors.hex(command.command, Theme.GRAY))
         ],
         Box(flex=Flex.HORIZONTAL)[

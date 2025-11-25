@@ -16,20 +16,25 @@ class Mode(Enum):
     TEXT = 'text'
     BASH = 'bash'
     MEMORIZE = 'memorize'
+    PYTHON = 'python'
 
 COLORS = {
     Mode.BASH: Theme.PINK,
-    Mode.MEMORIZE: Theme.BLUE}
+    Mode.MEMORIZE: Theme.BLUE,
+    Mode.PYTHON: Theme.GREEN}
 PREFIXES = {
     Mode.BASH: '!',
-    Mode.MEMORIZE: '#'}
+    Mode.MEMORIZE: '#',
+    Mode.PYTHON: '$'}
 SHORTCUTS = {
     Mode.BASH: '! for bash mode',
     Mode.MEMORIZE: '# to memorize',
-    Mode.TEXT: '! for bash mode · / for commands'}
+    Mode.PYTHON: '$ for python mode',
+    Mode.TEXT: '! for bash mode · $ for python · / for commands'}
 PLACEHOLDERS = {
     Mode.BASH: "Run bash command. Try 'ls -la'",
     Mode.MEMORIZE: "Add to memory. Try 'Always use descriptive variable names'",
+    Mode.PYTHON: "Run python code. Try 'print(2 + 2)'",
     Mode.TEXT: "Try 'how do I log an error?'"}
 
 COMMANDS = {
@@ -128,6 +133,9 @@ class PromptTextBoxController(Controller):
         elif cursor_pos == 0 and ch == '#':
             self.mode = Mode.MEMORIZE
             return False
+        elif cursor_pos == 0 and ch == '$':
+            self.mode = Mode.PYTHON
+            return False
 
         # Tab completion
         matching_commands = self.get_matching_commands()
@@ -178,6 +186,9 @@ class PromptTextBoxController(Controller):
         elif value.startswith('#'):
             value = value.removeprefix('#')
             self.mode = Mode.MEMORIZE
+        elif value.startswith('$'):
+            value = value.removeprefix('$')
+            self.mode = Mode.PYTHON
         if value != self.text:
             self.selected_idx = 0
             self.autocomplete_matches = []
