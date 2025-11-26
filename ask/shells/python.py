@@ -1,0 +1,107 @@
+from __future__ import annotations
+import ast
+import asyncio
+import atexit
+import io
+import os
+import queue
+import signal
+from contextlib import redirect_stdout, redirect_stderr
+from multiprocessing import Queue, Process
+from typing import Any
+
+
+def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None] | None]) -> None:
+    def signal_handler(signum, frame):
+        raise KeyboardInterrupt()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    globals_dict: dict[str, Any] = {}
+    while True:
+        try:
+            result_queue.put(None)
+            if (nodes := command_queue.get()) is None:
+                break
+            captured_output = io.StringIO()
+            captured_exception = None
+
+            # Redirect both stdout and stderr to the same stream
+            with redirect_stdout(captured_output), redirect_stderr(captured_output):
+                for i, node in enumerate(nodes):
+                    if i == len(nodes) - 1 and isinstance(node, ast.Expr):
+                        code = compile(ast.Interactive([node]), '<stdin>', 'single')
+                    else:
+                        code = compile(ast.Module([node], []), '<stdin>', 'exec')
+
+                    try:
+                        exec(code, globals_dict)
+                    except KeyboardInterrupt:
+                        break
+                    except SystemExit:
+                        globals_dict.clear()
+                        break
+                    except BaseException as e:
+                        captured_exception = e
+                        break
+            result_queue.put((captured_output.getvalue(), captured_exception))
+        except BaseException as e:
+            result_queue.put(("", e))
+
+
+class PythonShell:
+    def __init__(self) -> None:
+        self.command_queue: Queue[list[ast.stmt] | None] = Queue()
+        self.result_queue: Queue[tuple[str, BaseException | None] | None] = Queue()
+        self.worker_process: Process | None = None
+
+    async def _interrupt_worker(self) -> None:
+        if self.worker_process and self.worker_process.pid:
+            try:
+                os.kill(self.worker_process.pid, signal.SIGINT)
+            except ProcessLookupError:
+                pass
+
+    def _cleanup_worker(self) -> None:
+        try:
+            if self.worker_process and self.worker_process.is_alive():
+                self.command_queue.put(None)
+                self.worker_process.join(timeout=1.0)
+        except Exception:
+            pass
+
+    def parse(self, code: str) -> list[ast.stmt]:
+        module = ast.parse(code, '<string>')
+        return list(module.body)
+
+    async def execute(self, nodes: list[ast.stmt], timeout_seconds: float) -> tuple[str, BaseException | None]:
+        if not self.worker_process:
+            self.worker_process = Process(target=repl_worker, args=(self.command_queue, self.result_queue), daemon=True)
+            self.worker_process.start()
+            atexit.register(self._cleanup_worker)
+
+        while True:
+            try:
+                if self.result_queue.get_nowait() is None:
+                    break
+            except queue.Empty:
+                await asyncio.sleep(0.01)
+
+        self.command_queue.put(nodes)
+        start_time = asyncio.get_event_loop().time()
+        while True:
+            try:
+                try:
+                    result = self.result_queue.get_nowait()
+                    assert result is not None
+                    output, exception = result
+                    break
+                except queue.Empty:
+                    if asyncio.get_event_loop().time() - start_time >= timeout_seconds:
+                        await self._interrupt_worker()
+                        raise TimeoutError(f"Code execution timed out after {timeout_seconds} seconds") from None
+                await asyncio.sleep(0.01)
+            except asyncio.CancelledError:
+                await self._interrupt_worker()
+                raise
+
+        return output, exception
