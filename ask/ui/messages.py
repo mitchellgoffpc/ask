@@ -165,7 +165,7 @@ def PythonCommandMessage(command: PythonCommand, elapsed: float, expanded: bool)
         ] if output else None,
         Box(flex=Flex.HORIZONTAL)[
             Text("  ⎿  "),
-            Text(Colors.hex(error, Theme.RED))
+            Text(error)
         ] if error else None,
     ]
 

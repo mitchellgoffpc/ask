@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
 from ask.query import query
+from ask.shells import PYTHON_SHELL
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
@@ -105,13 +106,10 @@ class AppController(Controller[App]):
         python_command = PythonCommand(command=command)
         message_uuid = self.add_message('user', python_command)
         try:
-            process = await asyncio.create_subprocess_exec(
-                sys.executable, '-c', command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE)
-            stdout, stderr = await process.communicate()
-            status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
-            python_command = replace(python_command, output=stdout.decode().strip('\n'), error=stderr.decode().strip('\n'), status=status)
+            nodes = PYTHON_SHELL.parse(command)
+            output, exception = await PYTHON_SHELL.execute(nodes=nodes, timeout_seconds=10)
+            status = ToolCallStatus.FAILED if exception else ToolCallStatus.COMPLETED
+            python_command = replace(python_command, output=output, error=exception, status=status)
         except asyncio.CancelledError:
             python_command = replace(python_command, status=ToolCallStatus.CANCELLED)
         ticker.cancel()
@@ -188,7 +186,9 @@ class AppController(Controller[App]):
                 self.tasks.append(asyncio.create_task(self.query()))
                 self.history.append(prompt)
 
-    def handle_raw_input(self, ch: str) -> None:
+    def handle_input(self, ch: str) -> None:
+        if ch == '\x04':  # Ctrl+D
+            self.exit()
         if ch == '\x03':  # Ctrl+C
             self.expanded = False
         elif ch == '\x12':  # Ctrl+R

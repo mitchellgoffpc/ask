@@ -23,7 +23,7 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ToolError) as context:
             await self.run_tool("1 / 0")
         self.assertIsInstance(context.exception, ToolError)
-        self.assertIsInstance(context.exception.__cause__, ZeroDivisionError)
+        self.assertIn('ZeroDivisionError', str(context.exception))
 
     async def test_syntax_error(self):
         with self.assertRaises(ToolError) as context:

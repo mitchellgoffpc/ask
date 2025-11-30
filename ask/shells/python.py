@@ -6,12 +6,13 @@ import io
 import os
 import queue
 import signal
+import traceback
 from contextlib import redirect_stdout, redirect_stderr
 from multiprocessing import Queue, Process
 from typing import Any
 
 
-def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, BaseException | None] | None]) -> None:
+def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, str] | None]) -> None:
     def signal_handler(signum, frame):
         raise KeyboardInterrupt()
 
@@ -23,7 +24,7 @@ def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue
             if (nodes := command_queue.get()) is None:
                 break
             captured_output = io.StringIO()
-            captured_exception = None
+            captured_traceback = ''
 
             # Redirect both stdout and stderr to the same stream
             with redirect_stdout(captured_output), redirect_stderr(captured_output):
@@ -41,17 +42,20 @@ def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue
                         globals_dict.clear()
                         break
                     except BaseException as e:
-                        captured_exception = e
+                        traceback_lines = traceback.format_exception(type(e), e, e.__traceback__)
+                        captured_traceback = ''.join(traceback_lines[:1] + traceback_lines[2:])
                         break
-            result_queue.put((captured_output.getvalue(), captured_exception))
+            result_queue.put((captured_output.getvalue(), captured_traceback))
         except BaseException as e:
-            result_queue.put(("", e))
+            traceback_lines = traceback.format_exception(type(e), e, e.__traceback__)
+            captured_traceback = ''.join(traceback_lines[:1] + traceback_lines[2:])
+            result_queue.put(("", captured_traceback))
 
 
 class PythonShell:
     def __init__(self) -> None:
         self.command_queue: Queue[list[ast.stmt] | None] = Queue()
-        self.result_queue: Queue[tuple[str, BaseException | None] | None] = Queue()
+        self.result_queue: Queue[tuple[str, str] | None] = Queue()
         self.worker_process: Process | None = None
 
     async def _interrupt_worker(self) -> None:
@@ -73,7 +77,7 @@ class PythonShell:
         module = ast.parse(code, '<string>')
         return list(module.body)
 
-    async def execute(self, nodes: list[ast.stmt], timeout_seconds: float) -> tuple[str, BaseException | None]:
+    async def execute(self, nodes: list[ast.stmt], timeout_seconds: float) -> tuple[str, str]:
         if not self.worker_process:
             self.worker_process = Process(target=repl_worker, args=(self.command_queue, self.result_queue), daemon=True)
             self.worker_process.start()

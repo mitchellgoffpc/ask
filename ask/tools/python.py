@@ -49,7 +49,7 @@ class PythonTool(Tool):
         try:
             output, exception = await PYTHON_SHELL.execute(nodes, timeout_seconds)
             if exception:
-                raise ToolError("Python execution failed") from exception
+                raise ToolError(f'Python execution failed\n\n"""\n{exception}\n"""')
             return output
         except TimeoutError as e:
             raise ToolError(str(e)) from e
