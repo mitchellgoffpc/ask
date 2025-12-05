@@ -1,4 +1,5 @@
 import re
+import html
 from io import StringIO
 from typing import Any, Callable, cast
 from markdown import Markdown, Extension
@@ -94,7 +95,7 @@ class ANSIExtension(Extension):
         if element.text and element.tag in self.BLOCK_TAGS:
             element.text = element.text.lstrip('\n')
         if element.text:
-            stream.write(element.text)
+            stream.write(html.unescape(element.text))
             if len(element) and list(element)[0].tag in self.BLOCK_TAGS:
                 stream.write('\n')
 
@@ -112,7 +113,7 @@ class ANSIExtension(Extension):
         if element.tail:
             if element.tag in self.BLOCK_TAGS:
                 element.tail = element.tail.rstrip('\n')
-            stream.write(element.tail)
+            stream.write(html.unescape(element.tail))
 
     def render_element(self, element: Element, stream: StringIO, indent: int) -> None:
         if element.tag == "pre":

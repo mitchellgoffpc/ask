@@ -27,3 +27,18 @@ class TestRenderMarkdown(unittest.TestCase):
     def test_nested_lists(self):
         result = render_markdown("* Item 1\n  * Subitem 1.1\n  Another item\n* Item 2")
         self.assertEqual(result, "• Item 1\n  • Subitem 1.1\n  Another item\n• Item 2")
+
+    def test_html_special_characters(self):
+        test_cases = [
+            ("Text with & ampersand", "Text with & ampersand", "ampersand character"),
+            ("Less than < and greater than >", "Less than < and greater than >", "angle brackets"),
+            ("Quotes: \"double\" and 'single'", "Quotes: \"double\" and 'single'", "quote characters"),
+            ("Mixed: & < > \" '", "Mixed: & < > \" '", "multiple special characters"),
+            ("`Code with & < >`", f"{Colors.HEX(Theme.BLUE)}Code with & < >{Colors.END}", "special chars in code"),
+            ("**Bold & italic**", f"{Styles.BOLD}Bold & italic{Styles.BOLD_END}", "special chars in bold"),
+        ]
+
+        for input_text, expected, description in test_cases:
+            with self.subTest(description=description):
+                result = render_markdown(input_text)
+                self.assertEqual(result, expected)
