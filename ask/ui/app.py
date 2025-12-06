@@ -9,7 +9,7 @@ from base64 import b64decode
 from dataclasses import dataclass, replace
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any, ClassVar, Iterable
+from typing import Any, ClassVar
 
 from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
@@ -38,32 +38,21 @@ def ToDoMessage(todos: dict[str, Any]) -> Component:
         Text(TOOLS[ToDoTool.name].render_response(todos, ''))
     ]
 
-class Messages:
+class Messages(dict[UUID, Message]):
     def __init__(self, parent_uuid: UUID, messages: dict[UUID, Message]) -> None:
-        self.messages = messages
+        super().__init__(messages)
         self.parent_uuid = parent_uuid
 
-    def __getitem__(self, key: UUID) -> Message:
-        return self.messages[key]
-
     def __setitem__(self, key: UUID, value: Message) -> None:
-        self.messages[key] = value
+        super().__setitem__(key, value)
         dirty.add(self.parent_uuid)
 
-    def __contains__(self, key: UUID) -> bool:
-        return key in self.messages
-
-    def keys(self) -> Iterable[UUID]:
-        return self.messages.keys()
-
-    def values(self) -> Iterable[Message]:
-        return self.messages.values()
-
-    def items(self) -> Iterable[tuple[UUID, Message]]:
-        return self.messages.items()
+    def __delitem__(self, key: UUID) -> None:
+        super().__delitem__(key)
+        dirty.add(self.parent_uuid)
 
     def clear(self) -> None:
-        self.messages.clear()
+        super().clear()
         dirty.add(self.parent_uuid)
 
     def add(self, role: str, content: Content, uuid: UUID | None = None) -> UUID:
@@ -71,8 +60,8 @@ class Messages:
         self[message_uuid] = Message(role=role, content=content)
         return message_uuid
 
-    def update(self, uuid: UUID, content: Content) -> None:
-        self[uuid] = replace(self.messages[uuid], content=content)
+    def set_contents(self, uuid: UUID, content: Content) -> None:
+        self[uuid] = replace(self[uuid], content=content)
 
 
 @dataclass
@@ -128,7 +117,7 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             bash_command = replace(bash_command, status=ToolCallStatus.CANCELLED)
         ticker.cancel()
-        self.messages.update(message_uuid, bash_command)
+        self.messages.set_contents(message_uuid, bash_command)
 
     async def python(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
@@ -142,13 +131,13 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             python_command = replace(python_command, status=ToolCallStatus.CANCELLED)
         ticker.cancel()
-        self.messages.update(message_uuid, python_command)
+        self.messages.set_contents(message_uuid, python_command)
 
     async def query(self) -> None:
         self.pending += 1
         text, contents = '', {}
         start_time = time.monotonic()
-        messages = self.messages.messages.copy()
+        messages = self.messages.copy()
         try:
             async for delta, content in query(self.model, list(messages.values()), self.props.tools, self.props.system_prompt):
                 text = text + delta
@@ -183,7 +172,7 @@ class AppController(Controller[App]):
         try:
             tool = TOOLS[request.tool]
             args = tool.check(request.arguments)
-            self.messages.update(request_uuid, replace(request, processed_arguments=args))
+            self.messages.set_contents(request_uuid, replace(request, processed_arguments=args))
             if tool.name in {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name} - self.autoapprovals:
                 self.approvals = self.approvals | {request_uuid: asyncio.get_running_loop().create_future()}
                 try:
@@ -257,10 +246,9 @@ class AppController(Controller[App]):
                 self.messages.add('user', SlashCommand(command=value, output=f"Switched from {self.model.name} to {model_name}"))
                 self.model = MODELS_BY_NAME[model_name]
                 # We have to remove all reasoning messages because they generally aren't compatible across models
-                self.messages.messages = {uuid: msg for uuid, msg in self.messages.items() if not isinstance(msg.content, Reasoning)}
-                dirty.add(self.messages.parent_uuid)
+                self.messages = Messages(self.uuid, {uuid: msg for uuid, msg in self.messages.items() if not isinstance(msg.content, Reasoning)})
         elif value == '/cost':
-            output = get_usage_message(self.messages.messages, self.query_time, time.monotonic() - self.start_time)
+            output = get_usage_message(self.messages, self.query_time, time.monotonic() - self.start_time)
             self.messages.add('user', SlashCommand(command='/cost', output=output))
         elif value == '/init':
             self.messages.add('user', InitCommand(command='/init'))
@@ -296,7 +284,7 @@ class AppController(Controller[App]):
     def textbox(self) -> Component:
         if self.exiting:
             wall_time = time.monotonic() - self.start_time
-            return Text(Colors.hex(get_usage_message(self.messages.messages, self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+            return Text(Colors.hex(get_usage_message(self.messages, self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
         elif approval_uuid := next(iter(self.approvals.keys()), None):
             tool_call = self.messages[approval_uuid].content
             assert isinstance(tool_call, ToolRequest)
