@@ -9,7 +9,7 @@ from base64 import b64decode
 from dataclasses import dataclass, replace
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Iterable
 
 from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
@@ -17,7 +17,7 @@ from ask.query import query
 from ask.shells import PYTHON_SHELL
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
-from ask.ui.core.components import Component, Controller, Box, Text, Widget
+from ask.ui.core.components import Component, Controller, Box, Text, Widget, dirty
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApprovalController
@@ -37,6 +37,43 @@ def ToDoMessage(todos: dict[str, Any]) -> Component:
         Text(Colors.hex("To Do", Theme.GRAY)),
         Text(TOOLS[ToDoTool.name].render_response(todos, ''))
     ]
+
+class Messages:
+    def __init__(self, parent_uuid: UUID, messages: dict[UUID, Message]) -> None:
+        self.messages = messages
+        self.parent_uuid = parent_uuid
+
+    def __getitem__(self, key: UUID) -> Message:
+        return self.messages[key]
+
+    def __setitem__(self, key: UUID, value: Message) -> None:
+        self.messages[key] = value
+        dirty.add(self.parent_uuid)
+
+    def __contains__(self, key: UUID) -> bool:
+        return key in self.messages
+
+    def keys(self) -> Iterable[UUID]:
+        return self.messages.keys()
+
+    def values(self) -> Iterable[Message]:
+        return self.messages.values()
+
+    def items(self) -> Iterable[tuple[UUID, Message]]:
+        return self.messages.items()
+
+    def clear(self) -> None:
+        self.messages.clear()
+        dirty.add(self.parent_uuid)
+
+    def add(self, role: str, content: Content, uuid: UUID | None = None) -> UUID:
+        message_uuid = uuid or uuid4()
+        self[message_uuid] = Message(role=role, content=content)
+        return message_uuid
+
+    def update(self, uuid: UUID, content: Content) -> None:
+        self[uuid] = replace(self.messages[uuid], content=content)
+
 
 @dataclass
 class App(Widget):
@@ -58,7 +95,7 @@ class AppController(Controller[App]):
 
     def __init__(self, props: App) -> None:
         super().__init__(props)
-        self.messages = self.props.messages
+        self.messages = Messages(self.uuid, self.props.messages)
         self.model = self.props.model
         self.config = Config()
         self.history = History()
@@ -69,14 +106,6 @@ class AppController(Controller[App]):
     def exit(self) -> None:
         self.exiting = True
         asyncio.get_running_loop().call_later(0.1, sys.exit, 0)
-
-    def add_message(self, role: str, content: Content) -> UUID:
-        message_uuid = uuid4()
-        self.messages = self.messages | {message_uuid: Message(role=role, content=content)}
-        return message_uuid
-
-    def update_message(self, uuid: UUID, content: Content) -> None:
-        self.messages = self.messages | {uuid: replace(self.messages[uuid], content=content)}
 
     async def tick(self, interval: float) -> None:
         try:
@@ -90,7 +119,7 @@ class AppController(Controller[App]):
     async def bash(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
         bash_command = BashCommand(command=command)
-        message_uuid = self.add_message('user', bash_command)
+        message_uuid = self.messages.add('user', bash_command)
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await process.communicate()
@@ -99,12 +128,12 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             bash_command = replace(bash_command, status=ToolCallStatus.CANCELLED)
         ticker.cancel()
-        self.update_message(message_uuid, bash_command)
+        self.messages.update(message_uuid, bash_command)
 
     async def python(self, command: str) -> None:
         ticker = asyncio.create_task(self.tick(1.0))
         python_command = PythonCommand(command=command)
-        message_uuid = self.add_message('user', python_command)
+        message_uuid = self.messages.add('user', python_command)
         try:
             nodes = PYTHON_SHELL.parse(command)
             output, exception = await PYTHON_SHELL.execute(nodes=nodes, timeout_seconds=10)
@@ -113,13 +142,13 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             python_command = replace(python_command, status=ToolCallStatus.CANCELLED)
         ticker.cancel()
-        self.update_message(message_uuid, python_command)
+        self.messages.update(message_uuid, python_command)
 
     async def query(self) -> None:
         self.pending += 1
-        messages = self.messages.copy()
         text, contents = '', {}
         start_time = time.monotonic()
+        messages = self.messages.messages.copy()
         try:
             async for delta, content in query(self.model, list(messages.values()), self.props.tools, self.props.system_prompt):
                 text = text + delta
@@ -127,11 +156,12 @@ class AppController(Controller[App]):
                     contents[uuid4()] = content
                 text_content = {uuid4(): TextContent(text)} if text and not any(isinstance(c, TextContent) for c in contents.values()) else {}
                 if text or contents:
-                    self.messages = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
+                    new_messages = messages | {uuid: Message(role='assistant', content=c) for uuid, c in (contents | text_content).items()}
+                    self.messages = Messages(self.uuid, new_messages)
         except asyncio.CancelledError:
-            self.add_message('user', Error("Request interrupted by user"))
+            self.messages.add('user', Error("Request interrupted by user"))
         except Exception as e:
-            self.add_message('user', Error(str(e)))
+            self.messages.add('user', Error(str(e)))
 
         self.query_time += time.monotonic() - start_time
         try:
@@ -153,7 +183,7 @@ class AppController(Controller[App]):
         try:
             tool = TOOLS[request.tool]
             args = tool.check(request.arguments)
-            self.update_message(request_uuid, replace(request, processed_arguments=args))
+            self.messages.update(request_uuid, replace(request, processed_arguments=args))
             if tool.name in {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name} - self.autoapprovals:
                 self.approvals = self.approvals | {request_uuid: asyncio.get_running_loop().create_future()}
                 try:
@@ -173,7 +203,7 @@ class AppController(Controller[App]):
         except Exception as e:
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(str(e)), status=ToolCallStatus.FAILED)
         finally:
-            self.add_message('user', response)
+            self.messages.add('user', response)
 
     def handle_mount(self) -> None:
         messages = list(self.messages.values())
@@ -215,24 +245,25 @@ class AppController(Controller[App]):
         if value in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
         elif value == '/clear':
-            self.messages = {uuid4(): Message(role='user', content=SlashCommand(command='/clear'))}
+            self.messages.clear()
         elif value.startswith('/model'):
             model_name = value.removeprefix('/model').lstrip()
             if not model_name:
                 model_list = '\n'.join(f"  {name} ({model.api.display_name})" for name, model in MODELS_BY_NAME.items())
-                self.add_message('user', SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
+                self.messages.add('user', SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
             elif model_name not in MODELS_BY_NAME:
-                self.add_message('user', SlashCommand(command=value, error=f"Unknown model: {model_name}"))
+                self.messages.add('user', SlashCommand(command=value, error=f"Unknown model: {model_name}"))
             elif model_name != self.model.name:
-                self.add_message('user', SlashCommand(command=value, output=f"Switched from {self.model.name} to {model_name}"))
+                self.messages.add('user', SlashCommand(command=value, output=f"Switched from {self.model.name} to {model_name}"))
                 self.model = MODELS_BY_NAME[model_name]
                 # We have to remove all reasoning messages because they generally aren't compatible across models
-                self.messages = {uuid: msg for uuid, msg in self.messages.items() if not isinstance(msg.content, Reasoning)}
+                self.messages.messages = {uuid: msg for uuid, msg in self.messages.items() if not isinstance(msg.content, Reasoning)}
+                dirty.add(self.messages.parent_uuid)
         elif value == '/cost':
-            output = get_usage_message(self.messages, self.query_time, time.monotonic() - self.start_time)
-            self.add_message('user', SlashCommand(command='/cost', output=output))
+            output = get_usage_message(self.messages.messages, self.query_time, time.monotonic() - self.start_time)
+            self.messages.add('user', SlashCommand(command='/cost', output=output))
         elif value == '/init':
-            self.add_message('user', InitCommand(command='/init'))
+            self.messages.add('user', InitCommand(command='/init'))
             self.tasks.append(asyncio.create_task(self.query()))
         elif value.startswith('/edit'):
             if path := value.removeprefix('/edit').strip():
@@ -240,7 +271,7 @@ class AppController(Controller[App]):
                 os.system(f"{editor} {shlex.quote(path)}")
                 hide_cursor()
             else:
-                self.add_message('user', SlashCommand(command='/edit', error='No file path supplied'))
+                self.messages.add('user', SlashCommand(command='/edit', error='No file path supplied'))
         elif value.startswith('#'):
             agents_path = get_agents_md_path()
             content = agents_path.read_text() if agents_path else ''
@@ -248,7 +279,7 @@ class AppController(Controller[App]):
                 content += '\n'
             agents_path = agents_path or Path.cwd() / "AGENTS.md"
             agents_path.write_text(content + f"- {value.removeprefix('#').strip()}\n")
-            self.add_message('user', MemorizeCommand(command=value.removeprefix('#').strip()))
+            self.messages.add('user', MemorizeCommand(command=value.removeprefix('#').strip()))
         elif value.startswith('!'):
             self.tasks.append(asyncio.create_task(self.bash(value.removeprefix('!'))))
         elif value.startswith('$'):
@@ -256,16 +287,16 @@ class AppController(Controller[App]):
         else:
             file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', value) if Path(m[1:]).is_file()]  # get file attachments
             if file_paths:
-                self.add_message('user', FilesCommand(command=value, file_contents={fp: read_file(fp) for fp in file_paths}))
+                self.messages.add('user', FilesCommand(command=value, file_contents={fp: read_file(fp) for fp in file_paths}))
             else:
-                self.add_message('user', TextContent(value))
+                self.messages.add('user', TextContent(value))
             self.tasks.append(asyncio.create_task(self.query()))
         return True
 
     def textbox(self) -> Component:
         if self.exiting:
             wall_time = time.monotonic() - self.start_time
-            return Text(Colors.hex(get_usage_message(self.messages, self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+            return Text(Colors.hex(get_usage_message(self.messages.messages, self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
         elif approval_uuid := next(iter(self.approvals.keys()), None):
             tool_call = self.messages[approval_uuid].content
             assert isinstance(tool_call, ToolRequest)
