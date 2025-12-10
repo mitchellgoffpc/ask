@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
 from typing import Any, AsyncIterator, Literal
 
-from ask.tools import Tool, ToolCallStatus
+from ask.tools.base import Tool, ToolCallStatus
 
 TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not support this behavior. The image will be attached manually by the user instead."
 

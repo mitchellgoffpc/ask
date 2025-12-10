@@ -1,13 +1,11 @@
 from base64 import b64encode
 from pathlib import Path
-from typing import Any, Literal, TYPE_CHECKING
+from typing import Any, Literal
 
+from ask.models.base import Blob, Text, Image, PDF
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.core.styles import Styles
-
-if TYPE_CHECKING:
-    from ask.models.base import Blob
 
 FileType = Literal['text', 'image', 'pdf']
 
@@ -38,8 +36,7 @@ def read_bytes(file_path: Path) -> bytes:
     with open(file_path, 'rb') as f:
         return f.read()
 
-def read_file(file_path: Path) -> 'Blob':
-    from ask.models.base import Text, Image, PDF
+def read_file(file_path: Path) -> Blob:
     file_extension = file_path.suffix.lower().removeprefix('.')
     if file_extension in IMAGE_MIME_TYPES:
         return Image(data=read_bytes(file_path), mimetype=IMAGE_MIME_TYPES[file_extension])
