@@ -2,15 +2,11 @@ from __future__ import annotations
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Literal, Union
+from typing import Any, AsyncIterator, Literal
 
 from ask.tools import Tool, ToolCallStatus
 
 TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not support this behavior. The image will be attached manually by the user instead."
-
-Role = Literal['user', 'assistant']
-Blob = Union['Text', 'Image', 'PDF']
-Content = Union['Blob', 'Reasoning', 'ToolRequest', 'ToolResponse', 'Command', 'Usage', 'Error']
 
 def get_message_groups(messages: list[Message]) -> list[tuple[Role, list[Content]]]:
     if not messages:
@@ -30,12 +26,7 @@ def get_message_groups(messages: list[Message]) -> list[tuple[Role, list[Content
     return groups + [(current_role, current_group)]
 
 
-# Message classes
-
-@dataclass
-class Message:
-    role: Role
-    content: Content
+# Content classes
 
 @dataclass
 class Text:
@@ -92,6 +83,18 @@ class Usage:
 @dataclass
 class Error:
     text: str
+
+
+# Message class
+
+Role = Literal['user', 'assistant']
+Blob = Text | Image | PDF
+Content = Blob | Reasoning | ToolRequest | ToolResponse | Command | Usage | Error
+
+@dataclass
+class Message:
+    role: Role
+    content: Content
 
 
 # Model / API classes

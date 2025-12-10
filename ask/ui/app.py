@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import json
 import os
 import re
 import shlex
@@ -10,7 +11,7 @@ from dataclasses import dataclass, replace
 from itertools import pairwise
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any, ClassVar
+from typing import Any, ClassVar, get_args
 
 from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, Blob, Text as TextContent, Image, PDF, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
@@ -32,6 +33,33 @@ from ask.ui.textbox import PromptTextBox
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
     "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
+
+class MessageEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Path):
+            return {'__type__': 'Path', 'path': str(obj)}
+        elif isinstance(obj, UUID):
+            return {'__type__': 'UUID', 'uuid': str(obj)}
+        elif isinstance(obj, Model):
+            return {'__type__': 'Model', 'name': obj.name}
+        elif isinstance(obj, Content):
+            data = obj.__dict__.copy()
+            data['__type__'] = obj.__class__.__name__
+            return data
+        return super().default(obj)
+
+def message_decoder(obj):
+    if isinstance(obj, dict) and obj.get('__type__') == 'Path':
+        return Path(obj['path'])
+    elif isinstance(obj, dict) and obj.get('__type__') == 'UUID':
+        return UUID(obj['uuid'])
+    elif isinstance(obj, dict) and obj.get('__type__') == 'Model':
+        return MODELS_BY_NAME[obj['name']]
+    elif isinstance(obj, dict) and obj.get('__type__') in [cls.__name__ for cls in get_args(Content)]:
+        type_name = obj.pop('__type__')
+        content_types = {cls.__name__: cls for cls in get_args(Content)}
+        return content_types[type_name](**obj)
+    return obj
 
 def ToDoMessage(todos: dict[str, Any]) -> Component:
     return Box(margin={'top': 1})[
@@ -78,6 +106,15 @@ class MessageTree:
 
     def update(self, uuid: UUID, content: Content) -> None:
         self[uuid] = replace(self[uuid], content=content)
+
+    def dump(self) -> list[dict[str, Any]]:
+        return [{'uuid': uuid, 'parent': self.parents[uuid], 'role': msg.role, 'content': msg.content} for uuid, msg in self.messages.items()]
+
+    def load(self, data: list[dict[str, Any]]) -> None:
+        self.clear()
+        for message in data:
+            self[message['uuid']] = Message(role=message['role'], content=message['content'])
+            self.parents[message['uuid']] = message['parent']
 
 
 @dataclass
@@ -282,6 +319,25 @@ class AppController(Controller[App]):
                 hide_cursor()
             else:
                 self.head = self.messages.add('user', self.head, SlashCommand(command='/edit', error='No file path supplied'))
+        elif value.startswith('/save'):
+            if path := value.removeprefix('/save').strip():
+                try:
+                    Path(path).write_text(json.dumps({'head': self.head, 'messages': self.messages.dump()}, indent=2, cls=MessageEncoder))
+                    self.head = self.messages.add('user', self.head, SlashCommand(command=value, output=f'Saved messages to {path}'))
+                except Exception as e:
+                    self.head = self.messages.add('user', self.head, SlashCommand(command=value, error=str(e)))
+            else:
+                self.head = self.messages.add('user', self.head, SlashCommand(command='/save', error='No file path supplied'))
+        elif value.startswith('/load'):
+            if path := value.removeprefix('/load').strip():
+                try:
+                    data = json.loads(Path(path).read_text(), object_hook=message_decoder)
+                    self.head = data['head']
+                    self.messages.load(data['messages'])
+                except Exception as e:
+                    self.head = self.messages.add('user', self.head, SlashCommand(command=value, error=str(e)))
+            else:
+                self.head = self.messages.add('user', self.head, SlashCommand(command='/load', error='No file path supplied'))
         elif value.startswith('#'):
             agents_path = get_agents_md_path()
             content = agents_path.read_text() if agents_path else ''
