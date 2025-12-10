@@ -3,7 +3,7 @@ import json
 import socket
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class OpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -15,6 +15,9 @@ class OpenAIAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'input_image', 'image_url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}
 
+    def render_pdf(self, pdf: PDF) -> dict[str, Any]:
+        return {'type': 'input_file', 'filename': pdf.name, 'file_data': f'data:application/pdf;base64,{base64.b64encode(pdf.data).decode()}'}
+
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
         return {'type': 'reasoning', 'encrypted_content': reasoning.data, 'summary': []}
 
@@ -22,8 +25,11 @@ class OpenAIAPI(API):
         return {'type': 'function_call', 'call_id': request.call_id, 'name': request.tool, 'arguments': json.dumps(request.arguments)}
 
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        assert isinstance(response.response, Text)
-        return {'type': 'function_call_output', 'call_id': response.call_id, 'output': response.response.text}
+        match response.response:
+            case Text(): content = self.render_text(response.response)
+            case Image(): content = self.render_image(response.response)
+            case PDF(): content = self.render_pdf(response.response)
+        return {'type': 'function_call_output', 'call_id': response.call_id, 'output': [content]}
 
     def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
         return {'role': role, 'content': [x for c in content for x in self.render_content(role, c, model)]}

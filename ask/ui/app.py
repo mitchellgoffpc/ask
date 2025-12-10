@@ -12,7 +12,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, ClassVar
 
-from ask.models import MODELS_BY_NAME, Model, Message, Content, Text as TextContent, Image, Reasoning, ToolRequest, ToolResponse, Error
+from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, Blob, Text as TextContent, Image, PDF, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
 from ask.query import query
 from ask.shells import PYTHON_SHELL
@@ -70,7 +70,7 @@ class MessageTree:
     def items(self, head: UUID | None) -> list[tuple[UUID, Message]]:
         return list(zip(self.keys(head), self.values(head), strict=True))
 
-    def add(self, role: str, head: UUID | None, content: Content, uuid: UUID | None = None) -> UUID:
+    def add(self, role: Role, head: UUID | None, content: Content, uuid: UUID | None = None) -> UUID:
         message_uuid = uuid or uuid4()
         self[message_uuid] = Message(role=role, content=content)
         self.parents[message_uuid] = head
@@ -201,9 +201,11 @@ class AppController(Controller[App]):
                 finally:
                     self.approvals = {k:v for k,v in self.approvals.items() if k != request_uuid}
             output = await tool.run(**args)
-            output_content: TextContent | Image
+            output_content: Blob
             if args.get('file_type') == 'image':
                 output_content = Image(data=b64decode(output), mimetype='image/jpeg')
+            elif args.get('file_type') == 'pdf':
+                output_content = PDF(name=args.get('file_name', 'document.pdf'), data=b64decode(output))
             else:
                 output_content = TextContent(output)
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output_content, status=ToolCallStatus.COMPLETED)

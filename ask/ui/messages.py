@@ -1,6 +1,6 @@
 from typing import Any, cast
 
-from ask.models import Text as TextContent, Image, ToolRequest, ToolResponse, Error
+from ask.models import Blob, Text as TextContent, Image, PDF, ToolRequest, ToolResponse, Error
 from ask.prompts import get_relative_path
 from ask.tools import TOOLS, Tool, ToolCallStatus, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.ui.core.components import Component, Box, Text
@@ -34,7 +34,7 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
             expand_text = Colors.hex(f"… +{len(lines) - NUM_PREVIEW_LINES} lines (ctrl+r to expand)", Theme.GRAY)
             return '\n'.join(lines[:NUM_PREVIEW_LINES]) + (f'\n{expand_text}' if len(lines) > NUM_PREVIEW_LINES else ''), ''
 
-def get_tool_result(tool: Tool, args: dict[str, Any], result: TextContent | Image | None, status: ToolCallStatus, expanded: bool) -> str:
+def get_tool_result(tool: Tool, args: dict[str, Any], result: Blob | None, status: ToolCallStatus, expanded: bool) -> str:
     if status is ToolCallStatus.PENDING:
         return Colors.hex("Running…", Theme.GRAY)
     elif status is ToolCallStatus.CANCELLED:
@@ -48,12 +48,14 @@ def get_tool_result(tool: Tool, args: dict[str, Any], result: TextContent | Imag
             return Colors.hex("(No content)", Theme.GRAY)
         elif isinstance(result, Image):
             return tool.render_image_response(args, result.data)
+        elif isinstance(result, PDF):
+            return tool.render_pdf_response(args, result.name)
         elif expanded:
             return tool.render_response(args, result.text)
         else:
             return tool.render_short_response(args, result.text)
 
-def get_edit_result(args: dict[str, Any], result: TextContent | Image | None, status: ToolCallStatus, expanded: bool) -> Component:
+def get_edit_result(args: dict[str, Any], result: Blob | None, status: ToolCallStatus, expanded: bool) -> Component:
     if status is ToolCallStatus.PENDING:
         return Text(Colors.hex("Waiting…", Theme.GRAY))
     elif status is ToolCallStatus.FAILED:

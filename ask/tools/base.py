@@ -98,6 +98,9 @@ class Tool(metaclass=ABCMeta):
     def render_image_response(self, args: dict[str, Any], response: bytes) -> str:
         raise NotImplementedError("Image response not implemented")
 
+    def render_pdf_response(self, args: dict[str, Any], response: str) -> str:
+        raise NotImplementedError("PDF response not implemented")
+
     def render_error(self, error: str) -> str:
         return f"Error: {error}"
 

@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class LegacyOpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -14,6 +14,9 @@ class LegacyOpenAIAPI(API):
 
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image_url', 'image_url': {'url': f'data:{image.mimetype};base64,{base64.b64encode(image.data).decode()}'}}
+
+    def render_pdf(self, pdf: PDF) -> dict[str, Any]:
+        raise NotImplementedError("PDF rendering not supported in Legacy OpenAI API")
 
     # render_tool_request / render_tool_response are only used as fallbacks for models that don't support tool calls
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:

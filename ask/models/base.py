@@ -2,15 +2,17 @@ from __future__ import annotations
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Union
+from typing import Any, AsyncIterator, Literal, Union
 
 from ask.tools import Tool, ToolCallStatus
 
 TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not support this behavior. The image will be attached manually by the user instead."
 
-Content = Union['Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'Command', 'Usage', 'Error']
+Role = Literal['user', 'assistant']
+Blob = Union['Text', 'Image', 'PDF']
+Content = Union['Blob', 'Reasoning', 'ToolRequest', 'ToolResponse', 'Command', 'Usage', 'Error']
 
-def get_message_groups(messages: list[Message]) -> list[tuple[str, list[Content]]]:
+def get_message_groups(messages: list[Message]) -> list[tuple[Role, list[Content]]]:
     if not messages:
         return []
     groups = []
@@ -32,7 +34,7 @@ def get_message_groups(messages: list[Message]) -> list[tuple[str, list[Content]
 
 @dataclass
 class Message:
-    role: str
+    role: Role
     content: Content
 
 @dataclass
@@ -40,15 +42,20 @@ class Text:
     text: str
 
 @dataclass
+class Image:
+    mimetype: str
+    data: bytes
+
+@dataclass
+class PDF:
+    name: str
+    data: bytes
+
+@dataclass
 class Reasoning:
     data: str
     summary: str | None = None
     encrypted: bool = False
-
-@dataclass
-class Image:
-    mimetype: str
-    data: bytes
 
 @dataclass
 class ToolRequest:
@@ -61,7 +68,7 @@ class ToolRequest:
 class ToolResponse:
     call_id: str
     tool: str
-    response: Text | Image
+    response: Blob
     status: ToolCallStatus
 
 @dataclass
@@ -105,6 +112,7 @@ class Model:
     stream: bool = True
     supports_tools: bool = True
     supports_images: bool = True
+    supports_pdfs: bool = True
     supports_system_prompt: bool = True
     supports_reasoning: bool = True
 
@@ -129,6 +137,9 @@ class API(metaclass=ABCMeta):
     def render_image(self, image: Image) -> dict[str, Any]: ...
 
     @abstractmethod
+    def render_pdf(self, pdf: PDF) -> dict[str, Any]: ...
+
+    @abstractmethod
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]: ...
 
     @abstractmethod
@@ -144,6 +155,9 @@ class API(metaclass=ABCMeta):
             case Image() if not model.supports_images:
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
             case Image(): return [self.render_image(content)]
+            case PDF() if not model.supports_pdfs:
+                raise NotImplementedError(f"Model '{model.name}' does not support PDF prompts")
+            case PDF(): return [self.render_pdf(content)]
             case Reasoning(): return [self.render_reasoning(content)]
             case ToolRequest(): return [self.render_tool_request(content)]
             case ToolResponse(response=Image() as response) if not self.supports_image_tools:

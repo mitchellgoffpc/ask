@@ -2,7 +2,7 @@ import base64
 import json
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Tool, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
 
 class AnthropicAPI(API):
     supports_image_tools: bool = True
@@ -13,6 +13,9 @@ class AnthropicAPI(API):
     def render_image(self, image: Image) -> dict[str, Any]:
         return {'type': 'image', 'source': {'type': 'base64', 'media_type': image.mimetype, 'data': base64.b64encode(image.data).decode()}}
 
+    def render_pdf(self, pdf: PDF) -> dict[str, Any]:
+        return {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf', 'data': base64.b64encode(pdf.data).decode()}}
+
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
         return {'type': 'thinking', 'signature': reasoning.data, 'thinking': reasoning.summary or ''}
 
@@ -20,7 +23,10 @@ class AnthropicAPI(API):
         return {'type': 'tool_use', 'id': request.call_id, 'name': request.tool, 'input': request.arguments}
 
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        content = self.render_text(response.response) if isinstance(response.response, Text) else self.render_image(response.response)
+        match response.response:
+            case Text(): content = self.render_text(response.response)
+            case Image(): content = self.render_image(response.response)
+            case PDF(): content = self.render_pdf(response.response)
         return {'type': 'tool_result', 'tool_use_id': response.call_id, 'content': [content]}
 
     def render_tool(self, tool: Tool) -> dict[str, Any]:

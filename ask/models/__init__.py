@@ -1,4 +1,4 @@
-from ask.models.base import API, Model, Pricing, Message, Content, Text, Reasoning, Image, ToolRequest, ToolResponse, Command, Usage, Error
+from ask.models.base import API, Model, Pricing, Message, Role, Content, Blob, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Command, Usage, Error
 from ask.models.openai import OpenAIAPI
 from ask.models.anthropic import AnthropicAPI
 from ask.models.google import GoogleAPI
@@ -43,5 +43,6 @@ MODEL_SHORTCUTS = {s: model for model in MODELS for s in [model.name, *model.sho
 
 __all__ = [
     'MODELS', 'MODEL_SHORTCUTS',
-    'API', 'Model', 'Pricing', 'Message', 'Content',
-    'Text', 'Reasoning', 'Image', 'ToolRequest', 'ToolResponse', 'Command', 'Usage', 'Error']
+    'API', 'Model', 'Pricing', 'Message', 'Role', 'Content', 'Blob',
+    'Text', 'Image', 'PDF',
+    'Reasoning', 'ToolRequest', 'ToolResponse', 'Command', 'Usage', 'Error']
