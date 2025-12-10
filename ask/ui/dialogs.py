@@ -132,7 +132,7 @@ class EditApprovalController(SelectionDialogController):
             title, operation = "Edit file", "make this edit to"
 
         return [
-            Box(width=1.0, padding={'left': 1, 'right': 1}, margin={'top': 1}, border=get_args(Side), border_color=Colors.HEX(Theme.BLUE))[
+            Box(width=1.0, padding={'left': 1, 'right': 1}, margin={'top': 1}, border=['top'], border_color=Colors.HEX(Theme.BLUE))[
                 Text(Styles.bold(Colors.hex(title, Theme.BLUE))),
                 Box(width=1.0, padding={'left': 1, 'right': 1}, border=get_args(Side), border_color=Colors.HEX(Theme.DARK_GRAY))[
                     Text(Styles.bold(get_relative_path(args['file_path'])), margin={'bottom': 1}),

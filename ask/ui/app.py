@@ -152,7 +152,7 @@ class AppController(Controller[App]):
 
     async def query(self) -> None:
         self.pending += 1
-        head = self.head
+        original_head = self.head
         text_uuid: UUID = uuid4()
         text = ''
         start_time = time.monotonic()
@@ -172,7 +172,7 @@ class AppController(Controller[App]):
         except Exception as e:
             self.head = self.messages.add('user', self.head, Error(str(e)))
 
-        contents = dict(self.messages.items(self.head)[len(self.messages.keys(head)):])  # new contents only
+        contents = {k: v.content for k, v in self.messages.items(self.head)[len(self.messages.keys(original_head)):]}  # new contents only
         self.query_time += time.monotonic() - start_time
         try:
             tool_requests = {uuid: req for uuid, req in contents.items() if isinstance(req, ToolRequest)}
