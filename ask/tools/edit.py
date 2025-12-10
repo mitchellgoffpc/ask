@@ -2,6 +2,7 @@ import difflib
 from pathlib import Path
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
@@ -65,7 +66,7 @@ class EditTool(Tool):
         edits = [{'old_string': args["old_string"], 'new_string': args["new_string"], 'replace_all': replace_all}]
         return {'file_path': file_path, 'old_content': content, 'new_content': new_content, 'diff': diff, 'edits': edits}
 
-    async def run(self, file_path: Path, old_content: str, new_content: str, diff: list[str], edits: list[dict[str, Any]]) -> str:
+    async def run(self, file_path: Path, old_content: str, new_content: str, diff: list[str], edits: list[dict[str, Any]]) -> Blob:
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
@@ -74,7 +75,7 @@ class EditTool(Tool):
 
         edit = edits[0]
         if edit['replace_all']:
-            return f"The file {file_path} has been updated, all occurrences of '{edit['old_string']}' have been replaced with '{edit['new_string']}'."
+            return Text(f"The file {file_path} has been updated, all occurrences of '{edit['old_string']}' have been replaced with '{edit['new_string']}'.")
         else:
             lines = new_content.split('\n')
             start_line = old_content[:old_content.find(edit['old_string'])].count('\n')
@@ -85,4 +86,4 @@ class EditTool(Tool):
                 context_lines = f"{start_context}\n... [omitted]\n{end_context}"
             else:
                 context_lines = get_formatted_lines(lines, start_line - 5, end_line + 5)
-            return f"The file {file_path} has been updated. Here's a snippet of the edited file:\n{context_lines}"
+            return Text(f"The file {file_path} has been updated. Here's a snippet of the edited file:\n{context_lines}")

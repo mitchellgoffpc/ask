@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.core.styles import Styles
@@ -49,9 +50,9 @@ class ListTool(Tool):
         self.check_absolute_path(Path(args['path']), is_file=False)
         return {'path': Path(args["path"]), 'ignore': args.get("ignore", [])}
 
-    async def run(self, path: Path, ignore: list[str]) -> str:
+    async def run(self, path: Path, ignore: list[str]) -> Blob:
         try:
-            return build_tree(path, ignore)
+            return Text(build_tree(path, ignore))
         except PermissionError as e:
             raise ToolError(f"Permission denied for path '{path}'.") from e
         except Exception as e:

@@ -1,6 +1,7 @@
 import ast
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt
 from ask.shells import PYTHON_SHELL
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
@@ -45,11 +46,11 @@ class PythonTool(Tool):
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
         return {'code': args['code'], 'nodes': nodes, 'timeout_seconds': timeout_seconds, 'description': args.get('description', '')}
 
-    async def run(self, code: str, nodes: list[ast.stmt], timeout_seconds: float, description: str) -> str:
+    async def run(self, code: str, nodes: list[ast.stmt], timeout_seconds: float, description: str) -> Blob:
         try:
             output, exception = await PYTHON_SHELL.execute(nodes, timeout_seconds)
             if exception:
                 raise ToolError(f'Python execution failed\n\n"""\n{exception}\n"""')
-            return output
+            return Text(output)
         except TimeoutError as e:
             raise ToolError(str(e)) from e

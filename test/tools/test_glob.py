@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ask.models.base import Text
 from ask.tools.glob_ import GlobTool
 
 class TestGlobTool(unittest.IsolatedAsyncioTestCase):
@@ -15,7 +16,9 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "file2.py").touch()
             (temp_path / "test.txt").touch()
 
-            lines = (await self.tool.run(path=temp_path, pattern="*.txt")).split('\n')
+            result = await self.tool.run(path=temp_path, pattern="*.txt")
+            assert isinstance(result, Text)
+            lines = result.text.split('\n')
             results = sorted(lines[1:])
             self.assertEqual(len(lines), 3)
             self.assertEqual(lines[0], "Found 2 files")
@@ -31,10 +34,11 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "subdir" / "other.txt").touch()
 
             result = await self.tool.run(path=temp_path, pattern="**/*.py")
-            self.assertTrue(result.startswith("Found 2 files"))
-            self.assertIn("root.py", result)
-            self.assertIn("sub.py", result)
-            self.assertNotIn("other.txt", result)
+            assert isinstance(result, Text)
+            self.assertTrue(result.text.startswith("Found 2 files"))
+            self.assertIn("root.py", result.text)
+            self.assertIn("sub.py", result.text)
+            self.assertNotIn("other.txt", result.text)
 
     async def test_no_matches(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -42,7 +46,8 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "file.txt").touch()
 
             result = await self.tool.run(path=temp_path, pattern="*.nonexistent")
-            self.assertEqual(result, "Found 0 files")
+            assert isinstance(result, Text)
+            self.assertEqual(result.text, "Found 0 files")
 
     async def test_directory_ignored(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -51,6 +56,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "somedir").mkdir()
 
             result = await self.tool.run(path=temp_path, pattern="*")
-            self.assertTrue(result.startswith("Found 1 files"))
-            self.assertIn("file.txt", result)
-            self.assertNotIn("somedir", result)
+            assert isinstance(result, Text)
+            self.assertTrue(result.text.startswith("Found 1 files"))
+            self.assertIn("file.txt", result.text)
+            self.assertNotIn("somedir", result.text)

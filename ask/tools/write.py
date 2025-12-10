@@ -2,6 +2,7 @@ import difflib
 from pathlib import Path
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
 from ask.ui.core.styles import Styles
@@ -49,13 +50,13 @@ class WriteTool(Tool):
         diff = list(difflib.unified_diff(old_lines, new_lines, n=3))
         return {'file_path': file_path, 'old_content': old_content, 'new_content': new_content, 'diff': diff}
 
-    async def run(self, file_path: Path, old_content: str, new_content: str, diff: list[str]) -> str:
+    async def run(self, file_path: Path, old_content: str, new_content: str, diff: list[str]) -> Blob:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_exists = file_path.exists()
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-            return f"File {'updated' if file_exists else 'created'} successfully at: {file_path}"
+            return Text(f"File {'updated' if file_exists else 'created'} successfully at: {file_path}")
         except PermissionError as e:
             raise ToolError(f"Permission denied for file '{file_path}'.") from e
         except OSError as e:

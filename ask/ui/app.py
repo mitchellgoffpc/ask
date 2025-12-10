@@ -6,14 +6,13 @@ import re
 import shlex
 import sys
 import time
-from base64 import b64decode
 from dataclasses import dataclass, replace
 from itertools import pairwise
 from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, ClassVar, get_args
 
-from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, Blob, Text as TextContent, Image, PDF, Reasoning, ToolRequest, ToolResponse, Error
+from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
 from ask.query import query
 from ask.shells import PYTHON_SHELL
@@ -238,14 +237,7 @@ class AppController(Controller[App]):
                 finally:
                     self.approvals = {k:v for k,v in self.approvals.items() if k != request_uuid}
             output = await tool.run(**args)
-            output_content: Blob
-            if args.get('file_type') == 'image':
-                output_content = Image(data=b64decode(output), mimetype='image/jpeg')
-            elif args.get('file_type') == 'pdf':
-                output_content = PDF(name=args.get('file_name', 'document.pdf'), data=b64decode(output))
-            else:
-                output_content = TextContent(output)
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output_content, status=ToolCallStatus.COMPLETED)
+            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=ToolCallStatus.COMPLETED)
         except asyncio.CancelledError:
             response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(TOOL_REJECTED_MESSAGE), status=ToolCallStatus.CANCELLED)
             raise

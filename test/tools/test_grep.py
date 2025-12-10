@@ -1,16 +1,20 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
+from ask.models.base import Text
 from ask.tools.grep import GrepTool
 
 class TestGrepTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tool = GrepTool()
 
-    async def run_tool(self, **kwargs):
+    async def run_tool(self, **kwargs: Any) -> str:
         args = self.tool.check(kwargs)
-        return await self.tool.run(**args)
+        result = await self.tool.run(**args)
+        assert isinstance(result, Text)
+        return result.text
 
     async def test_files_with_matches_mode(self):
         with tempfile.TemporaryDirectory() as temp_dir:

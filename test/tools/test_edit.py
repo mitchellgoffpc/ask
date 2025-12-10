@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ask.models.base import Text
 from ask.tools.edit import EditTool
 from ask.tools.base import ToolError
 
@@ -11,7 +12,9 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
 
     async def run_tool(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> str:
         args = self.tool.check({'file_path': file_path, 'old_string': old_string, 'new_string': new_string, 'replace_all': replace_all})
-        return await self.tool.run(**args)
+        result = await self.tool.run(**args)
+        assert isinstance(result, Text)
+        return result.text
 
     async def test_basic_replace(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:

@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ask.models.base import Text
 from ask.tools.multi_edit import MultiEditTool
 from ask.tools.base import ToolError
 
@@ -11,7 +12,9 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
 
     async def run_tool(self, file_path: str, edits: list[dict]) -> str:
         args = self.tool.check({'file_path': file_path, 'edits': edits})
-        return await self.tool.run(**args)
+        result = await self.tool.run(**args)
+        assert isinstance(result, Text)
+        return result.text
 
     async def test_multiple_edits(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -26,8 +29,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             result = await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()
             self.assertEqual(content, "Hi world\nThis is a example\nFarewell world")
-            self.assertIn("The file", result)
-            self.assertIn("has been updated with 3 edits.", result)
+            self.assertIn(f"The file {f.name} has been updated with 3 edits.", result)
 
     async def test_replace_all_in_multiple_edits(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:

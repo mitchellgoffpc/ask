@@ -2,6 +2,7 @@ import glob
 from pathlib import Path
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import Tool, Parameter, ParameterType, ToolError
 from ask.ui.core.styles import Styles
@@ -27,13 +28,13 @@ class GlobTool(Tool):
         self.check_absolute_path(Path(args['path']), is_file=False)
         return {'path': Path(args['path']), 'pattern': args['pattern']}
 
-    async def run(self, path: Path, pattern: str) -> str:
+    async def run(self, path: Path, pattern: str) -> Blob:
         try:
             matches = glob.glob(str(path / pattern), recursive=True)
             matches = [m for m in matches if Path(m).is_file()]
             matches.sort(key=lambda x: Path(x).stat().st_mtime, reverse=True)
-            return f"Found {len(matches)} files" + ''.join(f'\n- {m}' for m in matches)
+            return Text(f"Found {len(matches)} files" + ''.join(f'\n- {m}' for m in matches))
         except PermissionError:
-            return "Found 0 files"
+            return Text("Found 0 files")
         except Exception as e:
             raise ToolError(f"An error occurred while searching for pattern '{pattern}' in '{path}': {str(e)}") from e

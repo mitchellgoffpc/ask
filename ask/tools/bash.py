@@ -1,6 +1,7 @@
 import asyncio
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
 
@@ -33,13 +34,13 @@ class BashTool(Tool):
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
         return {'command': args["command"], 'timeout_seconds': timeout_seconds}
 
-    async def run(self, command: str, timeout_seconds: float) -> str:
+    async def run(self, command: str, timeout_seconds: float) -> Blob:
         try:
             process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
             stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
             output = stdout.decode('utf-8').rstrip('\n')
             if process.returncode != 0:
                 raise ToolError(output)
-            return output
+            return Text(output)
         except asyncio.TimeoutError:
             raise ToolError(f"Command timed out after {timeout_seconds} seconds") from None

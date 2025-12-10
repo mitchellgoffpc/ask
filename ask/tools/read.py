@@ -1,4 +1,3 @@
-from base64 import b64encode
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,7 +10,7 @@ FileType = Literal['text', 'image', 'pdf']
 
 IMAGE_MIME_TYPES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 
-def read_text(file_path: Path, offset: int = 0, max_lines: int | None = None, max_cols: int | None = None, add_line_numbers: bool = True) -> str:
+def read_text(file_path: Path, offset: int, max_lines: int | None, max_cols: int | None, add_line_numbers: bool) -> str:
     with open(file_path, 'r', encoding='utf-8') as f:
         for i in range(offset):
             try:
@@ -36,14 +35,14 @@ def read_bytes(file_path: Path) -> bytes:
     with open(file_path, 'rb') as f:
         return f.read()
 
-def read_file(file_path: Path) -> Blob:
+def read_file(file_path: Path, offset: int = 0, max_lines: int | None = None, max_cols: int | None = None, add_line_numbers: bool = True) -> Blob:
     file_extension = file_path.suffix.lower().removeprefix('.')
     if file_extension in IMAGE_MIME_TYPES:
         return Image(data=read_bytes(file_path), mimetype=IMAGE_MIME_TYPES[file_extension])
     elif file_extension == 'pdf':
         return PDF(name=file_path.name, data=read_bytes(file_path))
     else:
-        return Text(read_text(file_path))
+        return Text(read_text(file_path, offset, max_lines, max_cols, add_line_numbers))
 
 
 class ReadTool(Tool):
@@ -79,23 +78,13 @@ class ReadTool(Tool):
         file_path = Path(args["file_path"])
         self.check_absolute_path(file_path, is_file=True)
 
-        file_extension = file_path.suffix.lower().removeprefix('.')
-        if file_extension in IMAGE_MIME_TYPES:
-            file_type = 'image'
-        elif file_extension == 'pdf':
-            file_type = 'pdf'
-        else:
-            file_type = 'text'
         offset = int(args.get("offset", 0))
         limit = int(args.get("limit", 2000))
-        return {'file_path': file_path, 'file_type': file_type, 'offset': offset, 'limit': limit}
+        return {'file_path': file_path, 'offset': offset, 'limit': limit}
 
-    async def run(self, file_path: Path, file_type: FileType, offset: int, limit: int) -> str:
+    async def run(self, file_path: Path, file_type: FileType, offset: int, limit: int) -> Blob:
         try:
-            if file_type == 'text':
-                return read_text(file_path, offset, max_lines=limit, max_cols=2000, add_line_numbers=self.add_line_numbers)
-            else:
-                return b64encode(read_bytes(file_path)).decode('utf-8')
+            return read_file(file_path, offset, max_lines=limit, max_cols=2000, add_line_numbers=self.add_line_numbers)
         except UnicodeDecodeError as e:
             raise ToolError(f"File '{file_path}' is not a text file or contains invalid Unicode characters.") from e
         except PermissionError as e:

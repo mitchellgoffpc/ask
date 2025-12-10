@@ -2,7 +2,8 @@ import base64
 import json
 from typing import Any
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.tools.base import Tool
 
 class AnthropicAPI(API):
     supports_image_tools: bool = True

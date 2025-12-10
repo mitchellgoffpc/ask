@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt
 from ask.tools.base import Tool, Parameter, ParameterType
 from ask.ui.core.styles import Colors, Styles, Theme
@@ -36,5 +37,5 @@ class ToDoTool(Tool):
                 lines.append(f"☒ {Colors.hex(Styles.strikethrough(item['content']), Theme.GRAY)}")
         return "\n".join(lines)
 
-    async def run(self, todos: list[dict[str, Any]]) -> str:
-        return load_tool_prompt('todo', 'response').format(todo_list_json=json.dumps(todos, indent=2))
+    async def run(self, todos: list[dict[str, Any]]) -> Blob:
+        return Text(load_tool_prompt('todo', 'response').format(todo_list_json=json.dumps(todos, indent=2)))

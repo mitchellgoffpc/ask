@@ -1,5 +1,6 @@
 import unittest
 
+from ask.models.base import Text
 from ask.tools.python import PythonTool
 from ask.tools.base import ToolError
 
@@ -9,7 +10,9 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
 
     async def run_tool(self, code, timeout_seconds = 10):
         args = self.tool.check({"code": code})
-        return await self.tool.run(code=code, nodes=args['nodes'], timeout_seconds=timeout_seconds, description='')
+        result = await self.tool.run(code=code, nodes=args['nodes'], timeout_seconds=timeout_seconds, description='')
+        assert isinstance(result, Text)
+        return result.text
 
     async def test_basic_execution(self):
         result = await self.run_tool("print('hello world')")

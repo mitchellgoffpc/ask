@@ -2,9 +2,10 @@ from __future__ import annotations
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Literal
+from typing import Any, AsyncIterator, Literal, TYPE_CHECKING
 
-from ask.tools.base import Tool, ToolCallStatus
+if TYPE_CHECKING:
+    from ask.tools.base import Tool, ToolCallStatus
 
 TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not support this behavior. The image will be attached manually by the user instead."
 

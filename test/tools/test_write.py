@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ask.models.base import Text
 from ask.tools.write import WriteTool
 
 class TestWriteTool(unittest.IsolatedAsyncioTestCase):
@@ -14,8 +15,9 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             content = "Hello, world!"
             result = await self.tool.run(file_path=file_path, old_content='', new_content=content, diff=[])
 
+            assert isinstance(result, Text)
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
-            self.assertIn("File created successfully", result)
+            self.assertIn("File created successfully", result.text)
 
     async def test_overwrite_existing_file(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -24,8 +26,9 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             new_content = "new content"
             result = await self.tool.run(file_path=Path(f.name), old_content='', new_content=new_content, diff=[])
 
+            assert isinstance(result, Text)
             self.assertEqual(Path(f.name).read_text(encoding='utf-8'), new_content)
-            self.assertIn("File updated successfully", result)
+            self.assertIn("File updated successfully", result.text)
 
     async def test_create_directories(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -33,6 +36,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             content = "test content"
             result = await self.tool.run(file_path=file_path, old_content='', new_content=content, diff=[])
 
+            assert isinstance(result, Text)
             self.assertTrue(file_path.exists())
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
-            self.assertIn("File created successfully", result)
+            self.assertIn("File created successfully", result.text)

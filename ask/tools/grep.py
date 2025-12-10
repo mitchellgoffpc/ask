@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.core.styles import Styles
@@ -114,7 +115,7 @@ class GrepTool(Tool):
             'head_limit': args.get("head_limit"), 'show_line_nums': args.get("-n", False), 'before': before, 'after': after}
 
     async def run(self, pattern: str, pathspec: str, regex: re.Pattern, output_mode: str,
-                        head_limit: int | None, show_line_nums: bool, before: int, after: int) -> str:
+                        head_limit: int | None, show_line_nums: bool, before: int, after: int) -> Blob:
         try:
             # Collect all files to search
             files_to_search = []
@@ -156,9 +157,9 @@ class GrepTool(Tool):
             if head_limit:
                 results = results[:head_limit]
             if results:
-                return f"Found {total_matches} {'matches' if output_mode == 'content' else 'files'}\n" + '\n'.join(results)
+                return Text(f"Found {total_matches} {'matches' if output_mode == 'content' else 'files'}\n" + '\n'.join(results))
             else:
-                return "No matches found"
+                return Text("No matches found")
         except PermissionError as e:
             raise ToolError(f"Permission denied for path '{pathspec}'.") from e
         except Exception as e:

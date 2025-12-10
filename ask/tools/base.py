@@ -4,6 +4,7 @@ from enum import Enum, member, nonmember
 from pathlib import Path
 from typing import Any, Callable, ClassVar, Coroutine, Union
 
+from ask.models.base import Blob
 from ask.ui.core.styles import Colors, Theme
 
 def abbreviate(text: str, max_lines: int) -> str:
@@ -59,7 +60,7 @@ class Tool(metaclass=ABCMeta):
     name: str
     description: str
     parameters: list[Parameter]
-    run: Callable[..., Coroutine[Any, Any, str]]
+    run: Callable[..., Coroutine[Any, Any, 'Blob']]
 
     def get_parameter_schema(self, ptype: ParameterType | ParameterType.Enum | ParameterType.Array, description: str) -> dict[str, Any]:
         description_dict = {"description": description} if description else {}

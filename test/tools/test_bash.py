@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 
+from ask.models.base import Text
 from ask.tools.base import ToolError
 from ask.tools.bash import BashTool
 
@@ -10,11 +11,13 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
 
     async def test_command_stdout(self):
         result = await self.tool.run(command="echo hello", timeout_seconds=10)
-        self.assertEqual(result, "hello")
+        assert isinstance(result, Text)
+        self.assertEqual(result.text, "hello")
 
     async def test_command_stderr(self):
         result = await self.tool.run(command="echo error 1>&2", timeout_seconds=10)
-        self.assertEqual(result, "error")
+        assert isinstance(result, Text)
+        self.assertEqual(result.text, "error")
 
     async def test_command_error(self):
         with self.assertRaises(ToolError) as context:
@@ -29,7 +32,8 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
         self.assertLess(asyncio.get_event_loop().time() - start_time, 1.0)
 
         result = await self.tool.run(command="echo hello", timeout_seconds=10)
-        self.assertEqual(result, "hello")
+        assert isinstance(result, Text)
+        self.assertEqual(result.text, "hello")
         self.assertLess(asyncio.get_event_loop().time() - start_time, 1.0)
 
     async def test_task_cancellation(self):
@@ -41,5 +45,6 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
 
         start_time = asyncio.get_event_loop().time()
         result = await self.tool.run(command="echo hello", timeout_seconds=10)
-        self.assertEqual(result, "hello")
+        assert isinstance(result, Text)
+        self.assertEqual(result.text, "hello")
         self.assertLess(asyncio.get_event_loop().time() - start_time, 1.0)

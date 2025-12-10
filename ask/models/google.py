@@ -3,7 +3,8 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from ask.models.base import API, Model, Tool, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.tools.base import Tool
 
 class GoogleAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
