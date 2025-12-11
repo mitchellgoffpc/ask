@@ -1,12 +1,10 @@
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from ask.models.base import Blob, Text, Image, PDF
 from ask.prompts import load_tool_prompt, get_relative_path
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 from ask.ui.core.styles import Styles
-
-FileType = Literal['text', 'image', 'pdf']
 
 IMAGE_MIME_TYPES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 
@@ -82,7 +80,7 @@ class ReadTool(Tool):
         limit = int(args.get("limit", 2000))
         return {'file_path': file_path, 'offset': offset, 'limit': limit}
 
-    async def run(self, file_path: Path, file_type: FileType, offset: int, limit: int) -> Blob:
+    async def run(self, file_path: Path, offset: int, limit: int) -> Blob:
         try:
             return read_file(file_path, offset, max_lines=limit, max_cols=2000, add_line_numbers=self.add_line_numbers)
         except UnicodeDecodeError as e:
