@@ -28,6 +28,7 @@ from ask.ui.messages import ErrorMessage, PromptMessage, ResponseMessage, ToolCa
 from ask.ui.messages import BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
+from ask.ui.tools.todo import ToDos
 
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
@@ -59,12 +60,6 @@ def message_decoder(obj):
         content_types = {cls.__name__: cls for cls in get_args(Content)}
         return content_types[type_name](**obj)
     return obj
-
-def ToDoMessage(todos: dict[str, Any]) -> Component:
-    return Box(margin={'top': 1})[
-        Text(Colors.hex("To Do", Theme.GRAY)),
-        Text(TOOLS[ToDoTool.name].render_response(todos, ''))
-    ]
 
 class MessageTree:
     def __init__(self, parent_uuid: UUID, messages: dict[UUID, Message]) -> None:
@@ -410,8 +405,10 @@ class AppController(Controller[App]):
             Box()[
                 Spinner(todos=latest_todos, expanded=self.show_todos)
                     if self.pending and not self.approvals else None,
-                ToDoMessage(latest_todos)
-                    if latest_todos and self.show_todos and not self.approvals else None,
+                Box(margin={'top': 1})[
+                    Text(Colors.hex("To Do", Theme.GRAY)),
+                    ToDos(latest_todos, expanded=True)
+                ] if latest_todos and self.show_todos and not self.approvals else None,
             ],
             self.textbox(),
         ]

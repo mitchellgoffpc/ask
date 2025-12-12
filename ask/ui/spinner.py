@@ -2,16 +2,15 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from ask.tools import TOOLS, ToDoTool
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Flex, Theme
+from ask.ui.tools.todo import ToDos
 
 @dataclass
 class Spinner(Widget):
     __controller__: ClassVar = lambda _: SpinnerController
     todos: dict[str, Any] | None
     expanded: bool
-
 
 class SpinnerController(Controller[Spinner]):
     state = ['spinner_state']
@@ -40,11 +39,10 @@ class SpinnerController(Controller[Spinner]):
 
         highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
         spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
-        todos, todo_tool = self.props.todos, TOOLS[ToDoTool.name]
         return [
             Text(spinner_text, margin={'top': 1}),
             Box(flex=Flex.HORIZONTAL)[
                 Text("  ⎿  "),
-                Text(todo_tool.render_response(todos, '') if self.props.expanded else todo_tool.render_short_response(todos, ''))
-            ] if todos else None,
+                ToDos(self.props.todos, expanded=self.props.expanded)
+            ] if self.props.todos else None,
         ]

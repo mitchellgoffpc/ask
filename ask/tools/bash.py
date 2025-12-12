@@ -3,7 +3,7 @@ from typing import Any
 
 from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 class BashTool(Tool):
     name = "BashShell"
@@ -18,14 +18,7 @@ class BashTool(Tool):
             "Input: npm install\nOutput: Installs package dependencies\n\n"
             "Input: mkdir foo\nOutput: Creates directory 'foo'", ParameterType.String, required=False)]
 
-    def render_name(self):
-        return "Bash"
 
-    def render_args(self, args: dict[str, str]) -> str:
-        return args['command']
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        return abbreviate(response, max_lines=3)
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

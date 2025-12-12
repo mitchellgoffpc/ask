@@ -2,9 +2,8 @@ from pathlib import Path
 from typing import Any
 
 from ask.models.base import Blob, Text
-from ask.prompts import load_tool_prompt, get_relative_path
+from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
-from ask.ui.core.styles import Styles
 
 IGNORED_PATHS = [
     '.build', '.dart_tool', '.deno', '.env', '.gradle', '.pub-cache', '.tox', '.venv',
@@ -37,13 +36,6 @@ class ListTool(Tool):
     parameters = [
         Parameter("path", "The absolute path of the directory to list (must be absolute, not relative)", ParameterType.String),
         Parameter("ignore", "List of glob patterns to ignore", ParameterType.Array(ParameterType.String), required=False)]
-
-    def render_args(self, args: dict[str, str]) -> str:
-        return get_relative_path(args['path'])
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        item_count = response.count('\n') + 1
-        return f"Listed {Styles.bold(item_count)} paths"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

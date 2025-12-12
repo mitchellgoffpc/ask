@@ -14,7 +14,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
             f.write("line 1\nline 2\nline 3\n")
             f.flush()
 
-            result = await self.tool.run(file_path=Path(f.name), file_type='text', offset=0, limit=1000)
+            result = await self.tool.run(file_path=Path(f.name), offset=0, limit=1000)
             assert isinstance(result, Text)
             lines = result.text.split('\n')
             self.assertEqual(len(lines), 4)
@@ -28,7 +28,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
             f.write("line 1\nline 2\nline 3\nline 4\nline 5")
             f.flush()
 
-            result = await self.tool.run(file_path=Path(f.name), file_type='text', offset=2, limit=2)
+            result = await self.tool.run(file_path=Path(f.name), offset=2, limit=2)
             assert isinstance(result, Text)
             lines = result.text.split('\n')
             self.assertEqual(len(lines), 3)
@@ -41,7 +41,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
             f.write(f"{'x' * 2500}\nshort line\n")
             f.flush()
 
-            result = await self.tool.run(file_path=Path(f.name), file_type='text', offset=0, limit=1000)
+            result = await self.tool.run(file_path=Path(f.name), offset=0, limit=1000)
             assert isinstance(result, Text)
             lines = result.text.split('\n')
             self.assertTrue(lines[0].endswith("... [truncated]"))
@@ -49,6 +49,6 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
 
     async def test_empty_file(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
-            result = await self.tool.run(file_path=Path(f.name), file_type='text', offset=0, limit=1000)
+            result = await self.tool.run(file_path=Path(f.name), offset=0, limit=1000)
             assert isinstance(result, Text)
             self.assertEqual(result.text, "     1→")

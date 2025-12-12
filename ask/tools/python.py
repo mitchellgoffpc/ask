@@ -4,8 +4,7 @@ from typing import Any
 from ask.models.base import Blob, Text
 from ask.prompts import load_tool_prompt
 from ask.shells import PYTHON_SHELL
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
-from ask.ui.core.markdown_ import highlight_code
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 
 class PythonTool(Tool):
@@ -15,24 +14,6 @@ class PythonTool(Tool):
         Parameter("code", "The Python code to execute", ParameterType.String),
         Parameter("timeout", "Optional timeout in milliseconds (max 600000)", ParameterType.Number, required=False),
         Parameter("description", "Clear, concise description of what this code does in 5-10 words", ParameterType.String, required=False)]
-
-    def render_name(self) -> str:
-        return "Python"
-
-    def render_args(self, args: dict[str, Any]) -> str:
-        return ''
-
-    def render_short_code(self, args: dict[str, Any]) -> str:
-        return abbreviate(self.render_code(args), max_lines=6)
-
-    def render_code(self, args: dict[str, Any]) -> str:
-        return highlight_code(args['code'], language='python')
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        return abbreviate(self.render_response(args, response), max_lines=6)
-
-    def render_response(self, args: dict[str, Any], response: str) -> str:
-        return response.strip()
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

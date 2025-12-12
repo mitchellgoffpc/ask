@@ -3,9 +3,8 @@ from pathlib import Path
 from typing import Any
 
 from ask.models.base import Blob, Text
-from ask.prompts import load_tool_prompt, get_relative_path
+from ask.prompts import load_tool_prompt
 from ask.tools.base import Tool, Parameter, ParameterType, ToolError
-from ask.ui.core.styles import Styles
 
 
 class GlobTool(Tool):
@@ -14,14 +13,6 @@ class GlobTool(Tool):
     parameters = [
         Parameter("path", "The absolute path of the directory to search in (must be absolute, not relative)", ParameterType.String),
         Parameter("pattern", "The glob pattern to match files against", ParameterType.String)]
-
-    def render_args(self, args: dict[str, str]) -> str:
-        path = get_relative_path(args['path'])
-        return f'pattern: "{args["pattern"]}", path: "{path}"'
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        file_count = len(response.strip().split('\n'))
-        return f"Found {Styles.bold(file_count - 1)} files"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

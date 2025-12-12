@@ -2,9 +2,8 @@ from pathlib import Path
 from typing import Any
 
 from ask.models.base import Blob, Text, Image, PDF
-from ask.prompts import load_tool_prompt, get_relative_path
+from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
-from ask.ui.core.styles import Styles
 
 IMAGE_MIME_TYPES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 
@@ -54,22 +53,6 @@ class ReadTool(Tool):
 
     def __init__(self, add_line_numbers: bool = True):
         self.add_line_numbers = add_line_numbers
-
-    def render_args(self, args: dict[str, str]) -> str:
-        return get_relative_path(args['file_path'])
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        line_count = response.count('\n') + 1
-        return f"Read {Styles.bold(line_count)} lines"
-
-    def render_response(self, args: dict[str, Any], response: str) -> str:
-        return '\n'.join(line.split('→')[-1] for line in response.split('\n'))
-
-    def render_image_response(self, args: dict[str, Any], response: bytes) -> str:
-        return "Read image"
-
-    def render_pdf_response(self, args: dict[str, Any], response: str) -> str:
-        return "Read PDF"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

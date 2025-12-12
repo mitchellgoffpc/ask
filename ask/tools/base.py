@@ -1,19 +1,9 @@
-from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, member, nonmember
 from pathlib import Path
 from typing import Any, Callable, ClassVar, Coroutine, Union
 
 from ask.models.base import Blob
-from ask.ui.core.styles import Colors, Theme
-
-def abbreviate(text: str, max_lines: int) -> str:
-    lines = text.strip().split('\n')
-    if len(lines) <= max_lines:
-        return text.strip()
-    abbreviated = '\n'.join(lines[:max_lines])
-    expand_text = Colors.hex(f"… +{len(lines) - max_lines} lines (ctrl+r to expand)", Theme.GRAY)
-    return f"{abbreviated}\n{expand_text}"
 
 
 # Parameter definitions
@@ -56,7 +46,7 @@ class ToolCallStatus(Enum):
 
 class ToolError(Exception): ...
 
-class Tool(metaclass=ABCMeta):
+class Tool:
     name: str
     description: str
     parameters: list[Parameter]
@@ -83,27 +73,6 @@ class Tool(metaclass=ABCMeta):
 
     def get_input_schema(self) -> dict[str, Any]:
         return self.get_parameters_schema(self.parameters)
-
-    def render_name(self) -> str:
-        return self.name
-
-    @abstractmethod
-    def render_args(self, args: dict[str, Any]) -> str: ...
-
-    @abstractmethod
-    def render_short_response(self, args: dict[str, Any], response: str) -> str: ...
-
-    def render_response(self, args: dict[str, Any], response: str) -> str:
-        return response
-
-    def render_image_response(self, args: dict[str, Any], response: bytes) -> str:
-        raise NotImplementedError("Image response not implemented")
-
-    def render_pdf_response(self, args: dict[str, Any], response: str) -> str:
-        raise NotImplementedError("PDF response not implemented")
-
-    def render_error(self, error: str) -> str:
-        return f"Error: {error}"
 
     def check_absolute_path(self, path: Path, is_file: bool = False) -> None:
         if not path.is_absolute():

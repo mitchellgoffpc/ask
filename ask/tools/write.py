@@ -3,10 +3,8 @@ from pathlib import Path
 from typing import Any
 
 from ask.models.base import Blob, Text
-from ask.prompts import load_tool_prompt, get_relative_path
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType, abbreviate
-from ask.ui.core.styles import Styles
-from ask.ui.core.markdown_ import highlight_code
+from ask.prompts import load_tool_prompt
+from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 class WriteTool(Tool):
     name = "Write"
@@ -14,17 +12,6 @@ class WriteTool(Tool):
     parameters = [
         Parameter("file_path", "The absolute path to the file to write (must be absolute, not relative)", ParameterType.String),
         Parameter("content", "The content to write to the file", ParameterType.String)]
-
-    def render_args(self, args: dict[str, str]) -> str:
-        return get_relative_path(args['file_path'])
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        return abbreviate(self.render_response(args, response), max_lines=8)
-
-    def render_response(self, args: dict[str, Any], response: str) -> str:
-        num_lines = args['new_content'].count('\n') + 1
-        status_line = f"Wrote {Styles.bold(str(num_lines))} lines to {Styles.bold(get_relative_path(args['file_path']))}"
-        return f"{status_line}\n{highlight_code(args['new_content'], file_path=str(args['file_path']))}"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

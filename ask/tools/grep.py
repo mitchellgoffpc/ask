@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from ask.models.base import Blob, Text
-from ask.prompts import load_tool_prompt, get_relative_path
+from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
-from ask.ui.core.styles import Styles
 
 def get_content_matches(file_path: Path, content: mmap.mmap, regex: re.Pattern, show_line_nums: bool, before: int, after: int) -> tuple[int, list[str]]:
     if not regex.search(content):
@@ -76,22 +75,6 @@ class GrepTool(Tool):
         Parameter("multiline", 'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.',
             ParameterType.Boolean, required=False)
     ]
-
-    def render_args(self, args: dict[str, str]) -> str:
-        pattern = args.get('pattern', '')
-        if len(pattern) > 50:
-            pattern = pattern[:47] + "..."
-        path = get_relative_path(args.get('pathspec', Path.cwd()))
-        return f'pattern: "{pattern}", path: "{path}"'
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        if response.startswith("Found "):
-            match_count = response.split()[1]
-            return f"Found {Styles.bold(match_count)} matches"
-        elif "No matches found" in response:
-            return "No matches found"
-        else:
-            return "Search completed"
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)

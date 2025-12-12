@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from ask.models.base import Blob, Text
-from ask.prompts import load_tool_prompt, get_relative_path
+from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 
 def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
@@ -41,15 +41,6 @@ class EditTool(Tool):
         Parameter("old_string", "The text to replace", ParameterType.String),
         Parameter("new_string", "The text to replace it with (must be different from old_string)", ParameterType.String),
         Parameter("replace_all", "Replace all occurrences of old_string (Default: false)", ParameterType.Boolean, required=False)]
-
-    def render_args(self, args: dict[str, str]) -> str:
-        return get_relative_path(args['file_path'])
-
-    def render_short_response(self, args: dict[str, Any], response: str) -> str:
-        raise NotImplementedError("Response rendering for the edit tool is implemented in ui/messages.py")
-
-    def render_response(self, args: dict[str, Any], response: str) -> str:
-        raise NotImplementedError("Response rendering for the edit tool is implemented in ui/messages.py")
 
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
