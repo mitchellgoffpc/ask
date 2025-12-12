@@ -1,3 +1,4 @@
+import json
 from asyncio import Task
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -7,7 +8,7 @@ from uuid import UUID, uuid4
 from ask.commands.bash import BashCommand
 from ask.commands.python import PythonCommand
 from ask.prompts import COMMAND_CAVEAT_MESSAGE, load_prompt_file, get_relative_path, get_agents_md_path
-from ask.messages import MessageTree
+from ask.messages import MessageTree, MessageEncoder, message_decoder
 from ask.models import MODELS_BY_NAME, Model, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
 from ask.tools import ToolCallStatus
 
@@ -98,6 +99,31 @@ def switch_model(model_name: str, current_model: Model, messages: MessageTree, h
     return head, current_model
 
 
+# /save + /load
+
+def save_messages(path: str, messages: MessageTree, head: UUID | None) -> UUID:
+    if path:
+        try:
+            Path(path).write_text(json.dumps({'head': head, 'messages': messages.dump()}, indent=2, cls=MessageEncoder))
+            return messages.add('user', head, SlashCommand(command=f'/save {path}', output=f'Saved messages to {path}'))
+        except Exception as e:
+            return messages.add('user', head, SlashCommand(command=f'/save {path}', error=str(e)))
+    else:
+        return messages.add('user', head, SlashCommand(command='/save', error='No file path supplied'))
+
+def load_messages(path: str, messages: MessageTree, head: UUID | None) -> UUID:
+    if path:
+        try:
+            data = json.loads(Path(path).read_text(), object_hook=message_decoder)
+            messages.load(data['messages'])
+            assert isinstance(data['head'], UUID)
+            return data['head']
+        except Exception as e:
+            return messages.add('user', head, SlashCommand(command=f'/load {path}', error=str(e)))
+    else:
+        return messages.add('user', head, SlashCommand(command='/load', error='No file path supplied'))
+
+
 # /usage
 
 def format_duration(seconds: float) -> str:
@@ -106,7 +132,7 @@ def format_duration(seconds: float) -> str:
     hours, minutes = divmod(minutes, 60)
     return (f'{hours}h ' if hours else '') + (f'{minutes}m ' if minutes else '') + f'{seconds}s'
 
-def get_usage_message(messages: dict[UUID, Message], total_duration_api: float, total_duration_wall: float) -> str:
+def get_usage(messages: dict[UUID, Message], total_duration_api: float, total_duration_wall: float) -> str:
     usages_by_model = defaultdict(list)
     for msg in messages.values():
         if isinstance(msg.content, Usage) and msg.content.model:
@@ -148,6 +174,8 @@ __all__ = [
     "MemorizeCommand",
     "PythonCommand",
     "SlashCommand",
-    "get_usage_message",
+    "save_messages",
+    "load_messages",
     "switch_model",
+    "get_usage",
 ]

@@ -1,9 +1,6 @@
 from __future__ import annotations
 import asyncio
-import json
-import os
 import re
-import shlex
 import sys
 import time
 from dataclasses import dataclass, replace
@@ -11,14 +8,14 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import ClassVar
 
-from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message, switch_model
-from ask.messages import MessageTree, MessageEncoder, message_decoder
+from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand
+from ask.commands import load_messages, save_messages, switch_model, get_usage
+from ask.messages import MessageTree
 from ask.models import Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
-from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApprovalController
 from ask.ui.commands import \
@@ -185,37 +182,15 @@ class AppController(Controller[App]):
         elif value.startswith('/model'):
             self.head, self.model = switch_model(value.removeprefix('/model').lstrip(), self.model, self.messages, self.head)
         elif value == '/cost':
-            output = get_usage_message(dict(self.messages.items(self.head)), self.query_time, time.monotonic() - self.start_time)
+            output = get_usage(dict(self.messages.items(self.head)), self.query_time, time.monotonic() - self.start_time)
             self.head = self.messages.add('user', self.head, SlashCommand(command='/cost', output=output))
         elif value == '/init':
             self.head = self.messages.add('user', self.head, InitCommand(command='/init'))
             self.tasks.append(asyncio.create_task(self.query()))
-        elif value.startswith('/edit'):
-            if path := value.removeprefix('/edit').strip():
-                editor = self.config['editor']
-                os.system(f"{editor} {shlex.quote(path)}")
-                hide_cursor()
-            else:
-                self.head = self.messages.add('user', self.head, SlashCommand(command='/edit', error='No file path supplied'))
         elif value.startswith('/save'):
-            if path := value.removeprefix('/save').strip():
-                try:
-                    Path(path).write_text(json.dumps({'head': self.head, 'messages': self.messages.dump()}, indent=2, cls=MessageEncoder))
-                    self.head = self.messages.add('user', self.head, SlashCommand(command=value, output=f'Saved messages to {path}'))
-                except Exception as e:
-                    self.head = self.messages.add('user', self.head, SlashCommand(command=value, error=str(e)))
-            else:
-                self.head = self.messages.add('user', self.head, SlashCommand(command='/save', error='No file path supplied'))
+            self.head = save_messages(value.removeprefix('/save').strip(), self.messages, self.head)
         elif value.startswith('/load'):
-            if path := value.removeprefix('/load').strip():
-                try:
-                    data = json.loads(Path(path).read_text(), object_hook=message_decoder)
-                    self.head = data['head']
-                    self.messages.load(data['messages'])
-                except Exception as e:
-                    self.head = self.messages.add('user', self.head, SlashCommand(command=value, error=str(e)))
-            else:
-                self.head = self.messages.add('user', self.head, SlashCommand(command='/load', error='No file path supplied'))
+            self.head = load_messages(value.removeprefix('/load').strip(), self.messages, self.head)
         elif value.startswith('#'):
             self.head, _ = MemorizeCommand.create(value.removeprefix('#').strip(), self.messages, self.head)
         elif value.startswith('!'):
@@ -236,7 +211,7 @@ class AppController(Controller[App]):
     def textbox(self) -> Component:
         if self.exiting:
             wall_time = time.monotonic() - self.start_time
-            return Text(Colors.hex(get_usage_message(dict(self.messages.items(self.head)), self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+            return Text(Colors.hex(get_usage(dict(self.messages.items(self.head)), self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
         elif approval_uuid := next(iter(self.approvals.keys()), None):
             tool_call = self.messages[approval_uuid].content
             assert isinstance(tool_call, ToolRequest)

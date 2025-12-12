@@ -43,8 +43,7 @@ COMMANDS = {
     '/init': 'Generate an AGENTS.md file with codebase documentation',
     '/model': 'Switch to a different model',
     '/exit': 'Exit the REPL',
-    '/quit': 'Exit the REPL',
-    '/edit': 'Open file in editor'}
+    '/quit': 'Exit the REPL'}
 
 def CommandName(name: str, active: bool) -> Text:
     return Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
