@@ -23,9 +23,9 @@ from ask.ui.core.components import Component, Controller, Box, Text, Widget, dir
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApprovalController
+from ask.ui.commands import \
+    ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.config import Config, History
-from ask.ui.messages import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage
-from ask.ui.messages import BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 from ask.ui.tools.todo import ToDos
