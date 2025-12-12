@@ -15,7 +15,6 @@ from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand
 from ask.messages import MessageTree, MessageEncoder, message_decoder
 from ask.models import MODELS_BY_NAME, Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
-from ask.shells import PYTHON_SHELL
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
@@ -80,20 +79,6 @@ class AppController(Controller[App]):
         ticker = asyncio.create_task(self._tick(interval))
         await asyncio.gather(*tasks)
         ticker.cancel()
-
-    async def python(self, command: str) -> None:
-        ticker = asyncio.create_task(self._tick(1.0))
-        python_command = PythonCommand(command=command)
-        self.head = message_uuid = self.messages.add('user', self.head, python_command)
-        try:
-            nodes = PYTHON_SHELL.parse(command)
-            output, exception = await PYTHON_SHELL.execute(nodes=nodes, timeout_seconds=10)
-            status = ToolCallStatus.FAILED if exception else ToolCallStatus.COMPLETED
-            python_command = replace(python_command, output=output, error=exception, status=status)
-        except asyncio.CancelledError:
-            python_command = replace(python_command, status=ToolCallStatus.CANCELLED)
-        ticker.cancel()
-        self.messages.update(message_uuid, python_command)
 
     async def query(self) -> None:
         self.pending += 1
@@ -246,7 +231,8 @@ class AppController(Controller[App]):
             self.head, tasks = BashCommand.create(value.removeprefix('!').strip(), self.messages, self.head)
             self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
         elif value.startswith('$'):
-            self.tasks.append(asyncio.create_task(self.python(value.removeprefix('$'))))
+            self.head, tasks = PythonCommand.create(value.removeprefix('$').strip(), self.messages, self.head)
+            self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
         else:
             file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', value) if Path(m[1:]).is_file()]  # get file attachments
             if file_paths:
