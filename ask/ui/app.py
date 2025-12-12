@@ -7,19 +7,19 @@ import shlex
 import sys
 import time
 from dataclasses import dataclass, replace
-from itertools import pairwise
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any, ClassVar, get_args
+from typing import ClassVar
 
 from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message
-from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
+from ask.models import MODELS_BY_NAME, Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
+from ask.messages import MessageTree, MessageEncoder, message_decoder
 from ask.prompts import get_agents_md_path
 from ask.query import query
 from ask.shells import PYTHON_SHELL
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
-from ask.ui.core.components import Component, Controller, Box, Text, Widget, dirty
+from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApprovalController
@@ -33,82 +33,6 @@ from ask.ui.tools.todo import ToDos
 TOOL_REJECTED_MESSAGE = (
     "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
     "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
-
-class MessageEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Path):
-            return {'__type__': 'Path', 'path': str(obj)}
-        elif isinstance(obj, UUID):
-            return {'__type__': 'UUID', 'uuid': str(obj)}
-        elif isinstance(obj, Model):
-            return {'__type__': 'Model', 'name': obj.name}
-        elif isinstance(obj, Content):
-            data = obj.__dict__.copy()
-            data['__type__'] = obj.__class__.__name__
-            return data
-        return super().default(obj)
-
-def message_decoder(obj):
-    if isinstance(obj, dict) and obj.get('__type__') == 'Path':
-        return Path(obj['path'])
-    elif isinstance(obj, dict) and obj.get('__type__') == 'UUID':
-        return UUID(obj['uuid'])
-    elif isinstance(obj, dict) and obj.get('__type__') == 'Model':
-        return MODELS_BY_NAME[obj['name']]
-    elif isinstance(obj, dict) and obj.get('__type__') in [cls.__name__ for cls in get_args(Content)]:
-        type_name = obj.pop('__type__')
-        content_types = {cls.__name__: cls for cls in get_args(Content)}
-        return content_types[type_name](**obj)
-    return obj
-
-class MessageTree:
-    def __init__(self, parent_uuid: UUID, messages: dict[UUID, Message]) -> None:
-        self.parent_uuid = parent_uuid
-        self.messages = messages.copy()
-        self.parents = {child: parent for parent, child in pairwise((None, *messages.keys()))}
-
-    def __getitem__(self, key: UUID) -> Message:
-        return self.messages[key]
-
-    def __setitem__(self, key: UUID, value: Message) -> None:
-        self.messages[key] = value
-        dirty.add(self.parent_uuid)
-
-    def clear(self) -> None:
-        self.messages.clear()
-        self.parents.clear()
-        dirty.add(self.parent_uuid)
-
-    def keys(self, head: UUID | None) -> list[UUID]:
-        keys = []
-        while head is not None:
-            keys.append(head)
-            head = self.parents[head]
-        return keys[::-1]
-
-    def values(self, head: UUID | None) -> list[Message]:
-        return [self.messages[k] for k in self.keys(head)]
-
-    def items(self, head: UUID | None) -> list[tuple[UUID, Message]]:
-        return list(zip(self.keys(head), self.values(head), strict=True))
-
-    def add(self, role: Role, head: UUID | None, content: Content, uuid: UUID | None = None) -> UUID:
-        message_uuid = uuid or uuid4()
-        self[message_uuid] = Message(role=role, content=content)
-        self.parents[message_uuid] = head
-        return message_uuid
-
-    def update(self, uuid: UUID, content: Content) -> None:
-        self[uuid] = replace(self[uuid], content=content)
-
-    def dump(self) -> list[dict[str, Any]]:
-        return [{'uuid': uuid, 'parent': self.parents[uuid], 'role': msg.role, 'content': msg.content} for uuid, msg in self.messages.items()]
-
-    def load(self, data: list[dict[str, Any]]) -> None:
-        self.clear()
-        for message in data:
-            self[message['uuid']] = Message(role=message['role'], content=message['content'])
-            self.parents[message['uuid']] = message['parent']
 
 
 @dataclass
