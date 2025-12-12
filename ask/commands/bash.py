@@ -1,7 +1,9 @@
 import asyncio
-from dataclasses import dataclass
-from uuid import UUID, uuid4
+from asyncio import Task
+from dataclasses import dataclass, replace
+from uuid import UUID
 
+from ask.messages import MessageTree
 from ask.models import Message, Text, Command
 from ask.tools import ToolCallStatus
 
@@ -16,17 +18,21 @@ class BashCommand(Command):
     status: ToolCallStatus = ToolCallStatus.PENDING
 
     @classmethod
-    async def execute(cls, command: str) -> 'BashCommand':
-        process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
-        return BashCommand(command=command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status)
+    async def run(cls, value: str, messages: MessageTree, uuid: UUID, command: 'BashCommand') -> None:
+        try:
+            process = await asyncio.create_subprocess_shell(value, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            stdout, stderr = await process.communicate()
+            status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
+            messages.update(uuid, replace(command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status))
+        except asyncio.CancelledError:
+            messages.update(uuid, replace(command, status=ToolCallStatus.CANCELLED))
 
     @classmethod
-    def run(cls, value: str, messages: dict[UUID, Message]) -> tuple[dict[UUID, Message], dict[UUID, asyncio.Task]]:
-        task = asyncio.create_task(cls.execute(value))
-        uuid, message = uuid4(), Message(role='user', content=BashCommand(command=value))
-        return messages | {uuid: message}, {uuid: task}
+    def create(cls, value: str, messages: MessageTree, head: UUID | None) -> tuple[UUID, list[Task]]:
+        command = BashCommand(command=value)
+        head = messages.add('user', head, command)
+        task = asyncio.create_task(cls.run(value, messages, head, command))
+        return head, [task]
 
     def messages(self) -> list[Message]:
         if self.status is ToolCallStatus.CANCELLED:

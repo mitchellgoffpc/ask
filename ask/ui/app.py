@@ -12,9 +12,8 @@ from uuid import UUID, uuid4
 from typing import ClassVar
 
 from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message
-from ask.models import MODELS_BY_NAME, Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.messages import MessageTree, MessageEncoder, message_decoder
-from ask.prompts import get_agents_md_path
+from ask.models import MODELS_BY_NAME, Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.shells import PYTHON_SHELL
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
@@ -68,7 +67,7 @@ class AppController(Controller[App]):
         self.exiting = True
         asyncio.get_running_loop().call_later(0.1, sys.exit, 0)
 
-    async def tick(self, interval: float) -> None:
+    async def _tick(self, interval: float) -> None:
         try:
             start_time = time.time()
             while True:
@@ -77,22 +76,13 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             self.elapsed = 0
 
-    async def bash(self, command: str) -> None:
-        ticker = asyncio.create_task(self.tick(1.0))
-        bash_command = BashCommand(command=command)
-        self.head = message_uuid = self.messages.add('user', self.head, bash_command)
-        try:
-            process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-            stdout, stderr = await process.communicate()
-            status = ToolCallStatus.COMPLETED if process.returncode == 0 else ToolCallStatus.FAILED
-            bash_command = replace(bash_command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status)
-        except asyncio.CancelledError:
-            bash_command = replace(bash_command, status=ToolCallStatus.CANCELLED)
+    async def tick(self, tasks: list[asyncio.Task], interval: float) -> None:
+        ticker = asyncio.create_task(self._tick(interval))
+        await asyncio.gather(*tasks)
         ticker.cancel()
-        self.messages.update(message_uuid, bash_command)
 
     async def python(self, command: str) -> None:
-        ticker = asyncio.create_task(self.tick(1.0))
+        ticker = asyncio.create_task(self._tick(1.0))
         python_command = PythonCommand(command=command)
         self.head = message_uuid = self.messages.add('user', self.head, python_command)
         try:
@@ -250,15 +240,11 @@ class AppController(Controller[App]):
             else:
                 self.head = self.messages.add('user', self.head, SlashCommand(command='/load', error='No file path supplied'))
         elif value.startswith('#'):
-            agents_path = get_agents_md_path()
-            content = agents_path.read_text() if agents_path else ''
-            if content and not content.endswith('\n'):
-                content += '\n'
-            agents_path = agents_path or Path.cwd() / "AGENTS.md"
-            agents_path.write_text(content + f"- {value.removeprefix('#').strip()}\n")
-            self.head = self.messages.add('user', self.head, MemorizeCommand(command=value.removeprefix('#').strip()))
+            self.head, tasks = MemorizeCommand.create(value.removeprefix('#').strip(), self.messages, self.head)
+            self.tasks.extend(tasks)
         elif value.startswith('!'):
-            self.tasks.append(asyncio.create_task(self.bash(value.removeprefix('!'))))
+            self.head, tasks = BashCommand.create(value.removeprefix('!').strip(), self.messages, self.head)
+            self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
         elif value.startswith('$'):
             self.tasks.append(asyncio.create_task(self.python(value.removeprefix('$'))))
         else:

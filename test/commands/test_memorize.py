@@ -2,7 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from uuid import uuid4
 
+from ask.messages import MessageTree
 from ask.commands.memorize import MemorizeCommand
 
 class TestMemorizeCommand(unittest.TestCase):
@@ -14,7 +16,7 @@ class TestMemorizeCommand(unittest.TestCase):
             mock_get_path.return_value = None
             mock_cwd.return_value = Path(temp_dir)
 
-            MemorizeCommand.run("test memory", {})
+            MemorizeCommand.create("test memory", MessageTree(uuid4(), {}), None)
             self.assertTrue(agents_path.exists())
             self.assertEqual(agents_path.read_text(), "- test memory\n")
 
@@ -26,5 +28,5 @@ class TestMemorizeCommand(unittest.TestCase):
             f.write("existing content")
             f.flush()
 
-            MemorizeCommand.run("new memory", {})
+            MemorizeCommand.create("new memory", MessageTree(uuid4(), {}), None)
             self.assertEqual(agents_path.read_text(), "existing content\n- new memory\n")
