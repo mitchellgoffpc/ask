@@ -11,7 +11,7 @@ from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS, Tool
 from ask.tools.read import read_file
 from ask.ui.app import App
-from ask.ui.commands import FilesCommand, DocsCommand
+from ask.commands import FilesCommand, DocsCommand
 from ask.ui.config import CONFIG_DIR, Config
 from ask.ui.core.render import render_root
 

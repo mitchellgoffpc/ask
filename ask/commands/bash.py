@@ -1,6 +1,6 @@
 import asyncio
-from asyncio import Task
 from dataclasses import dataclass
+from uuid import UUID, uuid4
 
 from ask.models import Message, Text, Command
 from ask.tools import ToolCallStatus
@@ -23,7 +23,7 @@ class BashCommand(Command):
         return BashCommand(command=command, stdout=stdout.decode().strip('\n'), stderr=stderr.decode().strip('\n'), status=status)
 
     @classmethod
-    def run(cls, value: str, messages: dict[UUID, Message]) -> tuple[dict[UUID, Message], dict[UUID, Task]]:
+    def run(cls, value: str, messages: dict[UUID, Message]) -> tuple[dict[UUID, Message], dict[UUID, asyncio.Task]]:
         task = asyncio.create_task(cls.execute(value))
         uuid, message = uuid4(), Message(role='user', content=BashCommand(command=value))
         return messages | {uuid: message}, {uuid: task}

@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from ask.commands.bash import BashCommand
 from ask.commands.memorize import MemorizeCommand
 from ask.prompts import load_prompt_file, get_relative_path
-from ask.models import MODELS_BY_NAME, Message, Text, Image, ToolRequest, ToolResponse, Command, Usage
+from ask.models import MODELS_BY_NAME, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
 from ask.tools import ToolCallStatus
 
 COMMAND_CAVEAT_MESSAGE = (
@@ -52,7 +52,7 @@ class InitCommand(SlashCommand):
 
 @dataclass
 class FilesCommand(SlashCommand):
-    file_contents: dict[Path, Text | Image] = field(default_factory=dict)
+    file_contents: dict[Path, Blob] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.output = '\n'.join(f'Read {get_relative_path(path)}' for path in self.file_contents.keys())

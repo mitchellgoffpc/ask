@@ -1,9 +1,9 @@
+from ask.commands import MemorizeCommand, PythonCommand, BashCommand, SlashCommand
 from ask.models import Text as TextContent, ToolRequest, ToolResponse, Error
 from ask.tools import ToolCallStatus
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.markdown_ import render_markdown
 from ask.ui.core.styles import Flex, Colors, Theme
-from ask.ui.commands import MemorizeCommand, PythonCommand, BashCommand, SlashCommand
 from ask.ui.tools import TOOL_COMPONENTS
 
 NUM_PREVIEW_LINES = 5

@@ -12,6 +12,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, ClassVar, get_args
 
+from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message
 from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.prompts import get_agents_md_path
 from ask.query import query
@@ -22,7 +23,6 @@ from ask.ui.core.components import Component, Controller, Box, Text, Widget, dir
 from ask.ui.core.cursor import hide_cursor
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import ApprovalDialog, EditApprovalController
-from ask.ui.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message
 from ask.ui.config import Config, History
 from ask.ui.messages import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage
 from ask.ui.messages import BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
