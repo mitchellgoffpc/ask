@@ -11,9 +11,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import ClassVar
 
-from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message
+from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand, get_usage_message, switch_model
 from ask.messages import MessageTree, MessageEncoder, message_decoder
-from ask.models import MODELS_BY_NAME, Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
+from ask.models import Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
@@ -183,15 +183,7 @@ class AppController(Controller[App]):
             self.messages.clear()
             self.head = None
         elif value.startswith('/model'):
-            model_name = value.removeprefix('/model').lstrip()
-            if not model_name:
-                model_list = '\n'.join(f"  {name} ({model.api.display_name})" for name, model in MODELS_BY_NAME.items())
-                self.head = self.messages.add('user', self.head, SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
-            elif model_name not in MODELS_BY_NAME:
-                self.head = self.messages.add('user', self.head, SlashCommand(command=value, error=f"Unknown model: {model_name}"))
-            elif model_name != self.model.name:
-                self.head = self.messages.add('user', self.head, SlashCommand(command=value, output=f"Switched from {self.model.name} to {model_name}"))
-                self.model = MODELS_BY_NAME[model_name]
+            self.head, self.model = switch_model(value.removeprefix('/model').lstrip(), self.model, self.messages, self.head)
         elif value == '/cost':
             output = get_usage_message(dict(self.messages.items(self.head)), self.query_time, time.monotonic() - self.start_time)
             self.head = self.messages.add('user', self.head, SlashCommand(command='/cost', output=output))
@@ -225,8 +217,7 @@ class AppController(Controller[App]):
             else:
                 self.head = self.messages.add('user', self.head, SlashCommand(command='/load', error='No file path supplied'))
         elif value.startswith('#'):
-            self.head, tasks = MemorizeCommand.create(value.removeprefix('#').strip(), self.messages, self.head)
-            self.tasks.extend(tasks)
+            self.head, _ = MemorizeCommand.create(value.removeprefix('#').strip(), self.messages, self.head)
         elif value.startswith('!'):
             self.head, tasks = BashCommand.create(value.removeprefix('!').strip(), self.messages, self.head)
             self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
