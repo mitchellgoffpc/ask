@@ -5,8 +5,8 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, get_args
 
-from ask.tools import ToolCallStatus
-from ask.models import MODELS_BY_NAME, Model, Message, Role, Content
+from ask.tools import TOOLS, ToolCallStatus
+from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, ToolRequest
 from ask.ui.core.components import dirty
 
 class MessageEncoder(json.JSONEncoder):
@@ -20,6 +20,7 @@ class MessageEncoder(json.JSONEncoder):
         elif isinstance(obj, Content):
             data = obj.__dict__.copy()
             data['__type__'] = obj.__class__.__name__
+            data.pop('processed_arguments', None)
             return data
         elif isinstance(obj, ToolCallStatus):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
@@ -35,7 +36,10 @@ def message_decoder(obj):
     elif isinstance(obj, dict) and obj.get('__type__') in [cls.__name__ for cls in get_args(Content)]:
         type_name = obj.pop('__type__')
         content_types = {cls.__name__: cls for cls in get_args(Content)}
-        return content_types[type_name](**obj)
+        content = content_types[type_name](**obj)
+        if isinstance(content, ToolRequest):
+            content.processed_arguments = TOOLS[content.tool].check(content.arguments)
+        return content
     elif isinstance(obj, dict) and obj.get('__type__') == 'ToolCallStatus':
         return ToolCallStatus(obj['value'])
     return obj
