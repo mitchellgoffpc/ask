@@ -135,7 +135,7 @@ class Text(Element):
         raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
 
     def render(self, _: list[str], max_width: int) -> str:
-        wrapped = wrap_lines(self.text, max_width)
+        wrapped = wrap_lines(self.text.replace('\t', ' ' * 8), max_width)
         return apply_boxing(wrapped, max_width, self)
 
 
