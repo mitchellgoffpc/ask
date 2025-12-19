@@ -13,7 +13,7 @@ STATUS_COLORS = {
     ToolCallStatus.CANCELLED: Theme.RED,
     ToolCallStatus.FAILED: Theme.RED}
 
-def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float, expanded: bool) -> tuple[str, str]:
+def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float) -> tuple[str, str]:
     if status is ToolCallStatus.PENDING:
         return Colors.hex("Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), Theme.GRAY), ''
     elif status is ToolCallStatus.CANCELLED:
@@ -24,12 +24,8 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
         result = stdout + stderr
         if not result.strip():
             return Colors.hex("(No content)", Theme.GRAY), ''
-        elif expanded:
-            return result, ''
         else:
-            lines = result.rstrip('\n').split('\n')
-            expand_text = Colors.hex(f"… +{len(lines) - NUM_PREVIEW_LINES} lines (ctrl+r to expand)", Theme.GRAY)
-            return '\n'.join(lines[:NUM_PREVIEW_LINES]) + (f'\n{expand_text}' if len(lines) > NUM_PREVIEW_LINES else ''), ''
+            return result, ''
 
 
 # Components
@@ -70,8 +66,8 @@ def SlashCommandMessage(command: SlashCommand) -> Component:
         ] if command.error else None,
     ]
 
-def BashCommandMessage(command: BashCommand, elapsed: float, expanded: bool) -> Component:
-    output, error = get_bash_output(command.stdout, command.stderr, command.status, elapsed, expanded)
+def BashCommandMessage(command: BashCommand, elapsed: float) -> Component:
+    output, error = get_bash_output(command.stdout, command.stderr, command.status, elapsed)
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),
@@ -87,8 +83,8 @@ def BashCommandMessage(command: BashCommand, elapsed: float, expanded: bool) -> 
         ] if error else None,
     ]
 
-def PythonCommandMessage(command: PythonCommand, elapsed: float, expanded: bool) -> Component:
-    output, error = get_bash_output(command.output, command.error, command.status, elapsed, expanded)
+def PythonCommandMessage(command: PythonCommand, elapsed: float) -> Component:
+    output, error = get_bash_output(command.output, command.error, command.status, elapsed)
     return Box(margin={'top': 1})[
         Box(flex=Flex.HORIZONTAL)[
             Text(Colors.hex(">>> ", Theme.GREEN)),

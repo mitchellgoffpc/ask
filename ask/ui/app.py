@@ -217,7 +217,7 @@ class AppController(Controller[App]):
                 tool_call=tool_call,
                 future=self.approvals[approval_uuid])
         elif self.expanded:
-            return Box(border={'top'})[
+            return Box(width=1.0, margin={'top': 1}, border={'top'})[
                 Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
             ]
         else:
@@ -243,9 +243,9 @@ class AppController(Controller[App]):
                 case ('user', Error()):
                     messages.append(ErrorMessage(error=msg.content))
                 case ('user', BashCommand()):
-                    messages.append(BashCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
+                    messages.append(BashCommandMessage(command=msg.content, elapsed=self.elapsed))
                 case ('user', PythonCommand()):
-                    messages.append(PythonCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
+                    messages.append(PythonCommandMessage(command=msg.content, elapsed=self.elapsed))
                 case ('user', SlashCommand()):
                     messages.append(SlashCommandMessage(command=msg.content))
                 case ('assistant', TextContent()):
