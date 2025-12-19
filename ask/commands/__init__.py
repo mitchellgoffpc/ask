@@ -1,5 +1,4 @@
 import json
-from asyncio import Task
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -7,7 +6,7 @@ from uuid import UUID, uuid4
 
 from ask.commands.bash import BashCommand
 from ask.commands.python import PythonCommand
-from ask.prompts import COMMAND_CAVEAT_MESSAGE, load_prompt_file, get_relative_path, get_agents_md_path
+from ask.prompts import COMMAND_CAVEAT_MESSAGE, load_prompt_file, get_relative_path
 from ask.messages import MessageTree, MessageEncoder, message_decoder
 from ask.models import MODELS_BY_NAME, Model, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
 from ask.tools import ToolCallStatus
@@ -64,25 +63,6 @@ class DocsCommand(Command):
     def messages(self) -> list[Message]:
         content = load_prompt_file('docs.toml')[self.prompt_key].format(file_path=self.file_path.resolve(), file_contents=self.file_contents)
         return [Message(role='user', content=Text(content))]
-
-
-# /
-
-@dataclass
-class MemorizeCommand(Command):
-    @classmethod
-    def create(cls, value: str, messages: MessageTree, head: UUID | None) -> tuple[UUID, list[Task]]:
-        agents_path = get_agents_md_path()
-        content = agents_path.read_text() if agents_path else ''
-        if content and not content.endswith('\n'):
-            content += '\n'
-        agents_path = agents_path or Path.cwd() / "AGENTS.md"
-        agents_path.write_text(content + f"- {value.strip()}\n")
-        head = messages.add('user', head, MemorizeCommand(command=value.strip()))
-        return head, []
-
-    def messages(self) -> list[Message]:
-        return [Message(role='user', content=Text(f"I've added the following to the AGENTS.md file:\n\n```{self.command}```"))]
 
 
 # /model
@@ -171,7 +151,6 @@ __all__ = [
     "FilesCommand",
     "FormatCommand",
     "InitCommand",
-    "MemorizeCommand",
     "PythonCommand",
     "SlashCommand",
     "save_messages",

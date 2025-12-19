@@ -8,7 +8,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import ClassVar
 
-from ask.commands import BashCommand, FilesCommand, InitCommand, MemorizeCommand, PythonCommand, SlashCommand
+from ask.commands import BashCommand, FilesCommand, InitCommand, PythonCommand, SlashCommand
 from ask.commands import load_messages, save_messages, switch_model, get_usage
 from ask.messages import MessageTree
 from ask.models import Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
@@ -19,7 +19,7 @@ from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import \
-    ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
+    ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.config import Config, History
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
@@ -191,8 +191,6 @@ class AppController(Controller[App]):
             self.head = save_messages(value.removeprefix('/save').strip(), self.messages, self.head)
         elif value.startswith('/load'):
             self.head = load_messages(value.removeprefix('/load').strip(), self.messages, self.head)
-        elif value.startswith('#'):
-            self.head, _ = MemorizeCommand.create(value.removeprefix('#').strip(), self.messages, self.head)
         elif value.startswith('!'):
             self.head, tasks = BashCommand.create(value.removeprefix('!').strip(), self.messages, self.head)
             self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
@@ -246,8 +244,6 @@ class AppController(Controller[App]):
                     messages.append(ErrorMessage(error=msg.content))
                 case ('user', BashCommand()):
                     messages.append(BashCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
-                case ('user', MemorizeCommand()):
-                    messages.append(MemorizeCommandMessage(command=msg.content))
                 case ('user', PythonCommand()):
                     messages.append(PythonCommandMessage(command=msg.content, elapsed=self.elapsed, expanded=self.expanded))
                 case ('user', SlashCommand()):

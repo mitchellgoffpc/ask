@@ -1,4 +1,4 @@
-from ask.commands import MemorizeCommand, PythonCommand, BashCommand, SlashCommand
+from ask.commands import PythonCommand, BashCommand, SlashCommand
 from ask.models import Text as TextContent, ToolRequest, ToolResponse, Error
 from ask.tools import ToolCallStatus
 from ask.ui.core.components import Component, Box, Text
@@ -102,16 +102,4 @@ def PythonCommandMessage(command: PythonCommand, elapsed: float, expanded: bool)
             Text("  ⎿  "),
             Text(error)
         ] if error else None,
-    ]
-
-def MemorizeCommandMessage(command: MemorizeCommand) -> Component:
-    return Box(margin={'top': 1})[
-        Box(flex=Flex.HORIZONTAL)[
-            Text(Colors.hex("# ", Theme.BLUE)),
-            Text(Colors.hex(command.command, Theme.GRAY))
-        ],
-        Box(flex=Flex.HORIZONTAL)[
-            Text("  ⎿  "),
-            Text(Colors.hex("Noted", Theme.GRAY))
-        ],
     ]
