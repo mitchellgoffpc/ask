@@ -1,5 +1,6 @@
 import os
 import re
+import unicodedata
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
@@ -97,7 +98,7 @@ def apply_style(text: str, start: str, end: str) -> str:
     return f"{start}{text}{end}"
 
 def ansi_len(text: str) -> int:
-    return len(ansi_strip(text))
+    return sum(2 if unicodedata.east_asian_width(c) in 'FW' else 1 for c in ansi_strip(text))
 
 def ansi_strip(text: str) -> str:
     return re.sub(r'\u001B\[[0-9;]+m', '', text)
