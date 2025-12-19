@@ -52,9 +52,9 @@ def ErrorMessage(error: Error) -> Component:
         Text(Colors.hex(error.text, Theme.RED))
     ]
 
-def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, approved: bool, expanded: bool) -> Component:
+def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expanded: bool) -> Component:
     return Box(margin={'top': 1})[
-        TOOL_COMPONENTS[request.tool](request, response, approved, expanded)
+        TOOL_COMPONENTS[request.tool](request, response, expanded)
     ]
 
 def SlashCommandMessage(command: SlashCommand) -> Component:

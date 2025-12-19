@@ -17,7 +17,7 @@ from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEdit
 from ask.tools.read import read_file
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Theme
-from ask.ui.dialogs import ApprovalDialog, EditApprovalController
+from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import \
     ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, MemorizeCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.config import Config, History
@@ -158,10 +158,10 @@ class AppController(Controller[App]):
         elif ch == '\x14':  # Ctrl+T
             self.show_todos = not self.show_todos
         elif ch == '\x1b[Z' and not self.approvals:  # Shift+Tab
-            if EditApprovalController.autoapprovals & self.autoapprovals:
-                self.autoapprovals = self.autoapprovals - EditApprovalController.autoapprovals
+            if EDIT_TOOLS & self.autoapprovals:
+                self.autoapprovals = self.autoapprovals - EDIT_TOOLS
             else:
-                self.autoapprovals = self.autoapprovals | EditApprovalController.autoapprovals
+                self.autoapprovals = self.autoapprovals | EDIT_TOOLS
         elif ch == '\x1b' and not self.approvals:  # Escape key
             for task in self.tasks:
                 if not task.done():
@@ -238,7 +238,7 @@ class AppController(Controller[App]):
                 latest_todos = None
 
         messages = []
-        for uuid, msg in self.messages.items(self.head):
+        for msg in self.messages.values(self.head):
             match (msg.role, msg.content):
                 case ('user', TextContent()):
                     messages.append(PromptMessage(text=msg.content))
@@ -256,9 +256,8 @@ class AppController(Controller[App]):
                     messages.append(ResponseMessage(text=msg.content))
                 case ('assistant', ToolRequest()):
                     if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
-                        approved = uuid not in self.approvals
                         response = tool_responses.get(msg.content.call_id)
-                        messages.append(ToolCallMessage(request=msg.content, response=response, approved=approved, expanded=self.expanded))
+                        messages.append(ToolCallMessage(request=msg.content, response=response, expanded=self.expanded))
                 case _:
                     pass
 

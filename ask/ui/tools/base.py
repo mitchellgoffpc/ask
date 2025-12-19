@@ -25,7 +25,6 @@ def abbreviate(text: str, max_lines: int) -> str:
 class ToolOutput(Widget):
     request: ToolRequest
     response: ToolResponse | None
-    approved: bool
     expanded: bool
 
 class ToolOutputController(Controller[ToolOutput]):
@@ -71,13 +70,10 @@ class ToolOutputController(Controller[ToolOutput]):
             return self.get_completed_output(self.props.response.response)
 
     def contents(self) -> list[Component | None]:
-        status = self.props.response.status if self.props.response else ToolCallStatus.PENDING
-        args_str = self.get_args()
-
         return [
             Box(flex=Flex.HORIZONTAL)[
-                Text(Colors.hex("● ", STATUS_COLORS[status])),
-                Text(Styles.bold(self.get_name()) + (f"({args_str})" if args_str else ''))
+                Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
+                Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
             ],
             Box(flex=Flex.HORIZONTAL)[
                 Text("  ⎿  "),

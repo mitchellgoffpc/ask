@@ -18,8 +18,6 @@ class BashTool(Tool):
             "Input: npm install\nOutput: Installs package dependencies\n\n"
             "Input: mkdir foo\nOutput: Creates directory 'foo'", ParameterType.String, required=False)]
 
-
-
     def check(self, args: dict[str, Any]) -> dict[str, Any]:
         args = super().check(args)
         timeout_seconds = args.get("timeout", 120000) / 1000.0  # Default 2 minutes

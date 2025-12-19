@@ -1,13 +1,13 @@
 from typing import ClassVar
 from dataclasses import dataclass
 
-from ask.models import Blob
+from ask.models import Text as TextContent
 from ask.prompts import get_relative_path
+from ask.tools import ToolCallStatus
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.diff import Diff
-from ask.ui.core.markdown_ import highlight_code
-from ask.ui.core.styles import Styles, Colors, Theme
-from ask.ui.tools.base import ToolOutput, ToolOutputController, abbreviate
+from ask.ui.core.styles import Styles, Colors, Theme, Flex
+from ask.ui.tools.base import STATUS_COLORS, ToolOutput, ToolOutputController
 
 @dataclass
 class EditToolOutput(ToolOutput):
@@ -15,29 +15,45 @@ class EditToolOutput(ToolOutput):
 
 class EditToolOutputController(ToolOutputController):
     def get_args(self) -> str:
-        return get_relative_path(self.props.request.arguments['file_path'])
+        args = self.props.request.processed_arguments or {}
+        num_additions = sum(1 for line in args['diff'] if line.startswith('+') and not line.startswith('+++'))
+        num_deletions = sum(1 for line in args['diff'] if line.startswith('-') and not line.startswith('---'))
+        addition_text = Colors.hex(f"+{num_additions}", Theme.GREEN)
+        deletion_text = Colors.hex(f"-{num_deletions}", Theme.RED)
+        return f"{get_relative_path(args['file_path'])} ({addition_text} {deletion_text})"
 
     def get_cancelled_message(self) -> Component:
         args = self.props.request.processed_arguments or {}
-        operation = 'update' if args['old_content'] else 'write'
         return Box()[
-            Text(Colors.hex(f"User rejected {operation} to {Styles.bold(get_relative_path(args['file_path']))}", Theme.RED)),
+            Text("  ⎿  " + Colors.hex("Rejected by user", Theme.RED)),
             Diff(diff=args['diff'], rejected=True)
         ]
 
-    def get_completed_output(self, response: Blob) -> Component:
+    def get_diff(self) -> Component:
         args = self.props.request.processed_arguments or {}
-        if not args['old_content']:
-            num_lines = args['new_content'].count('\n') + 1
-            status_line = f"Wrote {Styles.bold(str(num_lines))} lines to {Styles.bold(get_relative_path(args['file_path']))}"
-            output = f"{status_line}\n{highlight_code(args['new_content'], file_path=str(args['file_path']))}"
-            return Text(abbreviate(output, max_lines=8) if not self.props.expanded else output)
-        else:
-            num_additions = sum(1 for line in args['diff'] if line.startswith('+') and not line.startswith('+++'))
-            num_deletions = sum(1 for line in args['diff'] if line.startswith('-') and not line.startswith('---'))
-            addition_text = f"{Styles.bold(str(num_additions))} addition{'s' if num_additions != 1 else ''}"
-            deletion_text = f"{Styles.bold(str(num_deletions))} removal{'s' if num_deletions != 1 else ''}"
-            return Box()[
-                Text(f"Updated {Styles.bold(get_relative_path(args['file_path']))} with {addition_text} and {deletion_text}"),
-                Diff(diff=args['diff'])
+        return Diff(diff=args['diff'])
+
+    def get_tool_output(self) -> Component:
+        status = self.props.response.status if self.props.response else ToolCallStatus.PENDING
+        if status is ToolCallStatus.PENDING:
+            return self.get_diff()
+        elif status is ToolCallStatus.CANCELLED:
+            return self.get_cancelled_message()
+        elif status is ToolCallStatus.FAILED:
+            assert self.props.response is not None
+            assert isinstance(self.props.response.response, TextContent)
+            return Box(flex=Flex.HORIZONTAL)[
+                Text("  ⎿  "),
+                self.get_error_message(self.props.response.response.text),
             ]
+        elif status is ToolCallStatus.COMPLETED:
+            return self.get_diff()
+
+    def contents(self) -> list[Component | None]:
+        return [
+            Box(flex=Flex.HORIZONTAL)[
+                Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
+                Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
+            ],
+            self.get_tool_output(),
+        ]

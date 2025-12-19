@@ -192,6 +192,7 @@ def ansi_slice(string: str, start: int, end: int) -> str:
 def wrap_lines(content: str, max_width: int) -> str:
     lines = []
     pos = 0
+    newline_pos = -1
     while line := ansi_slice(content, pos, pos + max_width):
         line_len = max_width
         newline_pos = line.find('\n')

@@ -10,7 +10,7 @@ from ask.models import MODELS_BY_NAME, Model
 from ask.ui.core.components import Component, Box, Text, Widget, Controller
 from ask.ui.core.styles import Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
-from ask.ui.dialogs import EditApprovalController
+from ask.ui.dialogs import EDIT_TOOLS
 
 class Mode(Enum):
     TEXT = 'text'
@@ -114,7 +114,7 @@ class PromptTextBoxController(Controller):
             return []
 
     def get_shortcuts_text(self) -> str:
-        if self.mode == Mode.TEXT and EditApprovalController.autoapprovals & self.props.autoapprovals:
+        if self.mode == Mode.TEXT and EDIT_TOOLS & self.props.autoapprovals:
             return Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
         return Colors.hex(SHORTCUTS[self.mode], COLORS.get(self.mode, Theme.GRAY))
 
