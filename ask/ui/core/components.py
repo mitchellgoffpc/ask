@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, ClassVar, Generic, Literal, Iterable, Self, TypeVar, get_args
+from typing import Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
@@ -19,6 +19,13 @@ def get_rendered_width(contents: str) -> int:
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
     return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
+
+def apply_background(content: str, width: int, background_color: str | None) -> str:
+    if not background_color:
+        return content
+    lines = content.split('\n')
+    assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for background to be applied"
+    return '\n'.join(Colors.bg_ansi(line, background_color) for line in lines)
 
 def apply_sizing(content: str, width: int, height: int) -> str:
     lines = [ansi_slice(line, 0, width) + ' ' * max(0, width - ansi_len(line)) for line in content.split('\n')]
@@ -67,6 +74,7 @@ def apply_boxing(content: str, max_width: int, element: Element) -> str:
 
     content = apply_sizing(content, content_width, content_height)
     content = apply_spacing(content, element.padding)
+    content = apply_background(content, padded_width, element.background_color)
     content = apply_borders(content, padded_width, {k for k, v in element.border.items() if v}, element.border_style, element.border_color)
     content = apply_spacing(content, element.margin)
     return content
@@ -80,13 +88,14 @@ class Component:
 class Element(Component):
     def __init__(
         self,
-        width: Size = None,
-        height: int | None = None,
-        margin: Spacing = 0,
-        padding: Spacing = 0,
-        border: Iterable[Side] = (),
-        border_color: str | None = None,
-        border_style: BorderStyle = Borders.ROUND
+        width: Size,
+        height: int | None,
+        margin: Spacing,
+        padding: Spacing,
+        border: Sequence[Side],
+        border_color: str | None,
+        border_style: BorderStyle,
+        background_color: str | None,
     ) -> None:
         self.width, self.height = width, height
         self.margin = get_spacing_dict(margin)
@@ -94,6 +103,7 @@ class Element(Component):
         self.border = {side: int(side in border) for side in get_args(Side)}
         self.border_color = border_color
         self.border_style = border_style
+        self.background_color = background_color
 
         self.children: list[Component | None] = []
         self.uuid = uuid4()
@@ -124,11 +134,13 @@ class Text(Element):
         height: int | None = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
-        border: Iterable[Side] = (),
+        border: Sequence[Side] = (),
         border_style: BorderStyle = Borders.ROUND,
         border_color: str | None = None,
+        background_color: str | None = None,
     ) -> None:
-        super().__init__(width=width, height=height, margin=margin, padding=padding, border=border, border_color=border_color, border_style=border_style)
+        super().__init__(width=width, height=height, margin=margin, padding=padding,
+                         border=border, border_color=border_color, border_style=border_style, background_color=background_color)
         self.text = text
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
@@ -147,11 +159,13 @@ class Box(Element):
         height: int | None = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
-        border: Iterable[Side] = (),
+        border: Sequence[Side] = (),
         border_color: str | None = None,
         border_style: BorderStyle = Borders.ROUND,
+        background_color: str | None = None,
     ) -> None:
-        super().__init__(width=width, height=height, margin=margin, padding=padding, border=border, border_color=border_color, border_style=border_style)
+        super().__init__(width=width, height=height, margin=margin, padding=padding,
+                         border=border, border_color=border_color, border_style=border_style, background_color=background_color)
         self.flex = flex
 
     def render(self, contents: list[str], max_width: int) -> str:
