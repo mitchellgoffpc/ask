@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from ask.models import Blob, Text as TextContent, ToolRequest, ToolResponse
 from ask.tools import ToolCallStatus
@@ -31,7 +32,7 @@ class ToolOutputController(Controller[ToolOutput]):
     def get_name(self) -> str:
         return self.props.request.tool
 
-    def get_args(self) -> str:
+    def get_args(self, args: dict[str, Any]) -> str:
         raise NotImplementedError()
 
     def get_short_response(self, response: str) -> str:
@@ -39,9 +40,6 @@ class ToolOutputController(Controller[ToolOutput]):
 
     def get_full_response(self, response: str) -> str:
         return response
-
-    def get_cancelled_message(self) -> Component:
-        return Text(Colors.hex("Interrupted", Theme.RED))
 
     def get_error_message(self, error: str) -> Component:
         return Text(Colors.hex(f"Error: {error}", Theme.RED))
@@ -60,7 +58,7 @@ class ToolOutputController(Controller[ToolOutput]):
         if status is ToolCallStatus.PENDING:
             return Text(Colors.hex("Running…", Theme.GRAY))
         elif status is ToolCallStatus.CANCELLED:
-            return self.get_cancelled_message()
+            return Text(Colors.hex("Interrupted", Theme.RED))
         elif status is ToolCallStatus.FAILED:
             assert self.props.response is not None
             assert isinstance(self.props.response.response, TextContent)
@@ -70,10 +68,11 @@ class ToolOutputController(Controller[ToolOutput]):
             return self.get_completed_output(self.props.response.response)
 
     def contents(self) -> list[Component | None]:
+        args = self.props.request.processed_arguments
         return [
             Box(flex=Flex.HORIZONTAL)[
                 Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
-                Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
+                Text(f"{Styles.bold(self.get_name())} {self.get_args(args) if args else ''}"),
             ],
             Box(flex=Flex.HORIZONTAL)[
                 Text("  ⎿  "),

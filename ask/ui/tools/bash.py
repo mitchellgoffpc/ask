@@ -13,7 +13,8 @@ class BashToolOutput(ToolOutput):
 
 class BashToolOutputController(ToolOutputController):
     def contents(self) -> list[Component | None]:
-        args = self.props.request.processed_arguments or {}
+        if not (args := self.props.request.processed_arguments):
+            return []
         lines = highlight_code(args['command'], language='bash').strip().split('\n')
 
         return [

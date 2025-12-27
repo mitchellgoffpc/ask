@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,8 +11,7 @@ class GrepToolOutput(ToolOutput):
     __controller__: ClassVar = lambda _: GrepToolOutputController
 
 class GrepToolOutputController(ToolOutputController):
-    def get_args(self) -> str:
-        args = self.props.request.processed_arguments or {}
+    def get_args(self, args: dict[str, Any]) -> str:
         pattern = args.get('pattern', '')
         if len(pattern) > 50:
             pattern = pattern[:47] + "..."

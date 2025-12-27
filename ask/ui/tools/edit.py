@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 from dataclasses import dataclass
 
 from ask.models import Text as TextContent
@@ -14,46 +14,45 @@ class EditToolOutput(ToolOutput):
     __controller__: ClassVar = lambda _: EditToolOutputController
 
 class EditToolOutputController(ToolOutputController):
-    def get_args(self) -> str:
-        args = self.props.request.processed_arguments or {}
+    def get_args(self, args: dict[str, Any]) -> str:
         num_additions = sum(1 for line in args['diff'] if line.startswith('+') and not line.startswith('+++'))
         num_deletions = sum(1 for line in args['diff'] if line.startswith('-') and not line.startswith('---'))
         addition_text = Colors.hex(f"+{num_additions}", Theme.GREEN)
         deletion_text = Colors.hex(f"-{num_deletions}", Theme.RED)
         return f"{get_relative_path(args['file_path'])} ({addition_text} {deletion_text})"
 
-    def get_cancelled_message(self) -> Component:
-        args = self.props.request.processed_arguments or {}
+    def get_cancelled_message(self, args: dict[str, Any]) -> Component:
         return Box()[
             Text("  ⎿  " + Colors.hex("Rejected by user", Theme.RED)),
             Diff(diff=args['diff'], rejected=True)
         ]
 
-    def get_diff(self) -> Component:
-        args = self.props.request.processed_arguments or {}
+    def get_diff(self, args: dict[str, Any]) -> Component:
         return Diff(diff=args['diff'])
 
     def get_tool_output(self) -> Component:
-        status = self.props.response.status if self.props.response else ToolCallStatus.PENDING
-        if status is ToolCallStatus.PENDING:
-            return self.get_diff()
-        elif status is ToolCallStatus.CANCELLED:
-            return self.get_cancelled_message()
-        elif status is ToolCallStatus.FAILED:
-            assert self.props.response is not None
-            assert isinstance(self.props.response.response, TextContent)
-            return Box(flex=Flex.HORIZONTAL)[
-                Text("  ⎿  "),
-                self.get_error_message(self.props.response.response.text),
-            ]
-        elif status is ToolCallStatus.COMPLETED:
-            return self.get_diff()
+        args = self.props.request.processed_arguments
+        match self.props.response.status if self.props.response else ToolCallStatus.PENDING:
+            case ToolCallStatus.COMPLETED | ToolCallStatus.PENDING if args:
+                return self.get_diff(args)
+            case ToolCallStatus.CANCELLED if args:
+                return self.get_cancelled_message(args)
+            case ToolCallStatus.FAILED:
+                assert self.props.response is not None
+                assert isinstance(self.props.response.response, TextContent)
+                return Box(flex=Flex.HORIZONTAL)[
+                    Text("  ⎿  "),
+                    self.get_error_message(self.props.response.response.text),
+                ]
+            case _:
+                return Text("  ⎿  ")
 
     def contents(self) -> list[Component | None]:
+        args = self.props.request.processed_arguments
         return [
             Box(flex=Flex.HORIZONTAL)[
                 Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
-                Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
+                Text(f"{Styles.bold(self.get_name())} {self.get_args(args) if args else ''}"),
             ],
             self.get_tool_output(),
         ]

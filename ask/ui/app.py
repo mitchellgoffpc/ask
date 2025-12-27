@@ -217,7 +217,7 @@ class AppController(Controller[App]):
                 tool_call=tool_call,
                 future=self.approvals[approval_uuid])
         elif self.expanded:
-            return Box(width=1.0, margin={'top': 1}, border={'top'})[
+            return Box(width=1.0, margin={'top': 1}, border=['top'])[
                 Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
             ]
         else:

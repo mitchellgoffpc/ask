@@ -13,7 +13,8 @@ class PythonToolOutput(ToolOutput):
 
 class PythonToolOutputController(ToolOutputController):
     def contents(self) -> list[Component | None]:
-        args = self.props.request.processed_arguments or {}
+        if not (args := self.props.request.processed_arguments):
+            return []
         lines = highlight_code(args['code'], language='python').strip().split('\n')
 
         return [

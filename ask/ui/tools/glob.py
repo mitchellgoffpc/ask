@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 from dataclasses import dataclass
 
 from ask.prompts import get_relative_path
@@ -10,8 +10,7 @@ class GlobToolOutput(ToolOutput):
     __controller__: ClassVar = lambda _: GlobToolOutputController
 
 class GlobToolOutputController(ToolOutputController):
-    def get_args(self) -> str:
-        args = self.props.request.processed_arguments or {}
+    def get_args(self, args: dict[str, Any]) -> str:
         path = get_relative_path(args['path'])
         return f'pattern: "{args["pattern"]}", path: "{path}"'
 
