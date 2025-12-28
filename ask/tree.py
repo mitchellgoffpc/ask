@@ -1,3 +1,4 @@
+import base64
 import json
 from dataclasses import replace
 from itertools import pairwise
@@ -6,39 +7,39 @@ from uuid import UUID, uuid4
 from typing import Any, get_args
 
 from ask.messages import ToolCallStatus, Message, Role, Content, ToolRequest
-from ask.models import MODELS_BY_NAME, Model
 from ask.tools import TOOLS
 from ask.ui.core.components import dirty
 
 class MessageEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Path):
+        if isinstance(obj, bytes):
+            return {'__type__': 'bytes', 'data': base64.b64encode(obj).decode()}
+        elif isinstance(obj, Path):
             return {'__type__': 'Path', 'path': str(obj)}
         elif isinstance(obj, UUID):
             return {'__type__': 'UUID', 'uuid': str(obj)}
-        elif isinstance(obj, Model):
-            return {'__type__': 'Model', 'name': obj.name}
         elif isinstance(obj, Content):
             data = obj.__dict__.copy()
             data['__type__'] = obj.__class__.__name__
-            data.pop('processed_arguments', None)
+            if isinstance(obj, ToolRequest) and obj.tool in ('Grep', 'PythonShell'):
+                data.pop('processed_arguments', None)
             return data
         elif isinstance(obj, ToolCallStatus):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
         return super().default(obj)
 
 def message_decoder(obj):
+    if isinstance(obj, dict) and obj.get('__type__') == 'bytes':
+        return base64.b64decode(obj['data'])
     if isinstance(obj, dict) and obj.get('__type__') == 'Path':
         return Path(obj['path'])
     elif isinstance(obj, dict) and obj.get('__type__') == 'UUID':
         return UUID(obj['uuid'])
-    elif isinstance(obj, dict) and obj.get('__type__') == 'Model':
-        return MODELS_BY_NAME[obj['name']]
     elif isinstance(obj, dict) and obj.get('__type__') in [cls.__name__ for cls in get_args(Content)]:
         type_name = obj.pop('__type__')
         content_types = {cls.__name__: cls for cls in get_args(Content)}
         content = content_types[type_name](**obj)
-        if isinstance(content, ToolRequest):
+        if isinstance(content, ToolRequest) and content.tool in ('Grep', 'PythonShell'):
             content.processed_arguments = TOOLS[content.tool].check(content.arguments)
         return content
     elif isinstance(obj, dict) and obj.get('__type__') == 'ToolCallStatus':
