@@ -2,8 +2,9 @@ import base64
 import json
 from typing import Any
 
+from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
 from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
-from ask.models.base import API, Model, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.models.base import API, Model, get_message_groups
 from ask.tools.base import Tool
 
 class LegacyOpenAIAPI(API):

@@ -2,8 +2,8 @@ import re
 import json
 import uuid
 
+from ask.messages import Text, ToolRequest, ToolResponse
 from ask.tools import Tool
-from ask.models.base import Text, ToolRequest, ToolResponse
 
 # Since not all models support tool use directly, we also need to be able render the tools as a normal user message.
 TOOL_PREFIX = "You have access to the following tools, which you can use if they seem helpful for accomplishing the user's request:"

@@ -1,7 +1,7 @@
 from typing import Any, ClassVar
 from dataclasses import dataclass
 
-from ask.models import Blob, Image, PDF
+from ask.messages import Blob, Image, PDF
 from ask.prompts import get_relative_path
 from ask.ui.core.components import Component, Text
 from ask.ui.core.styles import Styles

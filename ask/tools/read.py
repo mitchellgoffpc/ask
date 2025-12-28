@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from ask.models.base import Blob, Text, Image, PDF
+from ask.messages import Blob, Text, Image, PDF
 from ask.prompts import load_tool_prompt
 from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 

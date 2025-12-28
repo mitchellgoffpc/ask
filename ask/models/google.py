@@ -3,7 +3,8 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from ask.models.base import API, Model, Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage, get_message_groups
+from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
+from ask.models.base import API, Model, get_message_groups
 from ask.tools.base import Tool
 
 class GoogleAPI(API):

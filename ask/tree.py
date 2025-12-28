@@ -5,8 +5,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, get_args
 
-from ask.tools import TOOLS, ToolCallStatus
-from ask.models import MODELS_BY_NAME, Model, Message, Role, Content, ToolRequest
+from ask.messages import ToolCallStatus, Message, Role, Content, ToolRequest
+from ask.models import MODELS_BY_NAME, Model
+from ask.tools import TOOLS
 from ask.ui.core.components import dirty
 
 class MessageEncoder(json.JSONEncoder):

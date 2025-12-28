@@ -1,6 +1,6 @@
 import unittest
 
-from ask.models.base import Text
+from ask.messages import Text
 from ask.tools.python import PythonTool
 from ask.tools.base import ToolError
 

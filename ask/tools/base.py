@@ -3,7 +3,7 @@ from enum import Enum, member, nonmember
 from pathlib import Path
 from typing import Any, Callable, ClassVar, Coroutine, Union
 
-from ask.models.base import Blob
+from ask.messages import Blob
 
 
 # Parameter definitions
@@ -37,12 +37,6 @@ class Parameter:
 
 
 # Tool base class
-
-class ToolCallStatus(Enum):
-    PENDING = 'pending'
-    FAILED = 'failed'
-    CANCELLED = 'cancelled'
-    COMPLETED = 'completed'
 
 class ToolError(Exception): ...
 

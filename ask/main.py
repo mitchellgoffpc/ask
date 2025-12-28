@@ -6,12 +6,13 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-from ask.models import MODELS, MODEL_SHORTCUTS, Message, Text
+from ask.commands import FilesCommand, DocsCommand
+from ask.messages import Message, Text
+from ask.models import MODELS, MODEL_SHORTCUTS
 from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS, Tool
 from ask.tools.read import read_file
 from ask.ui.app import App
-from ask.commands import FilesCommand, DocsCommand
 from ask.ui.config import CONFIG_DIR, Config
 from ask.ui.core.render import render_root
 

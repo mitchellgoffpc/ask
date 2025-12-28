@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ask.models.base import Text
+from ask.messages import Text
 from ask.tools.write import WriteTool
 
 class TestWriteTool(unittest.IsolatedAsyncioTestCase):

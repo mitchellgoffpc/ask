@@ -3,10 +3,9 @@ from asyncio import Task
 from dataclasses import dataclass, replace
 from uuid import UUID
 
-from ask.models import Message, Text, Command
+from ask.messages import Message, Text, Command, ToolCallStatus
 from ask.prompts import COMMAND_CAVEAT_MESSAGE
 from ask.shells import PYTHON_SHELL
-from ask.tools import ToolCallStatus
 from ask.tree import MessageTree
 
 @dataclass

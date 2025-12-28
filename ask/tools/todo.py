@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from ask.models.base import Blob, Text
+from ask.messages import Blob, Text
 from ask.prompts import load_tool_prompt
 from ask.tools.base import Tool, Parameter, ParameterType
 

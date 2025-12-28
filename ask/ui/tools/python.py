@@ -1,7 +1,7 @@
 from typing import ClassVar
 from dataclasses import dataclass
 
-from ask.models import Text as TextContent
+from ask.messages import Text as TextContent
 from ask.ui.core.components import Component, Text, Box
 from ask.ui.core.markdown_ import highlight_code
 from ask.ui.core.styles import Colors, Flex, Theme

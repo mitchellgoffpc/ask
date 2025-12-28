@@ -2,10 +2,10 @@ from __future__ import annotations
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Literal, TYPE_CHECKING
+from typing import Any, AsyncIterator
 
-if TYPE_CHECKING:
-    from ask.tools.base import Tool, ToolCallStatus
+from ask.messages import Message, Role, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
+from ask.tools.base import Tool
 
 TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not support this behavior. The image will be attached manually by the user instead."
 
@@ -25,77 +25,6 @@ def get_message_groups(messages: list[Message]) -> list[tuple[Role, list[Content
             current_role = message.role
             current_group = [message.content]
     return groups + [(current_role, current_group)]
-
-
-# Content classes
-
-@dataclass
-class Text:
-    text: str
-
-@dataclass
-class Image:
-    mimetype: str
-    data: bytes
-
-@dataclass
-class PDF:
-    name: str
-    data: bytes
-
-@dataclass
-class Reasoning:
-    data: str
-    summary: str | None = None
-    encrypted: bool = False
-
-@dataclass
-class ToolRequest:
-    call_id: str
-    tool: str
-    arguments: dict[str, str]
-    processed_arguments: dict[str, Any] | None = None
-
-@dataclass
-class ToolResponse:
-    call_id: str
-    tool: str
-    response: Blob
-    status: ToolCallStatus
-
-@dataclass
-class Command(metaclass=ABCMeta):
-    command: str
-
-    @abstractmethod
-    def messages(self) -> list[Message]: ...
-
-    def render_command(self) -> str:
-        return self.command
-
-@dataclass
-class Usage:
-    input: int
-    cache_write: int
-    cache_read: int
-    output: int
-    model: Model | None = None
-
-@dataclass
-class Error:
-    text: str
-
-
-# Message class
-
-Role = Literal['user', 'assistant']
-Blob = Text | Image | PDF
-Content = Blob | Reasoning | ToolRequest | ToolResponse | Command | Usage | Error
-
-@dataclass
-class Message:
-    role: Role
-    content: Content
 
 
 # Model / API classes

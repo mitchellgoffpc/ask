@@ -4,9 +4,10 @@ import os
 from dataclasses import replace
 from typing import AsyncIterator
 
-from ask.tools import Tool
-from ask.models import Model, Message, Content, Text, Command, Usage
+from ask.messages import Message, Content, Text, Command, Usage
+from ask.models import Model
 from ask.models.tool_helpers import parse_tool_block
+from ask.tools import Tool
 
 AsyncContentIterator = AsyncIterator[tuple[str, Content | None]]
 
@@ -59,7 +60,7 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
 async def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool = True) -> AsyncContentIterator:
     async for chunk, content in _query(model, messages, tools, system_prompt, stream):
         if isinstance(content, Usage):
-            yield chunk, replace(content, model=model)
+            yield chunk, replace(content, model=model.name)
         elif isinstance(content, Text) and not model.supports_tools:
             yield chunk, None
             for item in parse_tool_block(content):

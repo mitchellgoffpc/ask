@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from ask.models.base import Text
+from ask.messages import Text
 from ask.tools.grep import GrepTool
 
 class TestGrepTool(unittest.IsolatedAsyncioTestCase):

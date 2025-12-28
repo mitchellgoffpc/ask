@@ -6,9 +6,9 @@ from uuid import UUID, uuid4
 
 from ask.commands.bash import BashCommand
 from ask.commands.python import PythonCommand
+from ask.messages import ToolCallStatus, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
+from ask.models import MODELS_BY_NAME, Model
 from ask.prompts import COMMAND_CAVEAT_MESSAGE, load_prompt_file, get_relative_path
-from ask.models import MODELS_BY_NAME, Model, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
-from ask.tools import ToolCallStatus
 from ask.tree import MessageTree, MessageEncoder, message_decoder
 
 @dataclass
@@ -116,7 +116,7 @@ def get_usage(messages: dict[UUID, Message], total_duration_api: float, total_du
     usages_by_model = defaultdict(list)
     for msg in messages.values():
         if isinstance(msg.content, Usage) and msg.content.model:
-            usages_by_model[msg.content.model.name].append(msg.content)
+            usages_by_model[msg.content.model].append(msg.content)
 
     total_cost = 0.
     rows: list[tuple[str, str]] = []

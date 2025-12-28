@@ -1,9 +1,8 @@
 from typing import Any, ClassVar
 from dataclasses import dataclass
 
-from ask.models import Text as TextContent
+from ask.messages import Text as TextContent, ToolCallStatus
 from ask.prompts import get_relative_path
-from ask.tools import ToolCallStatus
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.diff import Diff
 from ask.ui.core.styles import Styles, Colors, Theme, Flex

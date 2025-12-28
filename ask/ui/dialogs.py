@@ -3,7 +3,7 @@ from functools import partial
 from dataclasses import dataclass
 from typing import ClassVar
 
-from ask.models import ToolRequest
+from ask.messages import ToolRequest
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
 from ask.ui.core.components import Box, Component, Controller, Text, Widget
 from ask.ui.core.styles import Colors, Theme

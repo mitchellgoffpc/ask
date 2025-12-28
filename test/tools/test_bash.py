@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 
-from ask.models.base import Text
+from ask.messages import Text
 from ask.tools.base import ToolError
 from ask.tools.bash import BashTool
 
