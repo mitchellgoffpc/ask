@@ -10,11 +10,11 @@ from typing import ClassVar
 
 from ask.commands import BashCommand, FilesCommand, InitCommand, PythonCommand, SlashCommand
 from ask.commands import load_messages, save_messages, switch_model, get_usage
-from ask.messages import MessageTree
 from ask.models import Model, Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error
 from ask.query import query
 from ask.tools import TOOLS, Tool, ToolCallStatus, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
+from ask.tree import MessageTree
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
