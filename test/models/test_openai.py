@@ -20,6 +20,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
 
         messages = [
             Message('user', Text('Hello')),
+            Message('assistant', Reasoning(data='i should say hi', encrypted=True)),
             Message('assistant', Text('Hi')),
             Message('assistant', ToolRequest('call_1', 'test_tool', {'arg': 'value'})),
             Message('user', ToolResponse('call_1', 'test_tool', Text('result'), ToolCallStatus.COMPLETED)),
@@ -30,6 +31,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         expected_input = [
             {'role': 'system', 'content': 'System prompt'},
             {'role': 'user', 'content': [{'type': 'input_text', 'text': 'Hello'}]},
+            {'type': 'reasoning', 'encrypted_content': 'i should say hi', 'summary': []},
             {'type': 'function_call', 'call_id': 'call_1', 'name': 'test_tool', 'arguments': json.dumps({'arg': 'value'})},
             {'role': 'assistant', 'content': [{'type': 'output_text', 'text': 'Hi'}]},
             {'type': 'function_call_output', 'call_id': 'call_1', 'output': [{'type': 'input_text', 'text': 'result'}]},
@@ -67,8 +69,9 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         chunks = [
             {"type": "response.output_text.delta", "output_index": 0, "delta": "Hello"},
             {"type": "response.output_text.delta", "output_index": 0, "delta": " world"},
-            {"type": "response.output_item.added", "output_index": 1, "item": {"type": "function_call", "name": "tool", "call_id": "c1", "arguments": ""}},
-            {"type": "response.function_call_arguments.delta", "output_index": 1, "delta": "{\"foo\": \"bar\"}"},
+            {"type": "response.output_item.done", "output_index": 1, "item": {"type": "reasoning", "encrypted_content": "encrypted_reasoning"}},
+            {"type": "response.output_item.added", "output_index": 2, "item": {"type": "function_call", "name": "tool", "call_id": "c1", "arguments": ""}},
+            {"type": "response.function_call_arguments.delta", "output_index": 2, "delta": "{\"foo\": \"bar\"}"},
             {"type": "response.done", "response": {"usage": {"input_tokens": 10, "input_tokens_details": {"cached_tokens": 0}, "output_tokens": 5}}},
         ]
 
@@ -76,6 +79,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
             ('Hello', None),
             (' world', None),
             ('', Text('Hello world')),
+            ('', Reasoning(data='encrypted_reasoning', summary=None, encrypted=True)),
             ('', ToolRequest(call_id='c1', tool='tool', arguments={'foo': 'bar'})),
             ('', Usage(input=10, cache_read=0, cache_write=0, output=5)),
         ]
