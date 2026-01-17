@@ -54,11 +54,10 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
             if r.status != 200:
                 try:
                     response_json = await r.json()
-                    print(json.dumps(response_json, indent=2))
+                    response_text = json.dumps(response_json, indent=2)
                 except aiohttp.ContentTypeError:
                     response_text = await r.text()
-                    print(response_text)
-                raise RuntimeError("Invalid response from API")
+                raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}")
 
             if stream:
                 async for delta, content in api.decode(line.decode('utf-8') async for line in r.content):
@@ -68,10 +67,9 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
                     response_json = await r.json()
                     for item in api.result(response_json):
                         yield '', item
-                except aiohttp.ContentTypeError as e:
+                except aiohttp.ContentTypeError:
                     response_text = await r.text()
-                    print(response_text)
-                    raise RuntimeError("Invalid response from API") from e
+                    raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}") from None
 
 async def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool = True) -> AsyncContentIterator:
     async for chunk, content in _query(model, messages, tools, system_prompt, stream):
