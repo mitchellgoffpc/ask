@@ -70,8 +70,7 @@ class LegacyOpenAIAPI(API):
     def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
         if not model.supports_tools:
             system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
-        system_msgs = self.render_system_prompt('You are a helpful assistant.', model)
-        messages = [Message(role='user', content=Text(system_prompt)), Message(role='assistant', content=Text("Understood.")), *messages]
+        system_msgs = self.render_system_prompt(system_prompt, model)
         chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
         msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": 1.0, 'stream': model.stream}
         tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
@@ -81,7 +80,7 @@ class LegacyOpenAIAPI(API):
         result: list[Content] = []
         for item in response['choices']:
             if item['message'].get('reasoning'):
-                result.append(Reasoning(data=item['message']['reasoning'], encrypted=False))
+                result.append(Reasoning(data=item['message']['reasoning'], encrypted=True))
             if item['message'].get('content'):
                 result.append(Text(text=item['message']['content']))
             for call in item['message'].get('tool_calls') or []:

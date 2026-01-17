@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.base import Model
 from ask.models.openai import OpenAIAPI
-from test.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, create_mock_tool, to_async
+from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, create_mock_tool, to_async
 
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -33,8 +33,8 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     def test_result(self):
         response = {
             'output': [
-                {'type': 'message', 'content': [{'type': 'output_text', 'text': 'Hello world'}]},
                 {'type': 'reasoning', 'encrypted_content': 'encrypted'},
+                {'type': 'message', 'content': [{'type': 'output_text', 'text': 'Hello world'}]},
                 {'type': 'function_call', 'call_id': 'c1', 'name': 'tool', 'arguments': '{"foo": "bar"}'}],
             'usage': {'input_tokens': 100, 'input_tokens_details': {'cached_tokens': 20}, 'output_tokens': 50}}
 
@@ -44,9 +44,9 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
 
     async def test_decode(self):
         chunks = [
-            {"type": "response.output_text.delta", "output_index": 0, "delta": "Hello"},
-            {"type": "response.output_text.delta", "output_index": 0, "delta": " world"},
-            {"type": "response.output_item.done", "output_index": 1, "item": {"type": "reasoning", "encrypted_content": "encrypted", "summary": []}},
+            {"type": "response.output_item.done", "output_index": 0, "item": {"type": "reasoning", "encrypted_content": "encrypted", "summary": []}},
+            {"type": "response.output_text.delta", "output_index": 1, "delta": "Hello"},
+            {"type": "response.output_text.delta", "output_index": 1, "delta": " world"},
             {"type": "response.output_item.added", "output_index": 2, "item": {"type": "function_call", "name": "tool", "call_id": "c1", "arguments": ""}},
             {"type": "response.function_call_arguments.delta", "output_index": 2, "delta": "{\"foo\": \"bar\"}"},
             {"type": "response.done", "response": {"usage": {"input_tokens": 100, "input_tokens_details": {"cached_tokens": 20}, "output_tokens": 50}}}]

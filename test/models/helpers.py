@@ -9,20 +9,18 @@ INPUT_MESSAGES = [
     Message('assistant', Text('Hi')),
     Message('assistant', ToolRequest('call_1', 'test_tool', {'arg': 'value'})),
     Message('user', ToolResponse('call_1', 'test_tool', Text('result'), ToolCallStatus.COMPLETED)),
-    Message('user', Image('image/png', b'fakeimagedata')),
-]
+    Message('user', Image('image/png', b'fakeimagedata'))]
 
 RESULT_OUTPUT = [
-    Text(text='Hello world'),
     Reasoning(data='encrypted', encrypted=True),
+    Text(text='Hello world'),
     ToolRequest(call_id='c1', tool='tool', arguments={'foo': 'bar'}),
-    Usage(input=100, cache_read=20, cache_write=0, output=50),
-]
+    Usage(input=100, cache_read=20, cache_write=0, output=50)]
 
-DECODE_OUTPUT = [
-    ('Hello', None),
-    (' world', None),
-] + [('', x) for x in RESULT_OUTPUT]
+DECODE_OUTPUT = (
+    [('', x) for x in RESULT_OUTPUT[:1]] +
+    [('Hello', None), (' world', None)] +
+    [('', x) for x in RESULT_OUTPUT[1:]])
 
 
 def create_mock_tool(name='test_tool', description='A test tool'):

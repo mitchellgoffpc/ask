@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.base import Model
 from ask.models.anthropic import AnthropicAPI
-from test.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, create_mock_tool, to_async
+from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, create_mock_tool, to_async
 
 class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -35,8 +35,8 @@ class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
     def test_result(self):
         response = {
             'content': [
-                {'type': 'text', 'text': 'Hello world'},
                 {'type': 'thinking', 'signature': 'encrypted', 'thinking': ''},
+                {'type': 'text', 'text': 'Hello world'},
                 {'type': 'tool_use', 'id': 'c1', 'name': 'tool', 'input': {'foo': 'bar'}}],
             'usage': {'input_tokens': 100, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 20, 'output_tokens': 50}}
 
@@ -46,9 +46,9 @@ class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
 
     async def test_decode(self):
         chunks = [
-            {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hello"}},
-            {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": " world"}},
-            {"type": "content_block_delta", "index": 1, "delta": {"type": "signature_delta", "signature": "encrypted"}},
+            {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "encrypted"}},
+            {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Hello"}},
+            {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " world"}},
             {"type": "content_block_start", "index": 2, "content_block": {"type": "tool_use", "id": "c1", "name": "tool", "input": ""}},
             {"type": "content_block_delta", "index": 2, "delta": {"type": "input_json_delta", "partial_json": "{\"foo\": \"bar\"}"}},
             {"type": "message_delta", "usage": {"input_tokens": 100, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 20, "output_tokens": 50}}]

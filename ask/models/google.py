@@ -67,8 +67,8 @@ class GoogleAPI(API):
         parts = line['candidates'][0]['content']['parts']
         assert len(parts) == 1, "Expected exactly one part"
         if 'text' in parts[0]:
-            return '', '', parts[0]['text'], None
+            return '0', '', parts[0]['text'], None
         elif 'functionCall' in parts[0]:
-            return '0', f"{parts[0]['functionCall']['name']}:{uuid4()}", json.dumps(parts[0]['functionCall']['args']), None
+            return str(uuid4()), f"{parts[0]['functionCall']['name']}:{uuid4()}", json.dumps(parts[0]['functionCall']['args']), None
         else:
             raise ValueError(f"Unexpected content part: {parts[0]}")
