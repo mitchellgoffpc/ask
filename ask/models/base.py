@@ -124,7 +124,8 @@ class API(metaclass=ABCMeta):
         async for chunk in chunks:
             idx, tool, data, usage = self.decode_chunk(chunk)
             if idx and idx != current_idx:
-                yield self.flush_content(current_idx, idx, current_tool, ''.join(current_data))
+                if current_idx:
+                    yield self.flush_content(current_idx, idx, current_tool, ''.join(current_data))
                 current_idx, current_tool, current_data = idx, '', []
             current_usage = usage or current_usage
             current_tool = tool or current_tool
