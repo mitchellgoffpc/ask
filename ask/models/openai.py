@@ -21,7 +21,7 @@ class OpenAIAPI(API):
         return {'type': 'input_file', 'filename': pdf.name, 'file_data': f'data:application/pdf;base64,{base64.b64encode(pdf.data).decode()}'}
 
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]:
-        return {'type': 'reasoning', 'encrypted_content': reasoning.data, 'summary': []}
+        return {'type': 'reasoning', 'encrypted_content': reasoning.data, 'summary': [reasoning.summary] if reasoning.summary else []}
 
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
         return {'type': 'function_call', 'call_id': request.call_id, 'name': request.tool, 'arguments': json.dumps(request.arguments)}

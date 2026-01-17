@@ -77,7 +77,7 @@ class AnthropicAPI(API):
             elif line['delta']['type'] == 'text_delta':
                 return str(line['index']), '', line['delta']['text'], usage
             elif line['delta']['type'] == 'thinking_delta':
-                return str(line['index']), '/reasoning:encrypted', line['delta']['thinking'], usage
+                return str(line['index']), '/reasoning:encrypted', line['delta']['thinking'] + '\x00', usage
             elif line['delta']['type'] == 'signature_delta':
                 return str(line['index']), '/reasoning:encrypted', '\x00' + line['delta']['signature'], usage
         return '', '', '', usage

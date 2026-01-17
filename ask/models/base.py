@@ -142,7 +142,7 @@ class API(metaclass=ABCMeta):
     def flush_content(self, current_idx: str, next_idx: str, tool: str, data: str) -> tuple[str, Content | None]:
         if tool.startswith('/reasoning'):
             _, *tags = tool.split(':')
-            summary = None
+            summary = ''
             if '\x00' in data:
                 summary, data = data.split('\x00', 1)
             return '', Reasoning(data=data, summary=summary, encrypted='encrypted' in tags)

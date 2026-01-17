@@ -27,7 +27,7 @@ class PDF:
 @dataclass
 class Reasoning:
     data: str
-    summary: str | None = None
+    summary: str = ''
     encrypted: bool = False
 
 @dataclass
