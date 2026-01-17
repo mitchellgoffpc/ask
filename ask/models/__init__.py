@@ -26,11 +26,9 @@ MODELS = [
     Model(name='o3-pro', api=APIS['openai'], pricing=Pricing(20.00, 20.00, 20.00, 80.00), shortcuts=['o3p']),
     Model(name='o4-mini', api=APIS['openai'], pricing=Pricing(1.10, 1.10, 0.275, 4.40), shortcuts=['o4m']),
     # Anthropic
-    Model(name='claude-3-5-haiku-latest',  api=APIS['anthropic'], pricing=Pricing(0.80, 1.00, 0.08, 4.00), shortcuts=['haiku', 'h'], supports_reasoning=False),
-    Model(name='claude-3-7-sonnet-latest', api=APIS['anthropic'], pricing=Pricing(3.00, 3.75, 0.30, 15.00), shortcuts=['sonnet37', 's37']),
-    Model(name='claude-sonnet-4-20250514', api=APIS['anthropic'], pricing=Pricing(3.00, 3.75, 0.30, 15.00), shortcuts=['sonnet', 's', 'claude', 'c']),
-    Model(name='claude-sonnet-4-5-20250929', api=APIS['anthropic'], pricing=Pricing(3.00, 3.75, 0.30, 15.00), shortcuts=['sonnet45', 's45']),
-    Model(name='claude-opus-4-1-20250805', api=APIS['anthropic'], pricing=Pricing(15.00, 18.75, 1.50, 75.00), shortcuts=['opus', 'o']),
+    Model(name='claude-haiku-4-5',  api=APIS['anthropic'], pricing=Pricing(1.0, 1.25, 0.10, 5.0), shortcuts=['haiku', 'h'], supports_reasoning=False),
+    Model(name='claude-sonnet-4-5', api=APIS['anthropic'], pricing=Pricing(3.00, 3.75, 0.30, 15.00), shortcuts=['sonnet', 's']),
+    Model(name='claude-opus-4-5', api=APIS['anthropic'], pricing=Pricing(5.00, 6.25, 0.50, 25.00), shortcuts=['opus', 'o']),
     # Google
     Model(name='gemini-2.0-flash', api=APIS['google'], shortcuts=['gemini2', 'g2'], stream=False, supports_reasoning=False),
     Model(name='gemini-2.5-flash', api=APIS['google'], shortcuts=['gemini25', 'g25', 'gemini', 'g'], supports_reasoning=False),
