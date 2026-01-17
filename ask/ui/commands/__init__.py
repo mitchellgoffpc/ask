@@ -1,5 +1,5 @@
 from ask.commands import PythonCommand, BashCommand, SlashCommand
-from ask.messages import Text as TextContent, ToolRequest, ToolResponse, Error, ToolCallStatus
+from ask.messages import Text as TextContent, CheckedToolRequest, ToolResponse, Error, ToolCallStatus
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.markdown_ import render_markdown
 from ask.ui.core.styles import Flex, Colors, Theme
@@ -47,7 +47,7 @@ def ErrorMessage(error: Error) -> Component:
         Text(Colors.hex(error.text, Theme.RED))
     ]
 
-def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expanded: bool) -> Component:
+def ToolCallMessage(request: CheckedToolRequest, response: ToolResponse | None, expanded: bool) -> Component:
     return Box(margin={'top': 1})[
         TOOL_COMPONENTS[request.tool](request, response, expanded)
     ]

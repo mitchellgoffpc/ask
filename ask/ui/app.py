@@ -3,33 +3,27 @@ import asyncio
 import re
 import sys
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID, uuid4
 from typing import ClassVar
 
 from ask.commands import BashCommand, FilesCommand, InitCommand, PythonCommand, SlashCommand
 from ask.commands import load_messages, save_messages, switch_model, get_usage
-from ask.messages import Message, Text as TextContent, Reasoning, ToolRequest, ToolResponse, Error, ToolCallStatus
+from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.models import Model
-from ask.query import query
-from ask.tools import TOOLS, Tool, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
+from ask.query import query_agent
+from ask.tools import Tool, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tools.read import read_file
 from ask.tree import MessageTree
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
-from ask.ui.commands import \
-    ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
+from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.config import Config, History
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 from ask.ui.tools.todo import ToDos
-
-TOOL_REJECTED_MESSAGE = (
-    "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
-    "the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.")
-
 
 @dataclass
 class App(Widget):
@@ -40,14 +34,14 @@ class App(Widget):
     system_prompt: str
 
 class AppController(Controller[App]):
-    state = ['expanded', 'exiting', 'show_todos', 'pending', 'elapsed', 'approvals', 'autoapprovals', 'messages', 'model']
+    state = ['expanded', 'exiting', 'show_todos', 'loading', 'elapsed', 'approvals', 'approved_tools', 'messages', 'model']
     expanded = False
     exiting = False
     show_todos = False
-    pending = 0
+    loading = False
     elapsed = 0.0
-    approvals: dict[UUID, asyncio.Future] = {}
-    autoapprovals: set[str] = set()
+    pending_approvals: dict[str, tuple[CheckedToolRequest, asyncio.Future]] = {}
+    approved_tools: set[str] = set()
 
     def __init__(self, props: App) -> None:
         super().__init__(props)
@@ -78,65 +72,50 @@ class AppController(Controller[App]):
         await asyncio.gather(*tasks)
         ticker.cancel()
 
+    async def approve(self, request: CheckedToolRequest) -> bool:
+        approval_tools = {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name}
+        if request.tool not in approval_tools or request.tool in self.approved_tools:
+            return True
+        future = asyncio.get_running_loop().create_future()
+        self.pending_approvals = self.pending_approvals | {request.call_id: (request, future)}
+        try:
+            self.approved_tools = self.approved_tools | await future
+            return True
+        except asyncio.CancelledError:
+            return False
+        finally:
+            self.pending_approvals = {k: v for k, v in self.pending_approvals.items() if k != request.call_id}
+
     async def query(self) -> None:
-        self.pending += 1
-        original_head = self.head
+        self.loading = True
         text_uuid: UUID = uuid4()
         text = ''
         start_time = time.monotonic()
+
         try:
-            async for delta, content in query(self.model, self.messages.values(self.head), self.props.tools, self.props.system_prompt):
+            async for delta, msg in query_agent(self.model, self.messages.values(self.head), self.props.tools, self.approve, self.props.system_prompt):
                 text = text + delta
-                if text_uuid not in self.messages.messages and (text or isinstance(content, TextContent)):  # create text content
+                if text and text_uuid not in self.messages.messages:
                     self.head = self.messages.add('assistant', self.head, TextContent(''), uuid=text_uuid)
-                if text:  # update streaming text content
+                elif text:
                     self.messages.update(text_uuid, TextContent(text))
-                if isinstance(content, TextContent):  # update final text content
-                    self.messages.update(text_uuid, content)
-                elif content:  # create non-text content
-                    self.head = self.messages.add('assistant', self.head, content)
+
+                if msg and msg.role == 'user':
+                    self.head = self.messages.add('user', self.head, msg.content)
+                if msg and msg.role == 'assistant':
+                    content = msg.content
+                    if isinstance(content, TextContent):
+                        self.messages.update(text_uuid, content)
+                        text = ''
+                    else:
+                        self.head = self.messages.add('assistant', self.head, content)
         except asyncio.CancelledError:
             self.head = self.messages.add('user', self.head, Error("Request interrupted by user"))
         except Exception as e:
             self.head = self.messages.add('user', self.head, Error(str(e)))
 
-        contents = {k: v.content for k, v in self.messages.items(self.head)[len(self.messages.keys(original_head)):]}  # new contents only
         self.query_time += time.monotonic() - start_time
-        try:
-            tool_requests = {uuid: req for uuid, req in contents.items() if isinstance(req, ToolRequest)}
-            if tool_requests:
-                tasks = [asyncio.create_task(self.tool_call(req_uuid)) for req_uuid in tool_requests.keys()]
-                await asyncio.gather(*tasks)
-                await self.query()
-            elif any(isinstance(c, Reasoning) for c in contents.values()) and not any(isinstance(c, TextContent) for c in contents.values()):
-                await self.query()
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self.pending -= 1
-
-    async def tool_call(self, request_uuid: UUID) -> None:
-        request = self.messages[request_uuid].content
-        assert isinstance(request, ToolRequest)
-        try:
-            tool = TOOLS[request.tool]
-            args = tool.check(request.arguments)
-            self.messages.update(request_uuid, replace(request, processed_arguments=args))
-            if tool.name in {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name} - self.autoapprovals:
-                self.approvals = self.approvals | {request_uuid: asyncio.get_running_loop().create_future()}
-                try:
-                    self.autoapprovals = self.autoapprovals | await self.approvals[request_uuid]
-                finally:
-                    self.approvals = {k:v for k,v in self.approvals.items() if k != request_uuid}
-            output = await tool.run(**args)
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=ToolCallStatus.COMPLETED)
-        except asyncio.CancelledError:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(TOOL_REJECTED_MESSAGE), status=ToolCallStatus.CANCELLED)
-            raise
-        except Exception as e:
-            response = ToolResponse(call_id=request.call_id, tool=request.tool, response=TextContent(str(e)), status=ToolCallStatus.FAILED)
-        finally:
-            self.head = self.messages.add('user', self.head, response)
+        self.loading = False
 
     def handle_mount(self) -> None:
         messages = self.messages.values(self.head)
@@ -158,12 +137,12 @@ class AppController(Controller[App]):
             self.expanded = not self.expanded
         elif ch == '\x14':  # Ctrl+T
             self.show_todos = not self.show_todos
-        elif ch == '\x1b[Z' and not self.approvals:  # Shift+Tab
-            if EDIT_TOOLS & self.autoapprovals:
-                self.autoapprovals = self.autoapprovals - EDIT_TOOLS
+        elif ch == '\x1b[Z' and not self.pending_approvals:  # Shift+Tab
+            if EDIT_TOOLS & self.approved_tools:
+                self.approved_tools = self.approved_tools - EDIT_TOOLS
             else:
-                self.autoapprovals = self.autoapprovals | EDIT_TOOLS
-        elif ch == '\x1b' and not self.approvals:  # Escape key
+                self.approved_tools = self.approved_tools | EDIT_TOOLS
+        elif ch == '\x1b' and not self.pending_approvals:  # Escape key
             for task in self.tasks:
                 if not task.done():
                     task.cancel()
@@ -211,12 +190,9 @@ class AppController(Controller[App]):
         if self.exiting:
             wall_time = time.monotonic() - self.start_time
             return Text(Colors.hex(get_usage(dict(self.messages.items(self.head)), self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
-        elif approval_uuid := next(iter(self.approvals.keys()), None):
-            tool_call = self.messages[approval_uuid].content
-            assert isinstance(tool_call, ToolRequest)
-            return ApprovalDialog(
-                tool_call=tool_call,
-                future=self.approvals[approval_uuid])
+        elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
+            tool_call, future = self.pending_approvals[tool_call_id]
+            return ApprovalDialog(tool_call=tool_call, future=future)
         elif self.expanded:
             return Box(width=1.0, margin={'top': 1}, border=['top'])[
                 Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
@@ -225,12 +201,12 @@ class AppController(Controller[App]):
             return PromptTextBox(
                 model=self.model,
                 history=list(self.history),
-                autoapprovals=self.autoapprovals,
+                approved_tools=self.approved_tools,
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
 
     def contents(self) -> list[Component | None]:
-        tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolRequest)}
+        tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, CheckedToolRequest)}
         tool_responses = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolResponse)}
         if latest_todos := next((c.processed_arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
             if not any(todo['status'] in ['pending', 'in_progress'] for todo in latest_todos['todos']):
@@ -251,7 +227,7 @@ class AppController(Controller[App]):
                     messages.append(SlashCommandMessage(command=msg.content))
                 case ('assistant', TextContent()):
                     messages.append(ResponseMessage(text=msg.content))
-                case ('assistant', ToolRequest()):
+                case ('assistant', CheckedToolRequest()):
                     if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
                         response = tool_responses.get(msg.content.call_id)
                         messages.append(ToolCallMessage(request=msg.content, response=response, expanded=self.expanded))
@@ -262,11 +238,11 @@ class AppController(Controller[App]):
             Box()[*messages],
             Box()[
                 Spinner(todos=latest_todos, expanded=self.show_todos)
-                    if self.pending and not self.approvals else None,
+                    if self.loading and not self.pending_approvals else None,
                 Box(margin={'top': 1})[
                     Text(Colors.hex("To Do", Theme.GRAY)),
                     ToDos(latest_todos, expanded=True)
-                ] if latest_todos and self.show_todos and not self.approvals else None,
+                ] if latest_todos and self.show_todos and not self.pending_approvals else None,
             ],
             self.textbox(),
         ]

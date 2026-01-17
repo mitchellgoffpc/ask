@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, get_args
 
-from ask.messages import ToolCallStatus, Message, Role, Content, ToolRequest
+from ask.messages import ToolCallStatus, Message, Role, Content, CheckedToolRequest
 from ask.tools import TOOLS
 from ask.ui.core.components import dirty
 
@@ -21,27 +21,26 @@ class MessageEncoder(json.JSONEncoder):
         elif isinstance(obj, Content):
             data = obj.__dict__.copy()
             data['__type__'] = obj.__class__.__name__
-            if isinstance(obj, ToolRequest) and obj.tool in ('Grep', 'PythonShell'):
-                data.pop('processed_arguments', None)
+            if isinstance(obj, CheckedToolRequest) and obj.tool in ('Grep', 'PythonShell'):
+                del data['processed_arguments']
             return data
         elif isinstance(obj, ToolCallStatus):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
         return super().default(obj)
 
 def message_decoder(obj):
+    content_types = {cls.__name__: cls for cls in (*get_args(Content), CheckedToolRequest)}
     if isinstance(obj, dict) and obj.get('__type__') == 'bytes':
         return base64.b64decode(obj['data'])
     if isinstance(obj, dict) and obj.get('__type__') == 'Path':
         return Path(obj['path'])
     elif isinstance(obj, dict) and obj.get('__type__') == 'UUID':
         return UUID(obj['uuid'])
-    elif isinstance(obj, dict) and obj.get('__type__') in [cls.__name__ for cls in get_args(Content)]:
+    elif isinstance(obj, dict) and obj.get('__type__') in content_types:
         type_name = obj.pop('__type__')
-        content_types = {cls.__name__: cls for cls in get_args(Content)}
-        content = content_types[type_name](**obj)
-        if isinstance(content, ToolRequest) and content.tool in ('Grep', 'PythonShell'):
-            content.processed_arguments = TOOLS[content.tool].check(content.arguments)
-        return content
+        if content_types[type_name] is CheckedToolRequest and 'processed_arguments' not in obj:
+            obj['processed_arguments'] = TOOLS[obj['tool']].check(obj['arguments'])
+        return content_types[type_name](**obj)
     elif isinstance(obj, dict) and obj.get('__type__') == 'ToolCallStatus':
         return ToolCallStatus(obj['value'])
     return obj

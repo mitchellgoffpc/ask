@@ -28,11 +28,11 @@ def OptionsList(options: dict[str, str | None], selected_idx: int) -> Box:
 def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> Component:
 
     components = {
-        BashTool.name: partial(SelectionDialog, autoapprovals={BashTool.name}, options=get_formatted_options('bash commands')),
-        EditTool.name: partial(SelectionDialog, autoapprovals=EDIT_TOOLS, options=get_formatted_options('edits')),
-        MultiEditTool.name: partial(SelectionDialog, autoapprovals=EDIT_TOOLS, options=get_formatted_options('edits')),
-        PythonTool.name: partial(SelectionDialog, autoapprovals={PythonTool.name}, options=get_formatted_options('Python commands')),
-        WriteTool.name: partial(SelectionDialog, autoapprovals=EDIT_TOOLS, options=get_formatted_options('edits'))}
+        BashTool.name: partial(SelectionDialog, approved_tools={BashTool.name}, options=get_formatted_options('bash commands')),
+        EditTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits')),
+        MultiEditTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits')),
+        PythonTool.name: partial(SelectionDialog, approved_tools={PythonTool.name}, options=get_formatted_options('Python commands')),
+        WriteTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits'))}
     return Box(margin={'top': 1})[
         components[tool_call.tool](tool_call=tool_call, future=future)
     ]
@@ -43,7 +43,7 @@ class SelectionDialog(Widget):
     __controller__: ClassVar = lambda _: SelectionDialogController
     tool_call: ToolRequest
     future: asyncio.Future
-    autoapprovals: set[str]
+    approved_tools: set[str]
     options: dict[str, str | None]
 
 class SelectionDialogController(Controller[SelectionDialog]):
@@ -61,12 +61,12 @@ class SelectionDialogController(Controller[SelectionDialog]):
         elif ch == '\x1b':  # Escape key
             self.props.future.cancel()
         elif ch == '\x1b[Z':  # Shift+Tab
-            self.props.future.set_result(self.props.autoapprovals)
+            self.props.future.set_result(self.props.approved_tools)
         elif ch == '\r':  # Enter key
             if selected_idx == 0:  # 'Yes' option
                 self.props.future.set_result(set())
             elif selected_idx == 1:  # 'Yes, and always allow' option
-                self.props.future.set_result(self.props.autoapprovals)
+                self.props.future.set_result(self.props.approved_tools)
             else:  # 'No' option
                 self.props.future.cancel()
 

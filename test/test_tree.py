@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from ask.messages import Message, Text, Image, PDF, ToolRequest, ToolResponse, ToolCallStatus
+from ask.messages import Message, Text, Image, PDF, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus
 from ask.tools import TOOL_LIST
 from ask.tree import MessageTree, MessageEncoder, message_decoder
 
@@ -77,7 +77,7 @@ class TestEncoderDecoder(unittest.TestCase):
             for tool in TOOL_LIST:
                 with self.subTest(tool=tool.name):
                     args = dummy_args[tool.name]
-                    request = ToolRequest(call_id='call_123', tool=tool.name, arguments=args, processed_arguments=tool.check(args))
+                    request = CheckedToolRequest(call_id='call_123', tool=tool.name, arguments=args, processed_arguments=tool.check(args))
                     encoded = json.dumps(request, cls=MessageEncoder)
                     decoded = json.loads(encoded, object_hook=message_decoder)
 

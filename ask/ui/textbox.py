@@ -63,7 +63,7 @@ class PromptTextBox(Widget):
     __controller__: ClassVar = lambda _: PromptTextBoxController
     model: Model
     history: list[str]
-    autoapprovals: set[str]
+    approved_tools: set[str]
     handle_submit: Callable[[str], bool]
     handle_exit: Callable[[], None]
 
@@ -114,7 +114,7 @@ class PromptTextBoxController(Controller):
             return []
 
     def get_shortcuts_text(self) -> str:
-        if self.mode == Mode.TEXT and EDIT_TOOLS & self.props.autoapprovals:
+        if self.mode == Mode.TEXT and EDIT_TOOLS & self.props.approved_tools:
             return Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
         return Colors.hex(SHORTCUTS[self.mode], COLORS.get(self.mode, Theme.GRAY))
 

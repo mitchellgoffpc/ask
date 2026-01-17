@@ -35,7 +35,10 @@ class ToolRequest:
     call_id: str
     tool: str
     arguments: dict[str, str]
-    processed_arguments: dict[str, Any] | None = None
+
+@dataclass
+class CheckedToolRequest(ToolRequest):
+    processed_arguments: dict[str, Any]
 
 @dataclass
 class ToolResponse:
