@@ -111,7 +111,7 @@ def format_duration(seconds: float) -> str:
     hours, minutes = divmod(minutes, 60)
     return (f'{hours}h ' if hours else '') + (f'{minutes}m ' if minutes else '') + f'{seconds}s'
 
-def get_usage(messages: dict[UUID, Message], total_duration_api: float, total_duration_wall: float) -> str:
+def get_usage(messages: dict[UUID, Message]) -> str:
     usages_by_model = defaultdict(list)
     for msg in messages.values():
         if isinstance(msg.content, Usage) and msg.content.model:
@@ -135,11 +135,8 @@ def get_usage(messages: dict[UUID, Message], total_duration_api: float, total_du
 
     rows = [
         ("Total cost", f"${total_cost / 1_000_000:,.4f}"),
-        ("Total duration (API)", f"{format_duration(total_duration_api)}"),
-        ("Total duration (wall)", f"{format_duration(total_duration_wall)}"),
         ("Usage by model", "" if usages_by_model else "(no usage)"),
-        *rows
-    ]
+        *rows]
     max_title_len = max(len(title) + 1 for title, _ in rows)
     return '\n'.join(f"{title + ':':<{max_title_len}}  {value}" for title, value in rows)
 

@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable, TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from ask.commands import BashCommand, FilesCommand, InitCommand, PythonCommand
-from ask.commands import load_messages, save_messages
+from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, PythonCommand, load_messages, save_messages, get_usage
 from ask.messages import Message, Content, Text, Command, Usage, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
 from ask.models import Model
 from ask.models.tool_helpers import parse_tool_block
@@ -142,6 +141,8 @@ async def query_agent_with_commands(model: Model, messages: 'MessageTree', head:
         yield None
     elif query == '/init':
         yield messages.add('user', head, InitCommand(command='/init'))
+    elif query == '/cost':
+        yield messages.add('user', head, SlashCommand(command='/cost', output=get_usage(dict(messages.items(head)))))
     elif query.startswith('/save '):
         yield save_messages(query.removeprefix('/save').strip(), messages, head)
     elif query.startswith('/load '):
@@ -167,21 +168,18 @@ async def query_agent_with_commands(model: Model, messages: 'MessageTree', head:
             text = text + delta
             if text and text_uuid not in messages.messages:
                 text_uuid = uuid4()
-                head = messages.add('assistant', head, Text(''), uuid=text_uuid)
-                yield head
+                yield (head := messages.add('assistant', head, Text(''), uuid=text_uuid))
             elif text and text_uuid is not None:
                 messages.update(text_uuid, Text(text))
 
             if msg and msg.role == 'user':
-                head = messages.add('user', head, msg.content)
-                yield head
+                yield (head := messages.add('user', head, msg.content))
             if msg and msg.role == 'assistant':
-                content = msg.content
-                if isinstance(content, Text):
-                    if text_uuid is not None:
-                        messages.update(text_uuid, content)
-                    text = ''
-                    text_uuid = None
-                else:
-                    head = messages.add('assistant', head, content)
-                    yield head
+                match msg.content:
+                    case Text():
+                        if text_uuid is not None:
+                            messages.update(text_uuid, msg.content)
+                        text = ''
+                        text_uuid = None
+                    case _:
+                        yield (head := messages.add('assistant', head, msg.content))

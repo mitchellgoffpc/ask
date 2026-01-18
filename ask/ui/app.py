@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from uuid import UUID
 from typing import ClassVar
 
-from ask.commands import BashCommand, PythonCommand, SlashCommand
-from ask.commands import switch_model, get_usage
+from ask.commands import BashCommand, PythonCommand, SlashCommand, switch_model, get_usage
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.models import Model
 from ask.query import query_agent_with_commands
@@ -49,8 +48,6 @@ class AppController(Controller[App]):
         self.config = Config()
         self.history = History()
         self.tasks: list[asyncio.Task] = []
-        self.start_time = time.monotonic()
-        self.query_time = 0.
 
     def exit(self) -> None:
         self.exiting = True
@@ -83,7 +80,6 @@ class AppController(Controller[App]):
         self.loading = True
         self.history.append(query)
         ticker = asyncio.create_task(self.tick(0.1))
-        start_time = time.monotonic()
 
         try:
             async for head in query_agent_with_commands(self.model, self.messages, self.head, query, self.props.tools, self.approve, self.props.system_prompt):
@@ -93,7 +89,6 @@ class AppController(Controller[App]):
         except Exception as e:
             self.head = self.messages.add('user', self.head, Error(str(e)))
 
-        self.query_time += time.monotonic() - start_time
         self.loading = False
         ticker.cancel()
 
@@ -125,22 +120,18 @@ class AppController(Controller[App]):
         if any(not task.done() for task in self.tasks):
             return False
 
-        value = value.rstrip()
-        if value in ('/exit', '/quit', 'exit', 'quit'):
+        query = value.rstrip()
+        if query in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
-        elif value.startswith('/model'):
-            self.head, self.model = switch_model(value.removeprefix('/model').lstrip(), self.model, self.messages, self.head)
-        elif value == '/cost':
-            output = get_usage(dict(self.messages.items(self.head)), self.query_time, time.monotonic() - self.start_time)
-            self.head = self.messages.add('user', self.head, SlashCommand(command='/cost', output=output))
+        elif query.startswith('/model'):
+            self.head, self.model = switch_model(query.removeprefix('/model').lstrip(), self.model, self.messages, self.head)
         else:
-            self.tasks.append(asyncio.create_task(self.query(value)))
+            self.tasks.append(asyncio.create_task(self.query(query)))
         return True
 
     def textbox(self) -> Component:
         if self.exiting:
-            wall_time = time.monotonic() - self.start_time
-            return Text(Colors.hex(get_usage(dict(self.messages.items(self.head)), self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+            return Text(Colors.hex(get_usage(dict(self.messages.items(self.head))), Theme.GRAY), margin={'top': 1})
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
             tool_call, future = self.pending_approvals[tool_call_id]
             return ApprovalDialog(tool_call=tool_call, future=future)
