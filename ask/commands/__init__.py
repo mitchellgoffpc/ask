@@ -33,13 +33,14 @@ class InitCommand(SlashCommand):
 
 @dataclass
 class FilesCommand(SlashCommand):
+    command: str = ''
     file_contents: dict[Path, Blob] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.output = '\n'.join(f'Read {get_relative_path(path)}' for path in self.file_contents.keys())
+        self.output = '\n'.join(get_relative_path(path) for path in self.file_contents.keys())
 
     def render_command(self) -> str:
-        return self.command or f'Attached {len(self.file_contents)} files'
+        return f'Attached {len(self.file_contents)} files'
 
     def messages(self) -> list[Message]:
         file_list = '\n'.join(f'- {path}' for path in self.file_contents.keys())
@@ -49,8 +50,6 @@ class FilesCommand(SlashCommand):
             tool_args = {'file_path': str(Path(file_path).absolute().as_posix())}
             messages.append(Message(role='assistant', content=ToolRequest(call_id=call_id, tool='Read', arguments=tool_args)))
             messages.append(Message(role='user', content=ToolResponse(call_id=call_id, tool='Read', response=file_data, status=ToolCallStatus.COMPLETED)))
-        if self.command:
-            messages.append(Message(role='user', content=Text(self.command)))
         return messages
 
 @dataclass(kw_only=True)

@@ -2,14 +2,23 @@ import asyncio
 import aiohttp
 import json
 import os
+import re
 from dataclasses import replace
-from typing import AsyncIterator, Awaitable, Callable
+from pathlib import Path
+from typing import AsyncIterator, Awaitable, Callable, TYPE_CHECKING
+from uuid import UUID, uuid4
 
+from ask.commands import BashCommand, FilesCommand, InitCommand, PythonCommand
+from ask.commands import load_messages, save_messages
 from ask.messages import Message, Content, Text, Command, Usage, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
 from ask.models import Model
 from ask.models.tool_helpers import parse_tool_block
 from ask.prompts import load_prompt_file
 from ask.tools import TOOLS, Tool, ToolError
+from ask.tools.read import read_file
+
+if TYPE_CHECKING:
+    from ask.tree import MessageTree
 
 AsyncContentIterator = AsyncIterator[tuple[str, Content | None]]
 AsyncMessageIterator = AsyncIterator[tuple[str, Message | None]]
@@ -122,3 +131,57 @@ async def query_agent(model: Model, messages: list[Message], tools: list[Tool],
             for response in tool_responses:
                 yield '', response
             messages.extend(tool_responses)
+
+
+# Main entry point for the UI to query the agent with commands
+
+async def query_agent_with_commands(model: Model, messages: 'MessageTree', head: UUID | None, query: str, tools: list[Tool],
+                                    approval: ApprovalCallback, system_prompt: str, stream: bool = True) -> AsyncIterator[UUID | None]:
+    if query == '/clear':
+        messages.clear()
+        yield None
+    elif query == '/init':
+        yield messages.add('user', head, InitCommand(command='/init'))
+    elif query.startswith('/save '):
+        yield save_messages(query.removeprefix('/save').strip(), messages, head)
+    elif query.startswith('/load '):
+        yield load_messages(query.removeprefix('/load').strip(), messages, head)
+    elif query.startswith('/bash '):
+        head, tasks = BashCommand.create(query.removeprefix('/bash ').strip(), messages, head)
+        yield head
+        await asyncio.gather(*tasks)
+    elif query.startswith('/python '):
+        head, tasks = PythonCommand.create(query.removeprefix('/python ').strip(), messages, head)
+        yield head
+        await asyncio.gather(*tasks)
+    else:
+        file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', query) if Path(m[1:]).is_file()]  # get file attachments
+        if file_paths:
+            head = messages.add('user', head, FilesCommand(file_contents={fp: read_file(fp) for fp in file_paths}))
+        head = messages.add('user', head, Text(query))
+        yield head
+
+        text_uuid: UUID | None = None
+        text = ''
+        async for delta, msg in query_agent(model, messages.values(head), tools, approval, system_prompt, stream):
+            text = text + delta
+            if text and text_uuid not in messages.messages:
+                text_uuid = uuid4()
+                head = messages.add('assistant', head, Text(''), uuid=text_uuid)
+                yield head
+            elif text and text_uuid is not None:
+                messages.update(text_uuid, Text(text))
+
+            if msg and msg.role == 'user':
+                head = messages.add('user', head, msg.content)
+                yield head
+            if msg and msg.role == 'assistant':
+                content = msg.content
+                if isinstance(content, Text):
+                    if text_uuid is not None:
+                        messages.update(text_uuid, content)
+                    text = ''
+                    text_uuid = None
+                else:
+                    head = messages.add('assistant', head, content)
+                    yield head

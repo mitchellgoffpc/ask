@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
-import re
 import sys
 from pathlib import Path
 from uuid import uuid4
 
 from ask.commands import FilesCommand, DocsCommand
-from ask.messages import Message, Text
+from ask.messages import Message
 from ask.models import MODELS, MODEL_SHORTCUTS
 from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS, Tool
@@ -54,17 +53,14 @@ def main() -> None:
         messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='agents', file_path=agents_file, file_contents=agents_file.read_text()))
 
     # Read any attached files
-    attached_files = args.file + [Path(m[1:]) for m in re.findall(r'@\S+', question) if Path(m[1:]).is_file()]
-    if attached_files:
-        file_contents = {Path(fn): read_file(Path(fn)) for fn in attached_files}
-        messages[uuid4()] = Message(role='user', content=FilesCommand(command=question, file_contents=file_contents))
-    elif question:
-        messages[uuid4()] = Message(role='user', content=Text(question))
+    if args.file:
+        file_contents = {Path(fn): read_file(Path(fn)) for fn in args.file}
+        messages[uuid4()] = Message(role='user', content=FilesCommand(file_contents=file_contents))
 
     # Launch the UI
     model = MODEL_SHORTCUTS[args.model]
     tools: list[Tool] = list(TOOLS.values())
-    asyncio.run(render_root(App(model=model, messages=messages, tools=tools, system_prompt=args.system)))
+    asyncio.run(render_root(App(model=model, messages=messages, query=question, tools=tools, system_prompt=args.system)))
 
 
 if __name__ == '__main__':
