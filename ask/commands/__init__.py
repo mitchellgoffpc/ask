@@ -63,19 +63,12 @@ class DocsCommand(Command):
         content = load_prompt_file('docs.toml')[self.prompt_key].format(file_path=self.file_path.resolve(), file_contents=self.file_contents)
         return [Message(role='user', content=Text(content))]
 
+@dataclass
+class ModelCommand(Command):
+    model: Model
 
-# /model
-
-def switch_model(model_name: str, current_model: Model, messages: MessageTree, head: UUID | None) -> tuple[UUID | None, Model]:
-    if not model_name:
-        model_list = '\n'.join(f"  {name} ({model.api.display_name})" for name, model in MODELS_BY_NAME.items())
-        head = messages.add('user', head, SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
-    elif model_name not in MODELS_BY_NAME:
-        head = messages.add('user', head, SlashCommand(command=model_name, error=f"Unknown model: {model_name}"))
-    elif model_name != current_model.name:
-        head = messages.add('user', head, SlashCommand(command=model_name, output=f"Switched from {current_model.name} to {model_name}"))
-        current_model = MODELS_BY_NAME[model_name]
-    return head, current_model
+    def messages(self) -> list[Message]:
+        return []
 
 
 # /save + /load
@@ -147,10 +140,10 @@ __all__ = [
     "FilesCommand",
     "FormatCommand",
     "InitCommand",
+    "ModelCommand",
     "PythonCommand",
     "SlashCommand",
     "save_messages",
     "load_messages",
-    "switch_model",
     "get_usage",
 ]

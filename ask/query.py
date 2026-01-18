@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable, TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, PythonCommand, load_messages, save_messages, get_usage
+from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand, load_messages, save_messages, get_usage
 from ask.messages import Message, Content, Text, Command, Usage, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
-from ask.models import Model
+from ask.models import Model, MODELS_BY_NAME
 from ask.models.tool_helpers import parse_tool_block
 from ask.prompts import load_prompt_file
 from ask.tools import TOOLS, Tool, ToolError
@@ -155,6 +155,16 @@ async def query_agent_with_commands(model: Model, messages: 'MessageTree', head:
         head, tasks = PythonCommand.create(query.removeprefix('/python ').strip(), messages, head)
         yield head
         await asyncio.gather(*tasks)
+    elif query.startswith('/model'):
+        model_name = query.removeprefix('/model').lstrip()
+        if not model_name:
+            model_list = '\n'.join(f"  {name} ({m.api.display_name})" for name, m in MODELS_BY_NAME.items())
+            yield messages.add('user', head, SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
+        elif model_name not in MODELS_BY_NAME:
+            yield messages.add('user', head, SlashCommand(command=f'/model {model_name}', error=f"Unknown model: {model_name}"))
+        elif model_name != model.name:
+            yield messages.add('user', head, SlashCommand(command=f'/model {model_name}', output=f"Switched from {model.name} to {model_name}"))
+            yield messages.add('user', head, ModelCommand(command=f'/model {model_name}', model=MODELS_BY_NAME[model_name]))
     else:
         file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', query) if Path(m[1:]).is_file()]  # get file attachments
         if file_paths:

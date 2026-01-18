@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from uuid import UUID
 from typing import ClassVar
 
-from ask.commands import BashCommand, PythonCommand, SlashCommand, switch_model, get_usage
+from ask.commands import BashCommand, PythonCommand, SlashCommand, ModelCommand, get_usage
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.models import Model
 from ask.query import query_agent_with_commands
@@ -44,10 +44,16 @@ class AppController(Controller[App]):
         super().__init__(props)
         self.messages = MessageTree(self.props.messages, onchange=lambda: dirty.add(self.uuid))
         self.head = [None, *self.props.messages][-1]
-        self.model = self.props.model
         self.config = Config()
         self.history = History()
         self.tasks: list[asyncio.Task] = []
+
+    @property
+    def model(self) -> Model:
+        for msg in reversed(list(self.messages.values(self.head))):
+            if isinstance(msg.content, ModelCommand):
+                return msg.content.model
+        return self.props.model
 
     def exit(self) -> None:
         self.exiting = True
@@ -123,8 +129,6 @@ class AppController(Controller[App]):
         query = value.rstrip()
         if query in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
-        elif query.startswith('/model'):
-            self.head, self.model = switch_model(query.removeprefix('/model').lstrip(), self.model, self.messages, self.head)
         else:
             self.tasks.append(asyncio.create_task(self.query(query)))
         return True
