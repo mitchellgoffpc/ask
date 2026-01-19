@@ -5,7 +5,7 @@ import os
 import re
 from dataclasses import replace
 from pathlib import Path
-from typing import AsyncIterator, Awaitable, Callable, TYPE_CHECKING
+from typing import AsyncIterator, Awaitable, Callable
 from uuid import UUID, uuid4
 
 from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand, load_messages, save_messages, get_usage
@@ -15,9 +15,7 @@ from ask.models.tool_helpers import parse_tool_block
 from ask.prompts import load_prompt_file
 from ask.tools import TOOLS, Tool, ToolError
 from ask.tools.read import read_file
-
-if TYPE_CHECKING:
-    from ask.tree import MessageTree
+from ask.tree import MessageTree
 
 AsyncContentIterator = AsyncIterator[tuple[str, Content | None]]
 AsyncMessageIterator = AsyncIterator[tuple[str, Message | None]]
@@ -134,11 +132,12 @@ async def query_agent(model: Model, messages: list[Message], tools: list[Tool],
 
 # Main entry point for the UI to query the agent with commands
 
-async def query_agent_with_commands(model: Model, messages: 'MessageTree', head: UUID | None, query: str, tools: list[Tool],
-                                    approval: ApprovalCallback, system_prompt: str, stream: bool = True) -> AsyncIterator[UUID | None]:
+async def query_agent_with_commands(messages: MessageTree, head: UUID, query: str, tools: list[Tool],
+                                    approval: ApprovalCallback, system_prompt: str, stream: bool = True) -> AsyncIterator[UUID]:
+    model = messages.model(head)
     if query == '/clear':
         messages.clear()
-        yield None
+        yield messages.add('user', None, ModelCommand(command='', model=model))
     elif query == '/init':
         yield messages.add('user', head, InitCommand(command='/init'))
     elif query == '/cost':

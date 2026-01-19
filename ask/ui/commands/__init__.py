@@ -29,11 +29,11 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
 
 # Components
 
-def PromptMessage(text: TextContent) -> Component:
+def PromptMessage(text: TextContent) -> Component | None:
     return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
         Text(Colors.hex("> ", Theme.GRAY)),
         Text(Colors.hex(text.text, Theme.GRAY))
-    ]
+    ] if text.text.strip() else None
 
 def ResponseMessage(text: TextContent) -> Component:
     return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[

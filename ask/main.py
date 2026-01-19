@@ -5,11 +5,11 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-from ask.commands import FilesCommand, DocsCommand
+from ask.commands import FilesCommand, DocsCommand, ModelCommand
 from ask.messages import Message
 from ask.models import MODELS, MODEL_SHORTCUTS
 from ask.prompts import load_system_prompt, get_agents_md_path
-from ask.tools import TOOLS, Tool
+from ask.tools import TOOLS
 from ask.tools.read import read_file
 from ask.ui.app import App
 from ask.ui.config import CONFIG_DIR, Config
@@ -36,15 +36,10 @@ def main() -> None:
         print("\nUse any model name or shortcut from the list above.", file=sys.stderr)
         sys.exit(1)
 
-    # Read from stdin
-    question = ' '.join(args.question)
-    if not sys.stdin.isatty():
-        stdin = parser.parse_args().stdin.read()
-        question = f'{stdin}\n\n{question}' if question else stdin
-    question = question.strip()
+    messages = {}
+    messages[uuid4()] = Message(role='user', content=ModelCommand(command='', model=MODEL_SHORTCUTS[args.model]))
 
     # Attach USER.md / AGENTS.md files
-    messages = {}
     if (user_file := CONFIG_DIR / 'USER.md').exists():
         messages[uuid4()] = Message(role='user', content=DocsCommand(prompt_key='user', file_path=user_file, file_contents=user_file.read_text()))
     if agents_file := get_agents_md_path():
@@ -55,10 +50,15 @@ def main() -> None:
         file_contents = {Path(fn): read_file(Path(fn)) for fn in args.file}
         messages[uuid4()] = Message(role='user', content=FilesCommand(file_contents=file_contents))
 
+    # Read from stdin
+    question = ' '.join(args.question)
+    if not sys.stdin.isatty():
+        stdin = parser.parse_args().stdin.read()
+        question = f'{stdin}\n\n{question}' if question else stdin
+    question = question.strip()
+
     # Launch the UI
-    model = MODEL_SHORTCUTS[args.model]
-    tools: list[Tool] = list(TOOLS.values())
-    asyncio.run(render_root(App(model=model, messages=messages, query=question, tools=tools, system_prompt=args.system)))
+    asyncio.run(render_root(App(messages=messages, query=question, tools=list(TOOLS.values()), system_prompt=args.system)))
 
 
 if __name__ == '__main__':

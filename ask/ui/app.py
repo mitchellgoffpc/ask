@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from uuid import UUID
 from typing import ClassVar
 
-from ask.commands import BashCommand, PythonCommand, SlashCommand, ModelCommand, get_usage
+from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
-from ask.models import Model
 from ask.query import query_agent_with_commands
 from ask.tools import Tool, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
@@ -24,14 +23,13 @@ from ask.ui.tools.todo import ToDos
 @dataclass
 class App(Widget):
     __controller__: ClassVar = lambda _: AppController
-    model: Model
     messages: dict[UUID, Message]
     query: str
     tools: list[Tool]
     system_prompt: str
 
 class AppController(Controller[App]):
-    state = ['expanded', 'exiting', 'show_todos', 'loading', 'elapsed', 'approvals', 'approved_tools', 'messages', 'model']
+    state = ['expanded', 'exiting', 'show_todos', 'loading', 'elapsed', 'approvals', 'approved_tools', 'messages']
     expanded = False
     exiting = False
     show_todos = False
@@ -43,15 +41,8 @@ class AppController(Controller[App]):
     def __init__(self, props: App) -> None:
         super().__init__(props)
         self.messages = MessageTree(self.props.messages, onchange=lambda: dirty.add(self.uuid))
-        self.head = [None, *self.props.messages][-1]
+        self.head = list(self.props.messages.keys())[-1]
         self.tasks: list[asyncio.Task] = []
-
-    @property
-    def model(self) -> Model:
-        for msg in reversed(list(self.messages.values(self.head))):
-            if isinstance(msg.content, ModelCommand):
-                return msg.content.model
-        return self.props.model
 
     def exit(self) -> None:
         self.exiting = True
@@ -86,7 +77,7 @@ class AppController(Controller[App]):
         ticker = asyncio.create_task(self.tick(0.1))
 
         try:
-            async for head in query_agent_with_commands(self.model, self.messages, self.head, query, self.props.tools, self.approve, self.props.system_prompt):
+            async for head in query_agent_with_commands(self.messages, self.head, query, self.props.tools, self.approve, self.props.system_prompt):
                 self.head = head
         except asyncio.CancelledError:
             self.head = self.messages.add('user', self.head, Error("Request interrupted by user"))
@@ -143,7 +134,7 @@ class AppController(Controller[App]):
             ]
         else:
             return PromptTextBox(
-                model=self.model,
+                model=self.messages.model(self.head),
                 approved_tools=self.approved_tools,
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
