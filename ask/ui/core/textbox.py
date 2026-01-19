@@ -24,9 +24,11 @@ class TextBox(Widget):
 
 
 class TextBoxController(Controller[TextBox]):
-    state = ['text', 'cursor_pos', 'history', 'history_idx']
+    state = ['text', 'cursor_pos', 'history', 'history_idx', 'mark']
     _text = ''
     _cursor_pos = 0
+    kill_buffer = ''
+    mark: int | None = None
 
     def __init__(self, props: TextBox):
         super().__init__(props)
@@ -94,9 +96,16 @@ class TextBoxController(Controller[TextBox]):
         elif ch == '\x06':  # Ctrl+F - move forward one character
             if cursor_pos < len(text):
                 cursor_pos += 1
+        elif ch == '\x07':  # Ctrl+G - unset mark
+            self.mark = None
         elif ch == '\x0b':  # Ctrl+K - kill to next newline
             next_newline = text.find('\n', cursor_pos)
-            text = text[:cursor_pos] if next_newline == -1 else text[:cursor_pos] + text[next_newline:]
+            if next_newline == -1:
+                self.kill_buffer = text[cursor_pos:]
+                text = text[:cursor_pos]
+            else:
+                self.kill_buffer = text[cursor_pos:next_newline]
+                text = text[:cursor_pos] + text[next_newline:]
         elif ch == '\x0e':  # Ctrl+N - move to next line
             text, cursor_pos, history_idx = self.change_line(1)
         elif ch == '\x0f':  # Ctrl+O - insert newline after cursor
@@ -107,8 +116,17 @@ class TextBoxController(Controller[TextBox]):
             if cursor_pos > 0 and cursor_pos < len(text):
                 text = text[:cursor_pos - 1] + text[cursor_pos] + text[cursor_pos - 1] + text[cursor_pos + 1:]
                 cursor_pos += 1
+        elif ch == '\x17':  # Ctrl+W - kill region
+            if self.mark is not None:
+                start, end = min(self.mark, cursor_pos), max(self.mark, cursor_pos)
+                self.kill_buffer = text[start:end]
+                self.mark = None
+                text = text[:start] + text[end:]
+                cursor_pos = start
         elif ch == '\x19':  # Ctrl+Y - yank
-            pass  # TODO: Implement this
+            if self.kill_buffer:
+                text = text[:cursor_pos] + self.kill_buffer + text[cursor_pos:]
+                cursor_pos += len(self.kill_buffer)
         elif ch == '\x1f':  # Ctrl+/ - undo
             if self.undo_stack:
                 text, cursor_pos = self.undo_stack.pop()
@@ -116,6 +134,8 @@ class TextBoxController(Controller[TextBox]):
                 if text != self.text:
                     self.text = text
                 return
+        elif ch == '\x00':  # Ctrl+Space - set mark
+            self.mark = cursor_pos
         elif ch.startswith('\x1b'):  # Escape sequence
             text, cursor_pos, history_idx = self.handle_escape_input(ch[1:])
         else:  # Regular character(s)
@@ -250,10 +270,23 @@ class TextBoxController(Controller[TextBox]):
             text = self.text.replace('\n', ' \n')
             if text[cursor_pos:cursor_pos + 1] == '\n':
                 cursor_pos -= 1
-            before = text[:cursor_pos]
-            after = text[cursor_pos + 1:]
-            under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
-            styled_text = before + Styles.inverse(under) + after
+
+            if self.mark is not None:
+                mark_pos = self.mark + self.text.count('\n', 0, self.mark)
+                start, end = min(mark_pos, cursor_pos), max(mark_pos, cursor_pos)
+                before = text[:start]
+                after = text[end + 1:]
+                under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
+                if cursor_pos == end:
+                    region = Colors.bg_hex(text[start:end], '#333333') + Styles.inverse(under)
+                else:
+                    region = Styles.inverse(under) + Colors.bg_hex(text[start+1:end], '#333333')
+                styled_text = before + region + after
+            else:
+                before = text[:cursor_pos]
+                after = text[cursor_pos + 1:]
+                under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
+                styled_text = before + Styles.inverse(under) + after
 
         self.textbox_ref = Text(styled_text)
         return [self.textbox_ref]
