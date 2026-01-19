@@ -3,13 +3,13 @@ import aiohttp
 import json
 import os
 import re
-from dataclasses import replace
 from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable
 from uuid import UUID, uuid4
 
-from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand, load_messages, save_messages, get_usage
-from ask.messages import Message, Content, Text, Command, Usage, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
+from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand
+from ask.commands import load_messages, save_messages, get_usage, get_current_model
+from ask.messages import Message, Content, Text, Command, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
 from ask.models import Model, MODELS_BY_NAME
 from ask.models.tool_helpers import parse_tool_block
 from ask.prompts import load_prompt_file
@@ -79,9 +79,7 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
 
 async def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool = True) -> AsyncContentIterator:
     async for chunk, content in _query(model, messages, tools, system_prompt, stream):
-        if isinstance(content, Usage):
-            yield chunk, replace(content, model=model.name)
-        elif isinstance(content, Text) and not model.supports_tools:
+        if isinstance(content, Text) and not model.supports_tools:
             yield chunk, None
             for item in parse_tool_block(content):
                 yield '', item
@@ -134,14 +132,14 @@ async def query_agent(model: Model, messages: list[Message], tools: list[Tool],
 
 async def query_agent_with_commands(messages: MessageTree, head: UUID, query: str, tools: list[Tool],
                                     approval: ApprovalCallback, system_prompt: str, stream: bool = True) -> AsyncIterator[UUID]:
-    model = messages.model(head)
+    model = get_current_model(messages, head)
     if query == '/clear':
         messages.clear()
         yield messages.add('user', None, ModelCommand(command='', model=model))
     elif query == '/init':
         yield messages.add('user', head, InitCommand(command='/init'))
     elif query == '/cost':
-        yield messages.add('user', head, SlashCommand(command='/cost', output=get_usage(dict(messages.items(head)))))
+        yield messages.add('user', head, SlashCommand(command='/cost', output=get_usage(messages, head)))
     elif query.startswith('/save '):
         yield save_messages(query.removeprefix('/save').strip(), messages, head)
     elif query.startswith('/load '):

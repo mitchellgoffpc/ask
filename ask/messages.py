@@ -63,7 +63,6 @@ class Usage:
     cache_write: int
     cache_read: int
     output: int
-    model: str | None = None
 
 @dataclass
 class Error:

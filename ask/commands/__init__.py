@@ -98,17 +98,26 @@ def load_messages(path: str, messages: MessageTree, head: UUID | None) -> UUID:
 
 # /usage
 
+def get_current_model(messages: MessageTree, head: UUID) -> Model:
+    for msg in reversed(messages.values(head)):
+        if isinstance(msg.content, ModelCommand):
+            return msg.content.model
+    raise RuntimeError("No ModelCommand found in message stream")
+
 def format_duration(seconds: float) -> str:
     seconds = int(round(seconds))
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     return (f'{hours}h ' if hours else '') + (f'{minutes}m ' if minutes else '') + f'{seconds}s'
 
-def get_usage(messages: dict[UUID, Message]) -> str:
+def get_usage(messages: MessageTree, head: UUID) -> str:
     usages_by_model = defaultdict(list)
-    for msg in messages.values():
-        if isinstance(msg.content, Usage) and msg.content.model:
-            usages_by_model[msg.content.model].append(msg.content)
+    current_model = 'unknown'
+    for msg in messages.values(head):
+        if isinstance(msg.content, ModelCommand):
+            current_model = msg.content.model.name
+        if isinstance(msg.content, Usage):
+            usages_by_model[current_model].append(msg.content)
 
     total_cost = 0.
     rows: list[tuple[str, str]] = []
@@ -146,4 +155,5 @@ __all__ = [
     "save_messages",
     "load_messages",
     "get_usage",
+    "get_current_model",
 ]

@@ -6,9 +6,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, Callable, get_args
 
-from ask.commands import ModelCommand
 from ask.messages import ToolCallStatus, Message, Role, Content, CheckedToolRequest
-from ask.models import Model
 from ask.tools import TOOLS
 
 class MessageEncoder(json.JSONEncoder):
@@ -94,9 +92,3 @@ class MessageTree:
         for message in data:
             self[message['uuid']] = Message(role=message['role'], content=message['content'])
             self.parents[message['uuid']] = message['parent']
-
-    def model(self, head: UUID) -> Model:
-        for msg in reversed(self.values(head)):
-            if isinstance(msg.content, ModelCommand):
-                return msg.content.model
-        raise RuntimeError("No ModelCommand found in message stream")

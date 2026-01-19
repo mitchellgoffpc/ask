@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from uuid import UUID
 from typing import ClassVar
 
-from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage
+from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.query import query_agent_with_commands
 from ask.tools import Tool, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
@@ -124,7 +124,7 @@ class AppController(Controller[App]):
 
     def textbox(self) -> Component:
         if self.exiting:
-            return Text(Colors.hex(get_usage(dict(self.messages.items(self.head))), Theme.GRAY), margin={'top': 1})
+            return Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY), margin={'top': 1})
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
             tool_call, future = self.pending_approvals[tool_call_id]
             return ApprovalDialog(tool_call=tool_call, future=future)
@@ -134,7 +134,7 @@ class AppController(Controller[App]):
             ]
         else:
             return PromptTextBox(
-                model=self.messages.model(self.head),
+                model=get_current_model(self.messages, self.head),
                 approved_tools=self.approved_tools,
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
