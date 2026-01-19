@@ -13,7 +13,7 @@ from uuid import UUID
 
 from ask.ui.core.components import Box, Component, Element, Widget, get_rendered_width, dirty, nodes, parents, children
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
-from ask.ui.core.styles import Flex
+from ask.ui.core.styles import Flex, ansi_len
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
@@ -210,7 +210,7 @@ async def render_root(_root: Component) -> None:
             output = cursor_up(len(previous_render_lines) - first_diff_idx)
             for prev_line, new_line in zip_longest(previous_render_lines[first_diff_idx:], new_render_lines[first_diff_idx:], fillvalue=''):
                 sys.stdout.write('\r')
-                if len(new_line) < len(prev_line):
+                if ansi_len(new_line) < ansi_len(prev_line):
                     output += erase_line
                 output += new_line + '\n\r'
 
