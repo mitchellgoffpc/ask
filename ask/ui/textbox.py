@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, ClassVar
 
 from ask.models import MODELS_BY_NAME, Model
+from ask.ui.config import History
 from ask.ui.core.components import Component, Box, Text, Widget, Controller
 from ask.ui.core.styles import Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
@@ -62,7 +63,6 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
 class PromptTextBox(Widget):
     __controller__: ClassVar = lambda _: PromptTextBoxController
     model: Model
-    history: list[str]
     approved_tools: set[str]
     handle_submit: Callable[[str], bool]
     handle_exit: Callable[[], None]
@@ -226,7 +226,7 @@ class PromptTextBoxController(Controller):
                 TextBox(
                     width=1.0,
                     text=self.text,
-                    history=self.props.history,
+                    history=list(History),
                     placeholder=PLACEHOLDERS[self.mode],
                     handle_input=self.handle_textbox_input,
                     handle_page=self.handle_textbox_page,

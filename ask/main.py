@@ -17,10 +17,8 @@ from ask.ui.core.render import render_root
 
 
 def main() -> None:
-    config = Config()
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', type=str, default=config['default_model'], help="Model to use for the query")
+    parser.add_argument('-m', '--model', type=str, default=Config['default_model'], help="Model to use for the query")
     parser.add_argument('-f', '--file', action='append', default=[], help="Files to use as context for the request")
     parser.add_argument('-s', '--system', type=str, default=load_system_prompt(), help="System prompt for the model")
     parser.add_argument('question', nargs=argparse.REMAINDER)

@@ -7,10 +7,15 @@ CONFIG_PATH = CONFIG_DIR / 'config.json'
 HISTORY_PATH = CONFIG_DIR / 'history.json'
 DEFAULT_CONFIG = {'editor': 'vim', 'default_model': 'sonnet'}
 
-class History:
-    def __init__(self):
-        CONFIG_DIR.mkdir(parents=False, exist_ok=True)
-        self.data: list[str] = json.loads(HISTORY_PATH.read_text() or '[]') if HISTORY_PATH.is_file() else []
+class _History:
+    _data: list[str] | None = None
+
+    @property
+    def data(self) -> list[str]:
+        if self._data is None:
+            CONFIG_DIR.mkdir(parents=False, exist_ok=True)
+            self._data = json.loads(HISTORY_PATH.read_text() or '[]') if HISTORY_PATH.is_file() else []
+        return self._data
 
     def __iter__(self):
         return iter(self.data)
@@ -20,10 +25,15 @@ class History:
         with open(HISTORY_PATH, 'w') as f:
             json.dump(self.data, f, indent=2)
 
-class Config:
-    def __init__(self):
-        CONFIG_DIR.mkdir(parents=False, exist_ok=True)
-        self.data: dict[str, Any] = DEFAULT_CONFIG | (json.loads(CONFIG_PATH.read_text() or '{}') if CONFIG_PATH.is_file() else {})
+class _Config:
+    _data: dict[str, Any] | None = None
+
+    @property
+    def data(self) -> dict[str, Any]:
+        if self._data is None:
+            CONFIG_DIR.mkdir(parents=False, exist_ok=True)
+            self._data = DEFAULT_CONFIG | (json.loads(CONFIG_PATH.read_text() or '{}') if CONFIG_PATH.is_file() else {})
+        return self._data
 
     def __getitem__(self, key: str) -> Any:
         return self.data[key]
@@ -32,3 +42,6 @@ class Config:
         self.data[key] = value
         with open(CONFIG_PATH, 'w') as f:
             json.dump(self.data, f, indent=2)
+
+Config = _Config()
+History = _History()

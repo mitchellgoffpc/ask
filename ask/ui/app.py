@@ -16,7 +16,7 @@ from ask.ui.core.components import Component, Controller, Box, Text, Widget, dir
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
-from ask.ui.config import Config, History
+from ask.ui.config import History
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 from ask.ui.tools.todo import ToDos
@@ -44,8 +44,6 @@ class AppController(Controller[App]):
         super().__init__(props)
         self.messages = MessageTree(self.props.messages, onchange=lambda: dirty.add(self.uuid))
         self.head = [None, *self.props.messages][-1]
-        self.config = Config()
-        self.history = History()
         self.tasks: list[asyncio.Task] = []
 
     @property
@@ -84,7 +82,7 @@ class AppController(Controller[App]):
 
     async def query(self, query: str) -> None:
         self.loading = True
-        self.history.append(query)
+        History.append(query)
         ticker = asyncio.create_task(self.tick(0.1))
 
         try:
@@ -146,7 +144,6 @@ class AppController(Controller[App]):
         else:
             return PromptTextBox(
                 model=self.model,
-                history=list(self.history),
                 approved_tools=self.approved_tools,
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
