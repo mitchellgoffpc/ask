@@ -3,7 +3,6 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from ask.messages import Message, Text, Image, PDF, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus
 from ask.tools import TOOL_LIST
@@ -11,7 +10,7 @@ from ask.tree import MessageTree, MessageEncoder, message_decoder
 
 class TestMessageTree(unittest.TestCase):
     def setUp(self):
-        self.tree = MessageTree(uuid4(), {})
+        self.tree = MessageTree({})
 
     def test_add(self):
         msg_uuid = self.tree.add('user', None, Text('hello'))
@@ -97,7 +96,7 @@ class TestEncoderDecoder(unittest.TestCase):
                 self.assertEqual(response.status, decoded.status)
 
     def test_message_tree_encode_decode(self):
-        tree = MessageTree(uuid4(), {})
+        tree = MessageTree({})
         msg1 = tree.add('user', None, Text('first'))
         msg2 = tree.add('assistant', msg1, ToolRequest(call_id='call_456', tool='BashShell', arguments={'command': 'echo test'}))
         msg3 = tree.add('user', msg2, ToolResponse(call_id='call_456', tool='BashShell', response=Text('test'), status=ToolCallStatus.COMPLETED))
@@ -105,7 +104,7 @@ class TestEncoderDecoder(unittest.TestCase):
         dumped = tree.dump()
         encoded = json.dumps(dumped, cls=MessageEncoder)
         decoded = json.loads(encoded, object_hook=message_decoder)
-        new_tree = MessageTree(uuid4(), {})
+        new_tree = MessageTree({})
         new_tree.load(decoded)
 
         self.assertEqual(len(new_tree.messages), 3)

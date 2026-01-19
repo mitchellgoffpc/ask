@@ -4,11 +4,10 @@ from dataclasses import replace
 from itertools import pairwise
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any, get_args
+from typing import Any, Callable, get_args
 
 from ask.messages import ToolCallStatus, Message, Role, Content, CheckedToolRequest
 from ask.tools import TOOLS
-from ask.ui.core.components import dirty
 
 class MessageEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -46,22 +45,22 @@ def message_decoder(obj):
     return obj
 
 class MessageTree:
-    def __init__(self, parent_uuid: UUID, messages: dict[UUID, Message]) -> None:
-        self.parent_uuid = parent_uuid
+    def __init__(self, messages: dict[UUID, Message], onchange: Callable[[], None] | None = None) -> None:
         self.messages = messages.copy()
         self.parents = {child: parent for parent, child in pairwise((None, *messages.keys()))}
+        self.onchange = onchange or (lambda: None)
 
     def __getitem__(self, key: UUID) -> Message:
         return self.messages[key]
 
     def __setitem__(self, key: UUID, value: Message) -> None:
         self.messages[key] = value
-        dirty.add(self.parent_uuid)
+        self.onchange()
 
     def clear(self) -> None:
         self.messages.clear()
         self.parents.clear()
-        dirty.add(self.parent_uuid)
+        self.onchange()
 
     def keys(self, head: UUID | None) -> list[UUID]:
         keys = []

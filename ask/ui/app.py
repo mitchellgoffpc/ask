@@ -1,22 +1,18 @@
 from __future__ import annotations
 import asyncio
-import re
 import sys
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import ClassVar
 
-from ask.commands import BashCommand, FilesCommand, InitCommand, PythonCommand, SlashCommand
-from ask.commands import load_messages, save_messages, switch_model, get_usage
+from ask.commands import BashCommand, PythonCommand, SlashCommand, ModelCommand, get_usage
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.models import Model
-from ask.query import query_agent
+from ask.query import query_agent_with_commands
 from ask.tools import Tool, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
-from ask.tools.read import read_file
 from ask.tree import MessageTree
-from ask.ui.core.components import Component, Controller, Box, Text, Widget
+from ask.ui.core.components import Component, Controller, Box, Text, Widget, dirty
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
@@ -30,6 +26,7 @@ class App(Widget):
     __controller__: ClassVar = lambda _: AppController
     model: Model
     messages: dict[UUID, Message]
+    query: str
     tools: list[Tool]
     system_prompt: str
 
@@ -45,20 +42,24 @@ class AppController(Controller[App]):
 
     def __init__(self, props: App) -> None:
         super().__init__(props)
-        self.messages = MessageTree(self.uuid, self.props.messages)
+        self.messages = MessageTree(self.props.messages, onchange=lambda: dirty.add(self.uuid))
         self.head = [None, *self.props.messages][-1]
-        self.model = self.props.model
         self.config = Config()
         self.history = History()
         self.tasks: list[asyncio.Task] = []
-        self.start_time = time.monotonic()
-        self.query_time = 0.
+
+    @property
+    def model(self) -> Model:
+        for msg in reversed(list(self.messages.values(self.head))):
+            if isinstance(msg.content, ModelCommand):
+                return msg.content.model
+        return self.props.model
 
     def exit(self) -> None:
         self.exiting = True
         asyncio.get_running_loop().call_later(0.1, sys.exit, 0)
 
-    async def _tick(self, interval: float) -> None:
+    async def tick(self, interval: float) -> None:
         try:
             start_time = time.time()
             while True:
@@ -66,11 +67,6 @@ class AppController(Controller[App]):
                 await asyncio.sleep(interval)
         except asyncio.CancelledError:
             self.elapsed = 0
-
-    async def tick(self, tasks: list[asyncio.Task], interval: float) -> None:
-        ticker = asyncio.create_task(self._tick(interval))
-        await asyncio.gather(*tasks)
-        ticker.cancel()
 
     async def approve(self, request: CheckedToolRequest) -> bool:
         approval_tools = {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name}
@@ -86,47 +82,25 @@ class AppController(Controller[App]):
         finally:
             self.pending_approvals = {k: v for k, v in self.pending_approvals.items() if k != request.call_id}
 
-    async def query(self) -> None:
+    async def query(self, query: str) -> None:
         self.loading = True
-        text_uuid: UUID = uuid4()
-        text = ''
-        start_time = time.monotonic()
+        self.history.append(query)
+        ticker = asyncio.create_task(self.tick(0.1))
 
         try:
-            async for delta, msg in query_agent(self.model, self.messages.values(self.head), self.props.tools, self.approve, self.props.system_prompt):
-                text = text + delta
-                if text and text_uuid not in self.messages.messages:
-                    self.head = self.messages.add('assistant', self.head, TextContent(''), uuid=text_uuid)
-                elif text:
-                    self.messages.update(text_uuid, TextContent(text))
-
-                if msg and msg.role == 'user':
-                    self.head = self.messages.add('user', self.head, msg.content)
-                if msg and msg.role == 'assistant':
-                    content = msg.content
-                    if isinstance(content, TextContent):
-                        self.messages.update(text_uuid, content)
-                        text = ''
-                    else:
-                        self.head = self.messages.add('assistant', self.head, content)
+            async for head in query_agent_with_commands(self.model, self.messages, self.head, query, self.props.tools, self.approve, self.props.system_prompt):
+                self.head = head
         except asyncio.CancelledError:
             self.head = self.messages.add('user', self.head, Error("Request interrupted by user"))
         except Exception as e:
             self.head = self.messages.add('user', self.head, Error(str(e)))
 
-        self.query_time += time.monotonic() - start_time
         self.loading = False
+        ticker.cancel()
 
     def handle_mount(self) -> None:
-        messages = self.messages.values(self.head)
-        if messages and messages[-1].role == 'user':
-            match messages[-1].content:
-                case TextContent(text): prompt = text
-                case FilesCommand(command): prompt = command
-                case _: prompt = ''
-            if prompt:
-                self.tasks.append(asyncio.create_task(self.query()))
-                self.history.append(prompt)
+        if self.props.query:
+            self.tasks.append(asyncio.create_task(self.query(self.props.query)))
 
     def handle_input(self, ch: str) -> None:
         if ch == '\x04':  # Ctrl+D
@@ -152,44 +126,16 @@ class AppController(Controller[App]):
         if any(not task.done() for task in self.tasks):
             return False
 
-        self.history.append(value)
-        value = value.rstrip()
-        if value in ('/exit', '/quit', 'exit', 'quit'):
+        query = value.rstrip()
+        if query in ('/exit', '/quit', 'exit', 'quit'):
             self.exit()
-        elif value == '/clear':
-            self.messages.clear()
-            self.head = None
-        elif value.startswith('/model'):
-            self.head, self.model = switch_model(value.removeprefix('/model').lstrip(), self.model, self.messages, self.head)
-        elif value == '/cost':
-            output = get_usage(dict(self.messages.items(self.head)), self.query_time, time.monotonic() - self.start_time)
-            self.head = self.messages.add('user', self.head, SlashCommand(command='/cost', output=output))
-        elif value == '/init':
-            self.head = self.messages.add('user', self.head, InitCommand(command='/init'))
-            self.tasks.append(asyncio.create_task(self.query()))
-        elif value.startswith('/save'):
-            self.head = save_messages(value.removeprefix('/save').strip(), self.messages, self.head)
-        elif value.startswith('/load'):
-            self.head = load_messages(value.removeprefix('/load').strip(), self.messages, self.head)
-        elif value.startswith('!'):
-            self.head, tasks = BashCommand.create(value.removeprefix('!').strip(), self.messages, self.head)
-            self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
-        elif value.startswith('$'):
-            self.head, tasks = PythonCommand.create(value.removeprefix('$').strip(), self.messages, self.head)
-            self.tasks.extend(tasks + [asyncio.create_task(self.tick(tasks, 1.0))])
         else:
-            file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', value) if Path(m[1:]).is_file()]  # get file attachments
-            if file_paths:
-                self.head = self.messages.add('user', self.head, FilesCommand(command=value, file_contents={fp: read_file(fp) for fp in file_paths}))
-            else:
-                self.head = self.messages.add('user', self.head, TextContent(value))
-            self.tasks.append(asyncio.create_task(self.query()))
+            self.tasks.append(asyncio.create_task(self.query(query)))
         return True
 
     def textbox(self) -> Component:
         if self.exiting:
-            wall_time = time.monotonic() - self.start_time
-            return Text(Colors.hex(get_usage(dict(self.messages.items(self.head)), self.query_time, wall_time), Theme.GRAY), margin={'top': 1})
+            return Text(Colors.hex(get_usage(dict(self.messages.items(self.head))), Theme.GRAY), margin={'top': 1})
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
             tool_call, future = self.pending_approvals[tool_call_id]
             return ApprovalDialog(tool_call=tool_call, future=future)
