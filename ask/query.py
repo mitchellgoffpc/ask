@@ -8,7 +8,7 @@ from typing import AsyncIterator, Awaitable, Callable
 from uuid import UUID, uuid4
 
 from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand
-from ask.commands import load_messages, save_messages, get_usage, get_current_model
+from ask.commands import load_messages, save_messages, get_usage, get_context, get_current_model
 from ask.messages import Message, Content, Text, Command, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
 from ask.models import Model, MODELS_BY_NAME
 from ask.prompts import load_prompt_file
@@ -134,6 +134,8 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
         yield messages.add('user', head, InitCommand(command='/init'))
     elif query == '/cost':
         yield messages.add('user', head, SlashCommand(command='/cost', output=get_usage(messages, head)))
+    elif query == '/context':
+        yield messages.add('user', head, SlashCommand(command='/context', output=get_context(messages, head)))
     elif query.startswith('/save '):
         yield save_messages(query.removeprefix('/save').strip(), messages, head)
     elif query.startswith('/load '):

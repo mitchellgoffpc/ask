@@ -39,6 +39,7 @@ PLACEHOLDERS = {
     Mode.TEXT: "Try 'how do I log an error?'"}
 
 COMMANDS = {
+    '/context': 'Visualize current context usage as a colored grid',
     '/clear': 'Clear conversation history and free up context',
     '/cost': 'Show the total cost and token usage for current session',
     '/init': 'Generate an AGENTS.md file with codebase documentation',

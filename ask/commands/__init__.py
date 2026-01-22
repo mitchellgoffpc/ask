@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from ask.commands.bash import BashCommand
+from ask.commands.context import estimate_context_usage, format_context_usage
 from ask.commands.python import PythonCommand
 from ask.messages import ToolCallStatus, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
 from ask.models import MODELS_BY_NAME, Model
@@ -142,6 +143,11 @@ def get_usage(messages: MessageTree, head: UUID) -> str:
     max_title_len = max(len(title) + 1 for title, _ in rows)
     return '\n'.join(f"{title + ':':<{max_title_len}}  {value}" for title, value in rows)
 
+def get_context(messages: MessageTree, head: UUID) -> str:
+    model = get_current_model(messages, head)
+    usage = estimate_context_usage(messages.values(head), model)
+    return format_context_usage(usage, model)
+
 
 __all__ = [
     "BashCommand",
@@ -155,5 +161,6 @@ __all__ = [
     "save_messages",
     "load_messages",
     "get_usage",
+    "get_context",
     "get_current_model",
 ]
