@@ -92,8 +92,6 @@ class AppController(Controller[App]):
             self.tasks.append(asyncio.create_task(self.query(self.props.query)))
 
     def handle_input(self, ch: str) -> None:
-        if ch == '\x04':  # Ctrl+D
-            self.exit()
         if ch == '\x03':  # Ctrl+C
             self.expanded = False
         elif ch == '\x12':  # Ctrl+R

@@ -120,12 +120,16 @@ async def query_agent(model: Model, messages: list[Message], tools: list[Tool],
 
         if not (has_tool_requests or (has_reasoning and not has_text)):
             return
-        if tool_requests:
-            tasks = [asyncio.create_task(_execute_tool(req, approval)) for req in tool_requests]
-            tool_responses = [Message(role='user', content=r) for r in await asyncio.gather(*tasks)]
-            for response in tool_responses:
-                yield '', response
-            messages.extend(tool_responses)
+
+        async def reject(_): return False
+        for req in tool_requests:
+            response = await _execute_tool(req, approval)
+            if response.status == ToolCallStatus.CANCELLED:
+                approval = reject
+            messages.append(Message('user', response))
+            yield '', Message('user', response)
+        if approval is reject:
+            return
 
 
 # Main entry point for the UI to query the agent with commands
