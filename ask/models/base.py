@@ -29,6 +29,11 @@ def get_message_groups(messages: list[Message]) -> list[tuple[Role, list[Content
 # Model / API classes
 
 @dataclass
+class Context:
+    max_length: int
+    max_output_length: int
+
+@dataclass
 class Pricing:
     input: float
     cache_write: float
@@ -40,6 +45,7 @@ class Model:
     name: str
     api: API
     shortcuts: list[str]
+    context: Context
     pricing: Pricing | None = None
     stream: bool = True
     supports_images: bool = True
