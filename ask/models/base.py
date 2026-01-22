@@ -41,17 +41,21 @@ class Pricing:
     output: float
 
 @dataclass
+class Capabilities:
+    stream: bool = True
+    images: bool = True
+    pdfs: bool = True
+    system_prompt: bool = True
+    reasoning: bool = True
+
+@dataclass
 class Model:
-    name: str
     api: API
+    name: str
     shortcuts: list[str]
     context: Context
-    pricing: Pricing | None = None
-    stream: bool = True
-    supports_images: bool = True
-    supports_pdfs: bool = True
-    supports_system_prompt: bool = True
-    supports_reasoning: bool = True
+    pricing: Pricing | None
+    capabilities: Capabilities
 
 
 class API(metaclass=ABCMeta):
@@ -95,10 +99,10 @@ class API(metaclass=ABCMeta):
         match content:
             case Usage() | SystemPrompt(): return []
             case Text(): return [self.render_response_text(content) if role == 'assistant' else self.render_text(content)]
-            case Image() if not model.supports_images:
+            case Image() if not model.capabilities.images:
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
             case Image(): return [self.render_image(content)]
-            case PDF() if not model.supports_pdfs:
+            case PDF() if not model.capabilities.pdfs:
                 raise NotImplementedError(f"Model '{model.name}' does not support PDF prompts")
             case PDF(): return [self.render_pdf(content)]
             case Reasoning(): return [self.render_reasoning(content)]

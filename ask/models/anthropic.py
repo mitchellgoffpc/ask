@@ -54,8 +54,8 @@ class AnthropicAPI(API):
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
     def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
-        assert model.supports_system_prompt, "Wtf? All anthropic models support system prompts."
-        # reasoning = {'thinking': {"type": "enabled", "budget_tokens": 1024}} if model.supports_reasoning else {}
+        assert model.capabilities.system_prompt, "Wtf? All anthropic models support system prompts."
+        # reasoning = {'thinking': {"type": "enabled", "budget_tokens": 1024}} if model.capabilities.reasoning else {}
         return {"model": model.name, "temperature": 1.0, 'max_tokens': 4096, 'stream': stream} | self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:

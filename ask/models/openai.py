@@ -36,7 +36,7 @@ class OpenAIAPI(API):
         return {'type': 'function', 'name': tool.name, 'description': tool.description, 'parameters': tool.input_schema}
 
     def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]:
-        if model.supports_system_prompt:
+        if model.capabilities.system_prompt:
             return [{'role': 'system', 'content': system_prompt.text}]
         else:
             return [{'role': 'user', 'content': [self.render_text(Text(system_prompt.text))]},
@@ -65,7 +65,7 @@ class OpenAIAPI(API):
 
     def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
         cache_key = f'ask-{socket.gethostname()}'
-        metadata = {"prompt_cache_key": cache_key, "store": False} | ({"include": ["reasoning.encrypted_content"]} if model.supports_reasoning else {})
+        metadata = {"prompt_cache_key": cache_key, "store": False} | ({"include": ["reasoning.encrypted_content"]} if model.capabilities.reasoning else {})
         return {"model": model.name, "stream": stream} | metadata | self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:

@@ -29,7 +29,7 @@ class LegacyOpenAIAPI(API):
         return {'type': 'function', 'function': {'name': tool.name, 'description': tool.description, 'parameters': tool.input_schema}}
 
     def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]:
-        if not model.supports_system_prompt:
+        if not model.capabilities.system_prompt:
             return [{'role': 'user', 'content': system_prompt.text}, {'role': 'assistant', 'content': 'Understood.'}]
         else:
             return [{'role': 'system', 'content': system_prompt.text}]

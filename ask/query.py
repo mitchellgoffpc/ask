@@ -48,7 +48,7 @@ async def query(model: Model, messages: list[Message], stream: bool) -> AsyncCon
     messages = _expand_commands(messages)
     api = model.api
     api_key = os.getenv(api.key, '')
-    stream = stream and model.stream
+    stream = stream and model.capabilities.stream
     url = api.url(model, stream)
     params = api.params(model, messages, stream)
     headers = api.headers(api_key)
