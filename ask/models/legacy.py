@@ -2,10 +2,8 @@ import base64
 import json
 from typing import Any
 
-from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
-from ask.models.tool_helpers import render_tools_prompt, render_tool_request, render_tool_response
+from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, SystemPrompt
 from ask.models.base import API, Model, get_message_groups
-from ask.tools.base import Tool
 
 class LegacyOpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -20,61 +18,41 @@ class LegacyOpenAIAPI(API):
     def render_pdf(self, pdf: PDF) -> dict[str, Any]:
         raise NotImplementedError("PDF rendering not supported in Legacy OpenAI API")
 
-    # render_tool_request / render_tool_response are only used as fallbacks for models that don't support tool calls
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]:
-        return {'type': 'text', 'text': render_tool_request(request)}
-
-    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
-        return {'type': 'text', 'text': render_tool_response(response)}
-
-    # render_tool_call / render_tool_message are the primary methods for rendering tool calls for the OpenAI schema
-    def render_tool_call(self, request: ToolRequest) -> dict[str, Any]:
         return {'id': request.call_id, 'type': 'function', 'function': {'name': request.tool, 'arguments': json.dumps(request.arguments)}}
 
-    def render_tool_message(self, response: ToolResponse) -> dict[str, Any]:
+    def render_tool_response(self, response: ToolResponse) -> dict[str, Any]:
         assert isinstance(response.response, Text)
         return {'role': 'tool', 'tool_call_id': response.call_id, 'content': response.response.text}
 
-    def render_message(self, role: str, content: list[Content], tool_calls: list[ToolRequest], model: Model) -> dict[str, Any]:
-        tool_call_dict = {'tool_calls': [self.render_tool_call(x) for x in tool_calls]} if tool_calls else {}
-        rendered_content = [x for c in content for x in self.render_content(role, c, model)]
-        return {'role': role, 'content': rendered_content} | tool_call_dict
+    def render_tool_descriptor(self, tool: ToolDescriptor) -> dict[str, Any]:
+        return {'type': 'function', 'function': {'name': tool.name, 'description': tool.description, 'parameters': tool.input_schema}}
 
-    def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
-        # OpenAI's Legacy API has tools as a separate role, so we need to split them out into a separate message for each tool call
-        if model.supports_tools:
-            tool_response_msgs = [self.render_tool_message(c) for c in content if isinstance(c, ToolResponse)]
-            tool_requests = [c for c in content if isinstance(c, ToolRequest)]
-            other_content: list[Content] = [c for c in content if not isinstance(c, (ToolRequest, ToolResponse))]
-            other_messages = [self.render_message(role, other_content, tool_requests, model)] if other_content or tool_requests else []
-            return tool_response_msgs + other_messages
+    def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]:
+        if not model.supports_system_prompt:
+            return [{'role': 'user', 'content': system_prompt.text}, {'role': 'assistant', 'content': 'Understood.'}]
         else:
-            return [self.render_message(role, content, [], model)]
+            return [{'role': 'system', 'content': system_prompt.text}]
 
-    def render_tool(self, tool: Tool) -> dict[str, Any]:
-        return {
-            'type': 'function',
-            'function': {'name': tool.name, 'description': tool.description, 'parameters': tool.get_input_schema()}}
-
-    def render_system_prompt(self, system_prompt: str, model: Model) -> list[dict[str, str]]:
-        if not system_prompt:
-            return []
-        elif not model.supports_system_prompt:
-            return [{'role': 'user', 'content': system_prompt}, {'role': 'assistant', 'content': 'Understood.'}]
-        else:
-            return [{'role': 'system', 'content': system_prompt}]
+    def render_messages(self, messages: list[Message], model: Model) -> dict[str, Any]:
+        tools, msgs = [], []
+        for role, group in get_message_groups(messages):
+            content, tool_requests = [], []
+            for c in group:
+                match c:
+                    case SystemPrompt(): msgs.extend(self.render_system_prompt(c, model))
+                    case ToolDescriptor(): tools.append(self.render_tool_descriptor(c))
+                    case ToolRequest(): tool_requests.append(self.render_tool_request(c))
+                    case ToolResponse(): msgs.append(self.render_tool_response(c))
+                    case _: content.extend(self.render_content(role, c, model))
+            msgs.append({'role': role} | ({'content': content} if content else {}) | ({'tool_calls': tool_requests} if tool_requests else {}))
+        return {'tools': tools, 'messages': msgs}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
-        if not model.supports_tools:
-            system_prompt = f"{system_prompt}\n\n{render_tools_prompt(tools)}".strip()
-        system_msgs = self.render_system_prompt(system_prompt, model)
-        chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
-        msg_dict = {"model": model.name, "messages": system_msgs + chat_msgs, "temperature": 1.0, 'stream': model.stream}
-        tools_dict = {"tools": [self.render_tool(tool) for tool in tools]} if tools and model.supports_tools else {}
-        return msg_dict | tools_dict
+    def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
+        return {"model": model.name, "temperature": 1.0, 'stream': stream} | self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []

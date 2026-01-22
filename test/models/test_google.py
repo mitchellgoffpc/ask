@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from ask.models.base import Model
 from ask.models.google import GoogleAPI
-from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, create_mock_tool, to_async
+from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -13,7 +13,6 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
         self.model = Model('test-model', self.api, [])
 
     def test_params(self):
-        tool = create_mock_tool()
         image_data = base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'user', 'parts': [{'text': 'Hello'}]},
@@ -22,7 +21,7 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
                 {'functionResponse': {'name': 'test_tool', 'response': {'result': 'result'}}},
                 {'inline_data': {'mime_type': 'image/png', 'data': image_data}}]}]
 
-        result = self.api.params(self.model, INPUT_MESSAGES[:1] + INPUT_MESSAGES[2:], [tool], 'System prompt', True)
+        result = self.api.params(self.model, INPUT_MESSAGES[:3] + INPUT_MESSAGES[4:], True)
         self.assertEqual(result['system_instruction'], {'parts': [{'text': 'System prompt'}]})
         self.assertEqual(len(result['tools'][0]['functionDeclarations']), 1)
         for actual, expected in zip(result['contents'], expected_output, strict=True):

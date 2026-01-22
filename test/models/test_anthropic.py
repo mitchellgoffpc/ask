@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.base import Model
 from ask.models.anthropic import AnthropicAPI
-from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, create_mock_tool, to_async
+from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -12,7 +12,6 @@ class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
         self.model = Model('test-model', self.api, [])
 
     def test_params(self):
-        tool = create_mock_tool()
         image_data = base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'user', 'content': [{'type': 'text', 'text': 'Hello'}]},
@@ -24,7 +23,7 @@ class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
                 {'type': 'tool_result', 'tool_use_id': 'call_1', 'content': [{'type': 'text', 'text': 'result'}]},
                 {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/png', 'data': image_data}, 'cache_control': {'type': 'ephemeral'}}]}]
 
-        result = self.api.params(self.model, INPUT_MESSAGES, [tool], 'System prompt', True)
+        result = self.api.params(self.model, INPUT_MESSAGES, True)
         self.assertEqual(result['model'], 'test-model')
         self.assertTrue(result['stream'])
         self.assertEqual(len(result['tools']), 1)

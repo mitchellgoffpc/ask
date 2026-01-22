@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from ask.commands import FilesCommand, DocsCommand, ModelCommand
-from ask.messages import Message
+from ask.messages import Message, SystemPrompt, ToolDescriptor
 from ask.models import MODELS, MODEL_SHORTCUTS
 from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS
@@ -36,8 +36,12 @@ def main() -> None:
         print("\nUse any model name or shortcut from the list above.", file=sys.stderr)
         sys.exit(1)
 
+    # Add system and tool descriptor messages
     messages = {}
     messages[uuid4()] = Message(role='user', content=ModelCommand(command='', model=MODEL_SHORTCUTS[args.model]))
+    messages[uuid4()] = Message(role='user', content=SystemPrompt(text=args.system))
+    for tool in TOOLS.values():
+        messages[uuid4()] = Message(role='user', content=ToolDescriptor(name=tool.name, description=tool.description, input_schema=tool.get_input_schema()))
 
     # Attach USER.md / AGENTS.md files
     if (user_file := CONFIG_DIR / 'USER.md').exists():
@@ -58,7 +62,7 @@ def main() -> None:
     question = question.strip()
 
     # Launch the UI
-    asyncio.run(render_root(App(messages=messages, query=question, tools=list(TOOLS.values()), system_prompt=args.system)))
+    asyncio.run(render_root(App(messages=messages, query=question)))
 
 
 if __name__ == '__main__':

@@ -1,9 +1,8 @@
-from unittest.mock import MagicMock
-
-from ask.messages import Message, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, ToolCallStatus
-from ask.tools.base import Tool
+from ask.messages import Message, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, ToolCallStatus, SystemPrompt, ToolDescriptor
 
 INPUT_MESSAGES = [
+    Message('user', SystemPrompt('System prompt')),
+    Message('user', ToolDescriptor('test_tool', 'A test tool', {'type': 'object', 'properties': {}})),
     Message('user', Text('Hello')),
     Message('assistant', Reasoning(data='i should say hi', encrypted=True, summary='say hello')),
     Message('assistant', Text('Hi')),
@@ -21,14 +20,6 @@ DECODE_OUTPUT = (
     [('', x) for x in RESULT_OUTPUT[:1]] +
     [('Hello', None), (' world', None)] +
     [('', x) for x in RESULT_OUTPUT[1:]])
-
-
-def create_mock_tool(name='test_tool', description='A test tool'):
-    tool = MagicMock(spec=Tool)
-    tool.name = name
-    tool.description = description
-    tool.get_input_schema.return_value = {'type': 'object', 'properties': {}}
-    return tool
 
 async def to_async(data):
     for item in data:

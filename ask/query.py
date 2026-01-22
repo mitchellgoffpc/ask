@@ -11,9 +11,8 @@ from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, M
 from ask.commands import load_messages, save_messages, get_usage, get_current_model
 from ask.messages import Message, Content, Text, Command, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
 from ask.models import Model, MODELS_BY_NAME
-from ask.models.tool_helpers import parse_tool_block
 from ask.prompts import load_prompt_file
-from ask.tools import TOOLS, Tool, ToolError
+from ask.tools import TOOLS, ToolError
 from ask.tools.read import read_file
 from ask.tree import MessageTree
 
@@ -45,13 +44,13 @@ async def _execute_tool(request: CheckedToolRequest, approval: ApprovalCallback)
 
 # Make a single query to the model API
 
-async def _query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> AsyncContentIterator:
+async def query(model: Model, messages: list[Message], stream: bool) -> AsyncContentIterator:
     messages = _expand_commands(messages)
     api = model.api
     api_key = os.getenv(api.key, '')
     stream = stream and model.stream
     url = api.url(model, stream)
-    params = api.params(model, messages, tools, system_prompt, stream)
+    params = api.params(model, messages, stream)
     headers = api.headers(api_key)
     assert api_key, f"{api.key!r} environment variable isn't set!"
 
@@ -77,25 +76,16 @@ async def _query(model: Model, messages: list[Message], tools: list[Tool], syste
                     response_text = await r.text()
                     raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}") from None
 
-async def query(model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool = True) -> AsyncContentIterator:
-    async for chunk, content in _query(model, messages, tools, system_prompt, stream):
-        if isinstance(content, Text) and not model.supports_tools:
-            yield chunk, None
-            for item in parse_tool_block(content):
-                yield '', item
-        else:
-            yield chunk, content
-
 
 # Run agent loop until completion
 
-async def query_agent(model: Model, messages: list[Message], tools: list[Tool],
-                      approval: ApprovalCallback, system_prompt: str, stream: bool = True) -> AsyncMessageIterator:
+async def query_agent(model: Model, messages: list[Message],
+                      approval: ApprovalCallback, stream: bool = True) -> AsyncMessageIterator:
     messages = messages[:]
     while True:
         has_text, has_reasoning, has_tool_requests = False, False, False
         tool_requests: list[CheckedToolRequest] = []
-        async for delta, content in query(model, messages, tools, system_prompt, stream):
+        async for delta, content in query(model, messages, stream):
             match content:
                 case None:
                     yield delta, None
@@ -134,8 +124,8 @@ async def query_agent(model: Model, messages: list[Message], tools: list[Tool],
 
 # Main entry point for the UI to query the agent with commands
 
-async def query_agent_with_commands(messages: MessageTree, head: UUID, query: str, tools: list[Tool],
-                                    approval: ApprovalCallback, system_prompt: str, stream: bool = True) -> AsyncIterator[UUID]:
+async def query_agent_with_commands(messages: MessageTree, head: UUID, query: str,
+                                    approval: ApprovalCallback, stream: bool = True) -> AsyncIterator[UUID]:
     model = get_current_model(messages, head)
     if query == '/clear':
         messages.clear()
@@ -175,7 +165,7 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
 
         text_uuid: UUID | None = None
         text = ''
-        async for delta, msg in query_agent(model, messages.values(head), tools, approval, system_prompt, stream):
+        async for delta, msg in query_agent(model, messages.values(head), approval, stream):
             text = text + delta
             if text and text_uuid not in messages.messages:
                 text_uuid = uuid4()
@@ -187,9 +177,8 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
                 yield (head := messages.add('user', head, msg.content))
             if msg and msg.role == 'assistant':
                 match msg.content:
-                    case Text():
-                        if text_uuid is not None:
-                            messages.update(text_uuid, msg.content)
+                    case Text() if text_uuid:
+                        messages.update(text_uuid, msg.content)
                         text = ''
                         text_uuid = None
                     case _:

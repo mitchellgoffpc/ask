@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.base import Model
 from ask.models.openai import OpenAIAPI
-from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, create_mock_tool, to_async
+from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -12,18 +12,17 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.model = Model('test-model', self.api, [])
 
     def test_params(self):
-        tool = create_mock_tool()
         image_url = 'data:image/png;base64,' + base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'system', 'content': 'System prompt'},
             {'role': 'user', 'content': [{'type': 'input_text', 'text': 'Hello'}]},
             {'type': 'reasoning', 'encrypted_content': 'i should say hi', 'summary': ['say hello']},
-            {'type': 'function_call', 'call_id': 'call_1', 'name': 'test_tool', 'arguments': json.dumps({'arg': 'value'})},
             {'role': 'assistant', 'content': [{'type': 'output_text', 'text': 'Hi'}]},
+            {'type': 'function_call', 'call_id': 'call_1', 'name': 'test_tool', 'arguments': json.dumps({'arg': 'value'})},
             {'type': 'function_call_output', 'call_id': 'call_1', 'output': [{'type': 'input_text', 'text': 'result'}]},
             {'role': 'user', 'content': [{'type': 'input_image', 'image_url': image_url}]}]
 
-        result = self.api.params(self.model, INPUT_MESSAGES, [tool], 'System prompt', True)
+        result = self.api.params(self.model, INPUT_MESSAGES, True)
         self.assertEqual(result['model'], 'test-model')
         self.assertTrue(result['stream'])
         self.assertEqual(len(result['tools']), 1)

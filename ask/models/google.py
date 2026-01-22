@@ -3,9 +3,8 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
+from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, SystemPrompt
 from ask.models.base import API, Model, get_message_groups
-from ask.tools.base import Tool
 
 class GoogleAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -27,12 +26,23 @@ class GoogleAPI(API):
         assert isinstance(response.response, Text)
         return {'functionResponse': {'name': response.tool, 'response': {'result': response.response.text}}}
 
-    def render_tool(self, tool: Tool) -> dict[str, Any]:
-        return {"name": tool.name, "description": tool.description, "parameters": tool.get_input_schema()}
+    def render_tool_descriptor(self, tool: ToolDescriptor) -> dict[str, Any]:
+        return {"name": tool.name, "description": tool.description, "parameters": tool.input_schema}
 
-    def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
-        role = 'model' if role == 'assistant' else role
-        return {'role': role, 'parts': [x for c in content for x in self.render_content(role, c, model)]}
+    def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]:
+        return [self.render_text(Text(system_prompt.text))]
+
+    def render_messages(self, messages: list[Message], model: Model) -> dict[str, Any]:
+        system, tools, msgs = [], [], []
+        for role, group in get_message_groups(messages):
+            content = []
+            for c in group:
+                match c:
+                    case SystemPrompt(): system.extend(self.render_system_prompt(c, model))
+                    case ToolDescriptor(): tools.append(self.render_tool_descriptor(c))
+                    case _: content.extend(self.render_content(role, c, model))
+            msgs.append({'role': 'model' if role == 'assistant' else role, 'parts': content})
+        return {'system_instruction': {'parts': system}, 'tools': [{'functionDeclarations': tools}], 'contents': msgs}
 
     def url(self, model: Model, stream: bool) -> str:
         return f"{self.base_url}/{model.name}:{'streamGenerateContent?alt=sse' if stream else 'generateContent'}"
@@ -40,11 +50,8 @@ class GoogleAPI(API):
     def headers(self, api_key: str) -> dict[str, str]:
         return {"X-goog-api-key": api_key}
 
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
-        system_dict = {'system_instruction': {'parts': [{'text': system_prompt}]}} if system_prompt else {}
-        tools_dict = {'tools': [{'functionDeclarations': [self.render_tool(tool) for tool in tools]}]} if tools else {}
-        msg_dict = {"contents": [self.render_message(role, content, model) for role, content in get_message_groups(messages)]}
-        return system_dict | tools_dict | msg_dict
+    def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
+        return self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         choices = response['candidates']

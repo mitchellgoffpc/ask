@@ -2,9 +2,8 @@ import base64
 import json
 from typing import Any
 
-from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
+from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, SystemPrompt
 from ask.models.base import API, Model, get_message_groups
-from ask.tools.base import Tool
 
 class AnthropicAPI(API):
     supports_image_tools: bool = True
@@ -31,25 +30,33 @@ class AnthropicAPI(API):
             case PDF(): content = self.render_pdf(response.response)
         return {'type': 'tool_result', 'tool_use_id': response.call_id, 'content': [content]}
 
-    def render_tool(self, tool: Tool) -> dict[str, Any]:
-        return {"name": tool.name, "description": tool.description, "input_schema": tool.get_input_schema()}
+    def render_tool_descriptor(self, tool: ToolDescriptor) -> dict[str, Any]:
+        return {"name": tool.name, "description": tool.description, "input_schema": tool.input_schema}
 
-    def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
-        return {'role': role, 'content': [x for c in content for x in self.render_content(role, c, model)]}
+    def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]:
+        return [{'type': 'text', 'text': system_prompt.text, 'cache_control': {'type': 'ephemeral'}}]
+
+    def render_messages(self, messages: list[Message], model: Model) -> dict[str, Any]:
+        system, tools, msgs = [], [], []
+        for role, group in get_message_groups(messages):
+            content = []
+            for c in group:
+                match c:
+                    case SystemPrompt(): system.extend(self.render_system_prompt(c, model))
+                    case ToolDescriptor(): tools.append(self.render_tool_descriptor(c))
+                    case _: content.extend(self.render_content(role, c, model))
+            msgs.append({'role': role, 'content': content})
+        if msgs:
+            msgs[-1]['content'][-1]['cache_control'] = {'type': 'ephemeral'}  # type: ignore[index]
+        return {'system': system, 'tools': tools, 'messages': msgs}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"x-api-key": api_key, 'anthropic-version': '2023-06-01'}
 
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
-        assert model.supports_system_prompt and model.supports_tools, "Wtf? All anthropic models support system prompts and tools."
-        chat_msgs = [self.render_message(role, content, model) for role, content in get_message_groups(messages)]
-        if chat_msgs:
-            chat_msgs[-1]['content'][-1]['cache_control'] = {'type': 'ephemeral'}
-        system_dict = {'system': [{'type': 'text', 'text': system_prompt, 'cache_control': {'type': 'ephemeral'}}]} if system_prompt else {}
-        tools_dict = {'tools': [self.render_tool(tool) for tool in tools]} if tools else {}
-        # reasoning_dict = {'thinking': {"type": "enabled", "budget_tokens": 1024}} if model.supports_reasoning else {}
-        msg_dict = {"model": model.name, "messages": chat_msgs, "temperature": 1.0, 'max_tokens': 4096, 'stream': stream}
-        return system_dict | tools_dict | msg_dict # | reasoning_dict
+    def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
+        assert model.supports_system_prompt, "Wtf? All anthropic models support system prompts."
+        # reasoning = {'thinking': {"type": "enabled", "budget_tokens": 1024}} if model.supports_reasoning else {}
+        return {"model": model.name, "temperature": 1.0, 'max_tokens': 4096, 'stream': stream} | self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []

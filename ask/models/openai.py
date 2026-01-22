@@ -3,9 +3,8 @@ import json
 import socket
 from typing import Any
 
-from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
+from ask.messages import Message, Content, Text, Image, PDF, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, SystemPrompt
 from ask.models.base import API, Model, get_message_groups
-from ask.tools import Tool
 
 class OpenAIAPI(API):
     def render_text(self, text: Text) -> dict[str, Any]:
@@ -33,38 +32,41 @@ class OpenAIAPI(API):
             case PDF(): content = self.render_pdf(response.response)
         return {'type': 'function_call_output', 'call_id': response.call_id, 'output': [content]}
 
-    def render_message(self, role: str, content: list[Content], model: Model) -> dict[str, Any]:
-        return {'role': role, 'content': [x for c in content for x in self.render_content(role, c, model)]}
+    def render_tool_descriptor(self, tool: ToolDescriptor) -> dict[str, Any]:
+        return {'type': 'function', 'name': tool.name, 'description': tool.description, 'parameters': tool.input_schema}
 
-    def render_message_group(self, role: str, content: list[Content], model: Model) -> list[dict[str, str]]:
-        reasoning_msgs = [self.render_reasoning(c) for c in content if isinstance(c, Reasoning)]
-        tool_request_msgs = [self.render_tool_request(c) for c in content if isinstance(c, ToolRequest)]
-        tool_response_msgs = [self.render_tool_response(c) for c in content if isinstance(c, ToolResponse)]
-        other_content: list[Content] = [c for c in content if not isinstance(c, (Reasoning, ToolRequest, ToolResponse))]
-        other_messages = [self.render_message(role, other_content, model)] if other_content else []
-        return reasoning_msgs + tool_request_msgs + tool_response_msgs + other_messages
-
-    def render_tool(self, tool: Tool) -> dict[str, Any]:
-        return {'type': 'function', 'name': tool.name, 'description': tool.description, 'parameters': tool.get_input_schema()}
-
-    def render_system_prompt(self, system_prompt: str, model: Model) -> list[dict[str, str]]:
-        if not system_prompt:
-            return []
-        elif not model.supports_system_prompt:
-            return [{'role': 'user', 'content': system_prompt}, {'role': 'assistant', 'content': 'Understood.'}]
+    def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]:
+        if model.supports_system_prompt:
+            return [{'role': 'system', 'content': system_prompt.text}]
         else:
-            return [{'role': 'system', 'content': system_prompt}]
+            return [{'role': 'user', 'content': [self.render_text(Text(system_prompt.text))]},
+                    {'role': 'assistant', 'content': [self.render_response_text(Text("Understood."))]}]
+
+    def render_messages(self, messages: list[Message], model: Model) -> dict[str, Any]:
+        tools, msgs = [], []
+        for role, group in get_message_groups(messages):
+            content, tool_calls = [], []
+            for c in group:
+                match c:
+                    case SystemPrompt(): msgs.extend(self.render_system_prompt(c, model))
+                    case ToolDescriptor(): tools.append(self.render_tool_descriptor(c))
+                    case ToolRequest(): tool_calls.append(self.render_tool_request(c))
+                    case ToolResponse(): msgs.append(self.render_tool_response(c))
+                    case Reasoning(): msgs.append(self.render_reasoning(c))
+                    case _: content.extend(self.render_content(role, c, model))
+            if content:
+                msgs.append({'role': role, 'content': content})
+            if tool_calls:
+                msgs.extend(tool_calls)
+        return {'tools': tools, 'input': msgs}
 
     def headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
 
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]:
+    def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
         cache_key = f'ask-{socket.gethostname()}'
-        tool_defs = [self.render_tool(tool) for tool in tools]
-        system_msgs = self.render_system_prompt(system_prompt, model)
-        chat_msgs = [msg for role, group in get_message_groups(messages) for msg in self.render_message_group(role, group, model)]
         metadata = {"prompt_cache_key": cache_key, "store": False} | ({"include": ["reasoning.encrypted_content"]} if model.supports_reasoning else {})
-        return {"model": model.name, "input": system_msgs + chat_msgs, "stream": stream, "tools": tool_defs, **metadata}
+        return {"model": model.name, "stream": stream} | metadata | self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []

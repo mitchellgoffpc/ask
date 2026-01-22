@@ -9,7 +9,7 @@ from typing import ClassVar
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.query import query_agent_with_commands
-from ask.tools import Tool, BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
+from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
 from ask.ui.core.components import Component, Controller, Box, Text, Widget, dirty
 from ask.ui.core.styles import Colors, Theme
@@ -25,8 +25,6 @@ class App(Widget):
     __controller__: ClassVar = lambda _: AppController
     messages: dict[UUID, Message]
     query: str
-    tools: list[Tool]
-    system_prompt: str
 
 class AppController(Controller[App]):
     state = ['expanded', 'exiting', 'show_todos', 'loading', 'elapsed', 'approvals', 'approved_tools', 'messages']
@@ -77,7 +75,7 @@ class AppController(Controller[App]):
         ticker = asyncio.create_task(self.tick(0.1))
 
         try:
-            async for head in query_agent_with_commands(self.messages, self.head, query, self.props.tools, self.approve, self.props.system_prompt):
+            async for head in query_agent_with_commands(self.messages, self.head, query, self.approve):
                 self.head = head
         except asyncio.CancelledError:
             self.head = self.messages.add('user', self.head, Error("Request interrupted by user"))

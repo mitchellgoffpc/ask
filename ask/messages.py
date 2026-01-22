@@ -11,6 +11,10 @@ class ToolCallStatus(Enum):
     COMPLETED = 'completed'
 
 @dataclass
+class SystemPrompt:
+    text: str
+
+@dataclass
 class Text:
     text: str
 
@@ -29,6 +33,12 @@ class Reasoning:
     data: str
     summary: str = ''
     encrypted: bool = False
+
+@dataclass
+class ToolDescriptor:
+    name: str
+    description: str
+    input_schema: dict[str, Any]
 
 @dataclass
 class ToolRequest:
@@ -75,4 +85,4 @@ class Message:
 
 Role = Literal['user', 'assistant']
 Blob = Text | Image | PDF
-Content = Blob | Reasoning | ToolRequest | ToolResponse | Command | Usage | Error
+Content = Blob | Reasoning | ToolDescriptor | ToolRequest | ToolResponse | Command | Usage | Error | SystemPrompt

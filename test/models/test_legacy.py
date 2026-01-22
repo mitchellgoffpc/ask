@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.base import Model
 from ask.models.legacy import LegacyOpenAIAPI
-from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, create_mock_tool, to_async
+from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -12,7 +12,6 @@ class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.model = Model('test-model', self.api, [])
 
     def test_params(self):
-        tool = create_mock_tool()
         image_url = 'data:image/png;base64,' + base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'system', 'content': 'System prompt'},
@@ -23,11 +22,12 @@ class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
             {'role': 'tool', 'tool_call_id': 'call_1', 'content': 'result'},
             {'role': 'user', 'content': [{'type': 'image_url', 'image_url': {'url': image_url}}]}]
 
-        result = self.api.params(self.model, INPUT_MESSAGES, [tool], 'System prompt', True)
+        result = self.api.params(self.model, INPUT_MESSAGES, True)
         self.assertEqual(result['model'], 'test-model')
         self.assertTrue(result['stream'])
         self.assertEqual(len(result['tools']), 1)
         for actual, expected in zip(result['messages'], expected_output, strict=True):
+            print(actual, expected)
             self.assertEqual(actual, expected)
 
     def test_result(self):

@@ -4,8 +4,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, replace
 from typing import Any, AsyncIterator
 
-from ask.messages import Message, Role, Content, Text, Image, PDF, Reasoning, ToolRequest, ToolResponse, Usage
-from ask.tools.base import Tool
+from ask.messages import Message, Role, Content, Text, Image, PDF, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, SystemPrompt
 
 TOOL_IMAGE_ERROR_MSG = "Function call returned an image, but the API does not support this behavior. The image will be attached manually by the user instead."
 
@@ -43,7 +42,6 @@ class Model:
     shortcuts: list[str]
     pricing: Pricing | None = None
     stream: bool = True
-    supports_tools: bool = True
     supports_images: bool = True
     supports_pdfs: bool = True
     supports_system_prompt: bool = True
@@ -76,14 +74,20 @@ class API(metaclass=ABCMeta):
     def render_reasoning(self, reasoning: Reasoning) -> dict[str, Any]: ...
 
     @abstractmethod
+    def render_tool_descriptor(self, tool: ToolDescriptor) -> dict[str, Any]: ...
+
+    @abstractmethod
     def render_tool_request(self, request: ToolRequest) -> dict[str, Any]: ...
 
     @abstractmethod
     def render_tool_response(self, response: ToolResponse) -> dict[str, Any]: ...
 
+    @abstractmethod
+    def render_system_prompt(self, system_prompt: SystemPrompt, model: Model) -> list[dict[str, Any]]: ...
+
     def render_content(self, role: str, content: Content, model: Model) -> list[dict[str, Any]]:
         match content:
-            case Usage(): return []
+            case Usage() | SystemPrompt(): return []
             case Text(): return [self.render_response_text(content) if role == 'assistant' else self.render_text(content)]
             case Image() if not model.supports_images:
                 raise NotImplementedError(f"Model '{model.name}' does not support image prompts")
@@ -101,7 +105,7 @@ class API(metaclass=ABCMeta):
             case _: raise TypeError(f"Unsupported message content: {type(content)}")
 
     @abstractmethod
-    def render_tool(self, tool: Tool) -> dict[str, Any]: ...
+    def render_messages(self, messages: list[Message], model: Model) -> dict[str, Any]: ...
 
     # Request / Response
 
@@ -112,7 +116,7 @@ class API(metaclass=ABCMeta):
     def headers(self, api_key: str) -> dict[str, str]: ...
 
     @abstractmethod
-    def params(self, model: Model, messages: list[Message], tools: list[Tool], system_prompt: str, stream: bool) -> dict[str, Any]: ...
+    def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]: ...
 
     @abstractmethod
     def result(self, response: dict[str, Any]) -> list[Content]: ...
