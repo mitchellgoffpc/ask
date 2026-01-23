@@ -6,8 +6,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, ClassVar
 
+from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
-from ask.ui.config import History
 from ask.ui.core.components import Component, Box, Text, Widget, Controller
 from ask.ui.core.styles import Colors, Flex, Styles, Theme
 from ask.ui.core.textbox import TextBox
@@ -226,7 +226,7 @@ class PromptTextBoxController(Controller):
                 TextBox(
                     width=1.0,
                     text=self.text,
-                    history=list(History),
+                    history=History['queries'],
                     placeholder=PLACEHOLDERS[self.mode],
                     handle_input=self.handle_textbox_input,
                     handle_page=self.handle_textbox_page,

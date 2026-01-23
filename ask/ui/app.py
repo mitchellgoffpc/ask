@@ -7,6 +7,7 @@ from uuid import UUID
 from typing import ClassVar
 
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
+from ask.config import History
 from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
@@ -15,7 +16,6 @@ from ask.ui.core.components import ElementTree, Component, Controller, Box, Text
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
-from ask.ui.config import History
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 from ask.ui.tools.todo import ToDos
@@ -71,7 +71,7 @@ class AppController(Controller[App]):
 
     async def query(self, query: str) -> None:
         self.loading = True
-        History.append(query)
+        History['queries'] = History.get('queries', []) + [query]
         ticker = asyncio.create_task(self.tick(0.1))
 
         try:
@@ -131,7 +131,7 @@ class AppController(Controller[App]):
             ]
         else:
             return PromptTextBox(
-                model=get_current_model(self.messages, self.head),
+                model=get_current_model(self.messages.values(self.head)),
                 approved_tools=self.approved_tools,
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)

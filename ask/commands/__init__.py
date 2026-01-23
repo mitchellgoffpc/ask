@@ -6,8 +6,9 @@ from uuid import UUID, uuid4
 
 from ask.commands.bash import BashCommand
 from ask.commands.python import PythonCommand
+from ask.config import Config
 from ask.messages import ToolCallStatus, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
-from ask.models import MODELS_BY_NAME, Model
+from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME, Model
 from ask.prompts import COMMAND_CAVEAT_MESSAGE, load_prompt_file, get_relative_path
 from ask.tree import MessageTree, MessageEncoder, message_decoder
 
@@ -63,9 +64,13 @@ class DocsCommand(Command):
         content = load_prompt_file('docs.toml')[self.prompt_key].format(file_path=self.file_path.resolve(), file_contents=self.file_contents)
         return [Message(role='user', content=Text(content))]
 
-@dataclass
-class ModelCommand(Command):
-    model: Model
+@dataclass(kw_only=True)
+class ModelCommand(SlashCommand):
+    command: str = ''
+    model: str
+
+    def __post_init__(self) -> None:
+        assert self.model in MODELS_BY_NAME, f"Unknown model: {self.model}"
 
     def messages(self) -> list[Message]:
         return []
@@ -98,11 +103,11 @@ def load_messages(path: str, messages: MessageTree, head: UUID | None) -> UUID:
 
 # /usage
 
-def get_current_model(messages: MessageTree, head: UUID) -> Model:
-    for msg in reversed(messages.values(head)):
+def get_current_model(messages: list[Message]) -> Model:
+    for msg in reversed(messages):
         if isinstance(msg.content, ModelCommand):
-            return msg.content.model
-    raise RuntimeError("No ModelCommand found in message stream")
+            return MODELS_BY_NAME[msg.content.model]
+    return MODEL_SHORTCUTS[Config['default_model']]
 
 def format_duration(seconds: float) -> str:
     seconds = int(round(seconds))
@@ -115,7 +120,7 @@ def get_usage(messages: MessageTree, head: UUID) -> str:
     current_model = 'unknown'
     for msg in messages.values(head):
         if isinstance(msg.content, ModelCommand):
-            current_model = msg.content.model.name
+            current_model = msg.content.model
         if isinstance(msg.content, Usage):
             usages_by_model[current_model].append(msg.content)
 

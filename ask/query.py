@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand
 from ask.commands import load_messages, save_messages, get_usage, get_current_model
 from ask.messages import Message, Content, Text, Command, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
-from ask.models import Model, MODELS_BY_NAME
+from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME
 from ask.prompts import load_prompt_file
 from ask.tools import TOOLS, ToolError
 from ask.tools.read import read_file
@@ -44,7 +44,8 @@ async def _execute_tool(request: CheckedToolRequest, approval: ApprovalCallback)
 
 # Make a single query to the model API
 
-async def query(model: Model, messages: list[Message], stream: bool) -> AsyncContentIterator:
+async def query(messages: list[Message], stream: bool) -> AsyncContentIterator:
+    model = get_current_model(messages)
     messages = _expand_commands(messages)
     api = model.api
     api_key = os.getenv(api.key, '')
@@ -79,13 +80,12 @@ async def query(model: Model, messages: list[Message], stream: bool) -> AsyncCon
 
 # Run agent loop until completion
 
-async def query_agent(model: Model, messages: list[Message],
-                      approval: ApprovalCallback, stream: bool = True) -> AsyncMessageIterator:
+async def query_agent(messages: list[Message], approval: ApprovalCallback, stream: bool = True) -> AsyncMessageIterator:
     messages = messages[:]
     while True:
         has_text, has_reasoning, has_tool_requests = False, False, False
         tool_requests: list[CheckedToolRequest] = []
-        async for delta, content in query(model, messages, stream):
+        async for delta, content in query(messages, stream):
             match content:
                 case None:
                     yield delta, None
@@ -126,10 +126,10 @@ async def query_agent(model: Model, messages: list[Message],
 
 async def query_agent_with_commands(messages: MessageTree, head: UUID, query: str,
                                     approval: ApprovalCallback, stream: bool = True) -> AsyncIterator[UUID]:
-    model = get_current_model(messages, head)
+    current_model = get_current_model(messages.values(head))
     if query == '/clear':
         messages.clear()
-        yield messages.add('user', None, ModelCommand(command='', model=model))
+        yield messages.add('user', None, ModelCommand(command='', model=current_model.name))
     elif query == '/init':
         yield messages.add('user', head, InitCommand(command='/init'))
     elif query == '/cost':
@@ -151,11 +151,11 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
         if not model_name:
             model_list = '\n'.join(f"  {name} ({m.api.display_name})" for name, m in MODELS_BY_NAME.items())
             yield messages.add('user', head, SlashCommand(command='/model', output=f"Available models:\n{model_list}"))
-        elif model_name not in MODELS_BY_NAME:
+        elif model_name not in MODEL_SHORTCUTS:
             yield messages.add('user', head, SlashCommand(command=f'/model {model_name}', error=f"Unknown model: {model_name}"))
-        elif model_name != model.name:
-            yield messages.add('user', head, SlashCommand(command=f'/model {model_name}', output=f"Switched from {model.name} to {model_name}"))
-            yield messages.add('user', head, ModelCommand(command=f'/model {model_name}', model=MODELS_BY_NAME[model_name]))
+        elif (full_model_name := MODEL_SHORTCUTS[model_name].name) != current_model.name:
+            output = f"Switched from {current_model.name} to {full_model_name}"
+            yield messages.add('user', head, ModelCommand(command=f'/model {model_name}', output=output, model=full_model_name))
     else:
         file_paths = [Path(m[1:]) for m in re.findall(r'@\S+', query) if Path(m[1:]).is_file()]  # get file attachments
         if file_paths:
@@ -165,7 +165,7 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
 
         text_uuid: UUID | None = None
         text = ''
-        async for delta, msg in query_agent(model, messages.values(head), approval, stream):
+        async for delta, msg in query_agent(messages.values(head), approval, stream):
             text = text + delta
             if text and text_uuid not in messages.messages:
                 text_uuid = uuid4()

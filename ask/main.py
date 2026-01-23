@@ -6,13 +6,13 @@ from pathlib import Path
 from uuid import uuid4
 
 from ask.commands import FilesCommand, DocsCommand, ModelCommand
+from ask.config import CONFIG_DIR, Config
 from ask.messages import Message, SystemPrompt, ToolDescriptor
 from ask.models import MODELS, MODEL_SHORTCUTS
 from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS
 from ask.tools.read import read_file
 from ask.ui.app import App
-from ask.ui.config import CONFIG_DIR, Config
 from ask.ui.core.render import render_root
 
 
@@ -38,7 +38,7 @@ def main() -> None:
 
     # Add system and tool descriptor messages
     messages = {}
-    messages[uuid4()] = Message(role='user', content=ModelCommand(command='', model=MODEL_SHORTCUTS[args.model]))
+    messages[uuid4()] = Message(role='user', content=ModelCommand(command='', model=MODEL_SHORTCUTS[args.model].name))
     messages[uuid4()] = Message(role='user', content=SystemPrompt(text=args.system))
     for tool in TOOLS.values():
         messages[uuid4()] = Message(role='user', content=ToolDescriptor(name=tool.name, description=tool.description, input_schema=tool.get_input_schema()))
