@@ -11,9 +11,13 @@ from itertools import zip_longest
 from typing import Any, Iterator
 from uuid import UUID
 
-from ask.ui.core.components import Box, Component, Element, Widget, get_rendered_width, dirty, nodes, parents, children
+from ask.ui.core.components import Box, Component, Element, Widget, get_rendered_width, dirty
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.core.styles import Flex, ansi_len
+
+nodes: dict[UUID, Component] = {}
+parents: dict[UUID, UUID] = {}
+children: dict[UUID, list[Component | None]] = {}
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
