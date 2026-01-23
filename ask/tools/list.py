@@ -37,12 +37,13 @@ class ListTool(Tool):
         Parameter("path", "The absolute path of the directory to list (must be absolute, not relative)", ParameterType.String),
         Parameter("ignore", "List of glob patterns to ignore", ParameterType.Array(ParameterType.String), required=False)]
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
-        args = super().check(args)
+    def check(self, args: dict[str, Any]) -> None:
+        super().check(args)
         self.check_absolute_path(Path(args['path']), is_file=False)
-        return {'path': Path(args["path"]), 'ignore': args.get("ignore", [])}
 
-    async def run(self, path: Path, ignore: list[str]) -> Blob:
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        path = Path(args['path'])
+        ignore = args.get("ignore", [])
         try:
             return Text(build_tree(path, ignore))
         except PermissionError as e:

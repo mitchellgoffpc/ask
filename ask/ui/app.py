@@ -8,7 +8,7 @@ from typing import ClassVar
 
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
 from ask.config import History
-from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolResponse, Error
+from ask.messages import Message, Text as TextContent, ToolRequest, ToolResponse, Error
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
@@ -33,7 +33,7 @@ class AppController(Controller[App]):
     show_todos = False
     loading = False
     elapsed = 0.0
-    pending_approvals: dict[str, tuple[CheckedToolRequest, asyncio.Future]] = {}
+    pending_approvals: dict[str, tuple[ToolRequest, asyncio.Future]] = {}
     approved_tools: set[str] = set()
 
     def __init__(self, props: App) -> None:
@@ -55,7 +55,7 @@ class AppController(Controller[App]):
         except asyncio.CancelledError:
             self.elapsed = 0
 
-    async def approve(self, request: CheckedToolRequest) -> bool:
+    async def approve(self, request: ToolRequest) -> bool:
         approval_tools = {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name}
         if request.tool not in approval_tools or request.tool in self.approved_tools:
             return True
@@ -137,9 +137,9 @@ class AppController(Controller[App]):
                 handle_exit=self.exit)
 
     def contents(self) -> list[Component | None]:
-        tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, CheckedToolRequest)}
+        tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolRequest)}
         tool_responses = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolResponse)}
-        if latest_todos := next((c.processed_arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
+        if latest_todos := next((c.arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
             if not any(todo['status'] in ['pending', 'in_progress'] for todo in latest_todos['todos']):
                 latest_todos = None
 
@@ -158,7 +158,7 @@ class AppController(Controller[App]):
                     messages.append(SlashCommandMessage(command=msg.content))
                 case ('assistant', TextContent()):
                     messages.append(ResponseMessage(text=msg.content))
-                case ('assistant', CheckedToolRequest()):
+                case ('assistant', ToolRequest()):
                     if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
                         response = tool_responses.get(msg.content.call_id)
                         messages.append(ToolCallMessage(request=msg.content, response=response, expanded=self.expanded))

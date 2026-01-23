@@ -1,4 +1,4 @@
-from typing import Any, ClassVar
+from typing import ClassVar
 from dataclasses import dataclass
 
 from ask.messages import Blob, Image, PDF
@@ -12,8 +12,8 @@ class ReadToolOutput(ToolOutput):
     __controller__: ClassVar = lambda _: ReadToolOutputController
 
 class ReadToolOutputController(ToolOutputController):
-    def get_args(self, args: dict[str, Any]) -> str:
-        return get_relative_path(args['file_path'])
+    def get_args(self) -> str:
+        return get_relative_path(self.props.request.arguments['file_path'])
 
     def get_short_response(self, response: str) -> str:
         line_count = response.count('\n') + 1

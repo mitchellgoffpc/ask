@@ -1,7 +1,8 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+from functools import cached_property
 from typing import Any, Literal
 
 class ToolCallStatus(Enum):
@@ -44,11 +45,13 @@ class ToolDescriptor:
 class ToolRequest:
     call_id: str
     tool: str
-    arguments: dict[str, str]
+    arguments: dict[str, Any]
+    _artifacts: dict[str, Any] = field(default_factory=dict)
 
-@dataclass
-class CheckedToolRequest(ToolRequest):
-    processed_arguments: dict[str, Any]
+    @cached_property
+    def artifacts(self) -> dict[str, Any]:
+        from ask.tools import TOOLS
+        return TOOLS[self.tool].process(self.arguments, self._artifacts)
 
 @dataclass
 class ToolResponse:

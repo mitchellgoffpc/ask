@@ -13,10 +13,7 @@ class PythonToolOutput(ToolOutput):
 
 class PythonToolOutputController(ToolOutputController):
     def contents(self) -> list[Component | None]:
-        if not (args := self.props.request.processed_arguments):
-            return []
-        lines = highlight_code(args['code'], language='python').strip().split('\n')
-
+        lines = highlight_code(self.props.request.arguments['code'], language='python').strip().split('\n')
         return [
             *[Box(flex=Flex.HORIZONTAL)[
                 Text(Colors.hex('>>> ' if i == 0 else '... ', Theme.GREEN)),

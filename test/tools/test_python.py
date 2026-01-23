@@ -9,8 +9,10 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
         self.tool = PythonTool()
 
     async def run_tool(self, code: str, timeout_seconds: int = 10) -> str:
-        args = self.tool.check({"code": code})
-        result = await self.tool.run(code=code, nodes=args['nodes'], timeout_seconds=timeout_seconds, description='')
+        args = {"code": code, "timeout": timeout_seconds * 1000}
+        self.tool.check(args)
+        artifacts = self.tool.artifacts(args)
+        result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text
 
@@ -30,6 +32,6 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
 
     async def test_syntax_error(self):
         with self.assertRaises(ToolError) as context:
-            self.tool.check({'code': "def invalid_syntax("})
+            await self.run_tool("def invalid_syntax(")
         self.assertIsInstance(context.exception, ToolError)
         self.assertIsInstance(context.exception.__cause__, SyntaxError)

@@ -6,8 +6,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from typing import Any, Callable, get_args
 
-from ask.messages import ToolCallStatus, Message, Role, Content, CheckedToolRequest
-from ask.tools import TOOLS
+from ask.messages import ToolCallStatus, Message, Role, Content
 
 class MessageEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
@@ -20,15 +19,13 @@ class MessageEncoder(json.JSONEncoder):
         elif isinstance(obj, Content):
             data = obj.__dict__.copy()
             data['__type__'] = obj.__class__.__name__
-            if isinstance(obj, CheckedToolRequest) and obj.tool in ('Grep', 'PythonShell'):
-                del data['processed_arguments']
             return data
         elif isinstance(obj, ToolCallStatus):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
         return super().default(obj)
 
 def message_decoder(obj: Any) -> Any:
-    content_types = {cls.__name__: cls for cls in (*get_args(Content), CheckedToolRequest)}
+    content_types = {cls.__name__: cls for cls in get_args(Content)}
     if isinstance(obj, dict) and obj.get('__type__') == 'bytes':
         return base64.b64decode(obj['data'])
     if isinstance(obj, dict) and obj.get('__type__') == 'Path':
@@ -37,8 +34,6 @@ def message_decoder(obj: Any) -> Any:
         return UUID(obj['uuid'])
     elif isinstance(obj, dict) and obj.get('__type__') in content_types:
         type_name = obj.pop('__type__')
-        if content_types[type_name] is CheckedToolRequest and 'processed_arguments' not in obj:
-            obj['processed_arguments'] = TOOLS[obj['tool']].check(obj['arguments'])
         return content_types[type_name](**obj)
     elif isinstance(obj, dict) and obj.get('__type__') == 'ToolCallStatus':
         return ToolCallStatus(obj['value'])

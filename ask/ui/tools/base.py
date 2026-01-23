@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Any
 
-from ask.messages import Blob, Text as TextContent, CheckedToolRequest, ToolResponse, ToolCallStatus
+from ask.messages import Blob, Text as TextContent, ToolRequest, ToolResponse, ToolCallStatus
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Flex, Colors, Styles, Theme
 
@@ -23,7 +22,7 @@ def abbreviate(text: str, max_lines: int) -> str:
 
 @dataclass
 class ToolOutput(Widget):
-    request: CheckedToolRequest
+    request: ToolRequest
     response: ToolResponse | None
     expanded: bool
 
@@ -31,7 +30,7 @@ class ToolOutputController(Controller[ToolOutput]):
     def get_name(self) -> str:
         return self.props.request.tool
 
-    def get_args(self, args: dict[str, Any]) -> str:
+    def get_args(self) -> str:
         raise NotImplementedError()
 
     def get_short_response(self, response: str) -> str:
@@ -70,7 +69,8 @@ class ToolOutputController(Controller[ToolOutput]):
         return [
             Box(flex=Flex.HORIZONTAL)[
                 Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
-                Text(f"{Styles.bold(self.get_name())} {self.get_args(self.props.request.processed_arguments)}"),
+                Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
+
             ],
             Box(flex=Flex.HORIZONTAL)[
                 Text("  ⎿  "),

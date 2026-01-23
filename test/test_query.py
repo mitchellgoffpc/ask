@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from ask.commands import ModelCommand
-from ask.messages import Message, Content, Text, Reasoning, ToolDescriptor, ToolRequest, CheckedToolRequest, ToolResponse, Usage, ToolCallStatus
+from ask.messages import Message, Content, Text, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, ToolCallStatus
 from ask.query import query_agent
 from ask.tools.base import Tool
 from test.models.helpers import to_async
@@ -12,6 +12,7 @@ def create_mock_tool(name: str = 'test_tool', description: str = 'A test tool') 
     tool.name = name
     tool.description = description
     tool.get_input_schema.return_value = {'type': 'object', 'properties': {}}
+    tool.artifacts.return_value = {'artifact': 'value2'}
     return tool
 
 class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
@@ -58,7 +59,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
              ('', Usage(input=100, cache_read=0, cache_write=0, output=50))]]
         expected = [
             Message('assistant', Reasoning(data='thinking', encrypted=True)),
-            Message('assistant', CheckedToolRequest('call_1', 'test_tool', {'arg': 'value'}, {'arg': 'processed_value'})),
+            Message('assistant', ToolRequest('call_1', 'test_tool', {'arg': 'value'}, {'artifact': 'value2'})),
             Message('user', ToolResponse('call_1', 'test_tool', Text('tool result'), ToolCallStatus.COMPLETED)),
             Message('assistant', Text('Hello there')),
             Message('assistant', Usage(input=100, cache_read=0, cache_write=0, output=50))]
@@ -70,4 +71,5 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
             results = [msg async for _, msg in query_agent(initial_messages, self.approval, False) if msg is not None]
             mock_execute.assert_called_once()
         for result, exp in zip(results, expected, strict=True):
+            print(result, exp)
             self.assertEqual(result, exp)

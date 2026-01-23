@@ -11,8 +11,9 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
         self.tool = GrepTool()
 
     async def run_tool(self, **kwargs: Any) -> str:
-        args = self.tool.check(kwargs)
-        result = await self.tool.run(**args)
+        self.tool.check(kwargs)
+        artifacts = self.tool.artifacts(kwargs)
+        result = await self.tool.run(kwargs, artifacts)
         assert isinstance(result, Text)
         return result.text
 

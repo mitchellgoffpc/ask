@@ -1,4 +1,6 @@
 import asyncio
+import os
+import signal
 from typing import Any
 
 from ask.messages import Blob, Text
@@ -18,16 +20,17 @@ class BashTool(Tool):
             "Input: npm install\nOutput: Installs package dependencies\n\n"
             "Input: mkdir foo\nOutput: Creates directory 'foo'", ParameterType.String, required=False)]
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
-        args = super().check(args)
-        timeout_seconds = args.get("timeout", 120000) / 1000.0  # Default 2 minutes
-        if timeout_seconds > 600:
+    def check(self, args: dict[str, Any]) -> None:
+        super().check(args)
+        if 'timeout' in args and args['timeout'] > 600000:
             raise ToolError("Timeout cannot exceed 600000ms (10 minutes)")
-        return {'command': args["command"], 'timeout_seconds': timeout_seconds}
 
-    async def run(self, command: str, timeout_seconds: float) -> Blob:
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        command = args['command']
+        timeout_seconds = args.get("timeout", 120000) / 1000.0
+        process = None
         try:
-            process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+            process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, start_new_session=True)
             stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
             output = stdout.decode('utf-8').rstrip('\n')
             if process.returncode != 0:
@@ -35,3 +38,7 @@ class BashTool(Tool):
             return Text(output)
         except asyncio.TimeoutError:
             raise ToolError(f"Command timed out after {timeout_seconds} seconds") from None
+        finally:
+            if process and process.returncode is None:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                await process.wait()

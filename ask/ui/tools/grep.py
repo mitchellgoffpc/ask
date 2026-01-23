@@ -1,4 +1,4 @@
-from typing import Any, ClassVar
+from typing import ClassVar
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,11 +11,11 @@ class GrepToolOutput(ToolOutput):
     __controller__: ClassVar = lambda _: GrepToolOutputController
 
 class GrepToolOutputController(ToolOutputController):
-    def get_args(self, args: dict[str, Any]) -> str:
-        pattern = args.get('pattern', '')
+    def get_args(self) -> str:
+        pattern = self.props.request.arguments.get('pattern', '')
         if len(pattern) > 50:
             pattern = pattern[:47] + "..."
-        path = get_relative_path(args.get('pathspec', Path.cwd()))
+        path = get_relative_path(self.props.request.arguments.get('pathspec', Path.cwd()))
         return f'pattern: "{pattern}", path: "{path}"'
 
     def get_short_response(self, response: str) -> str:

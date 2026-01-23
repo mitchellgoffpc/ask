@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand
 from ask.commands import load_messages, save_messages, get_usage, get_current_model
-from ask.messages import Message, Content, Text, Command, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus, Reasoning
+from ask.messages import Message, Content, Text, Command, ToolRequest, ToolResponse, ToolCallStatus, Reasoning
 from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME
 from ask.prompts import load_prompt_file
 from ask.tools import TOOLS, ToolError
@@ -18,7 +18,7 @@ from ask.tree import MessageTree
 
 AsyncContentIterator = AsyncIterator[tuple[str, Content | None]]
 AsyncMessageIterator = AsyncIterator[tuple[str, Message | None]]
-ApprovalCallback = Callable[[CheckedToolRequest], Awaitable[bool]]
+ApprovalCallback = Callable[[ToolRequest], Awaitable[bool]]
 
 def _expand_commands(old_messages: list[Message]) -> list[Message]:
     new_messages = []
@@ -28,13 +28,13 @@ def _expand_commands(old_messages: list[Message]) -> list[Message]:
             case _: new_messages.append(message)
     return new_messages
 
-async def _execute_tool(request: CheckedToolRequest, approval: ApprovalCallback) -> ToolResponse:
+async def _execute_tool(request: ToolRequest, approval: ApprovalCallback) -> ToolResponse:
     tool_rejected_message = load_prompt_file('tools.toml')['tool_rejected_prompt']
     try:
         tool = TOOLS[request.tool]
         if not await approval(request):
             return ToolResponse(call_id=request.call_id, tool=request.tool, response=Text(tool_rejected_message), status=ToolCallStatus.CANCELLED)
-        output = await tool.run(**request.processed_arguments)
+        output = await tool.run(request.arguments, request.artifacts)
         return ToolResponse(call_id=request.call_id, tool=request.tool, response=output, status=ToolCallStatus.COMPLETED)
     except asyncio.CancelledError:
         return ToolResponse(call_id=request.call_id, tool=request.tool, response=Text(tool_rejected_message), status=ToolCallStatus.CANCELLED)
@@ -84,20 +84,22 @@ async def query_agent(messages: list[Message], approval: ApprovalCallback, strea
     messages = messages[:]
     while True:
         has_text, has_reasoning, has_tool_requests = False, False, False
-        tool_requests: list[CheckedToolRequest] = []
+        tool_requests: list[ToolRequest] = []
         async for delta, content in query(messages, stream):
             match content:
                 case None:
                     yield delta, None
-                case ToolRequest(call_id=call_id, tool=tool_name, arguments=args) as request:
+                case ToolRequest(call_id=call_id, tool=tool_name, arguments=args):
                     has_tool_requests = True
                     try:
                         tool = TOOLS[tool_name]
-                        checked_request = CheckedToolRequest(call_id=call_id, tool=tool_name, arguments=args, processed_arguments=tool.check(args))
-                        tool_requests.append(checked_request)
-                        messages.append(Message('assistant', checked_request))
-                        yield delta, Message('assistant', checked_request)
+                        tool.check(args)
+                        request = ToolRequest(call_id=call_id, tool=tool_name, arguments=args, _artifacts=tool.artifacts(args))
+                        tool_requests.append(request)
+                        messages.append(Message('assistant', request))
+                        yield delta, Message('assistant', request)
                     except ToolError as e:
+                        request = ToolRequest(call_id=call_id, tool=tool_name, arguments=args)
                         messages.append(Message('assistant', request))
                         messages.append(Message('user', ToolResponse(call_id=call_id, tool=tool_name, response=Text(str(e)), status=ToolCallStatus.FAILED)))
                         yield delta, None
@@ -111,7 +113,7 @@ async def query_agent(messages: list[Message], approval: ApprovalCallback, strea
         if not (has_tool_requests or (has_reasoning and not has_text)):
             return
 
-        async def reject(_: CheckedToolRequest) -> bool: return False
+        async def reject(_: ToolRequest) -> bool: return False
         for req in tool_requests:
             response = await _execute_tool(req, approval)
             if response.status == ToolCallStatus.CANCELLED:

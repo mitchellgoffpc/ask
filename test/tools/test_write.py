@@ -9,34 +9,39 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tool = WriteTool()
 
+    async def run_tool(self, file_path: str, content: str) -> str:
+        args = {"file_path": file_path, "content": content}
+        self.tool.check(args)
+        artifacts = self.tool.artifacts(args)
+        result = await self.tool.run(args, artifacts)
+        assert isinstance(result, Text)
+        return result.text
+
     async def test_create_new_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "test_file.txt"
             content = "Hello, world!"
-            result = await self.tool.run(file_path=file_path, old_content='', new_content=content, diff=[])
+            result = await self.run_tool(file_path=str(file_path), content=content)
 
-            assert isinstance(result, Text)
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
-            self.assertIn("File created successfully", result.text)
+            self.assertIn("File created successfully", result)
 
     async def test_overwrite_existing_file(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("original content")
             f.flush()
             new_content = "new content"
-            result = await self.tool.run(file_path=Path(f.name), old_content='', new_content=new_content, diff=[])
+            result = await self.run_tool(file_path=f.name, content=new_content)
 
-            assert isinstance(result, Text)
             self.assertEqual(Path(f.name).read_text(encoding='utf-8'), new_content)
-            self.assertIn("File updated successfully", result.text)
+            self.assertIn("File updated successfully", result)
 
     async def test_create_directories(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "nested" / "dirs" / "file.txt"
             content = "test content"
-            result = await self.tool.run(file_path=file_path, old_content='', new_content=content, diff=[])
+            result = await self.run_tool(file_path=str(file_path), content=content)
 
-            assert isinstance(result, Text)
             self.assertTrue(file_path.exists())
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
-            self.assertIn("File created successfully", result.text)
+            self.assertIn("File created successfully", result)

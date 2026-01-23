@@ -76,29 +76,21 @@ class GrepTool(Tool):
             ParameterType.Boolean, required=False)
     ]
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
-        args = super().check(args)
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
         pathspec = args.get("pathspec") or str(Path.cwd())
-
-        try:
-            flags = 0
-            if args.get("-i", False):
-                flags |= re.IGNORECASE
-            if args.get("multiline", False):
-                flags |= re.MULTILINE | re.DOTALL
-            regex = re.compile(args["pattern"].encode('utf-8'), flags)
-        except re.error as e:
-            raise ToolError(f"Invalid regular expression pattern: {str(e)}") from e
-
         output_mode = args.get("output_mode", "files_with_matches")
+        head_limit = args.get("head_limit")
+        show_line_nums = args.get("-n", False)
         before = args.get("-B", 0) or args.get("-C", 0)
         after = args.get("-A", 0) or args.get("-C", 0)
-        return {
-            'pattern': args['pattern'], 'pathspec': pathspec, 'regex': regex, 'output_mode': output_mode,
-            'head_limit': args.get("head_limit"), 'show_line_nums': args.get("-n", False), 'before': before, 'after': after}
 
-    async def run(self, pattern: str, pathspec: str, regex: re.Pattern, output_mode: str,
-                        head_limit: int | None, show_line_nums: bool, before: int, after: int) -> Blob:
+        flags = 0
+        if args.get("-i", False):
+            flags |= re.IGNORECASE
+        if args.get("multiline", False):
+            flags |= re.MULTILINE | re.DOTALL
+        regex = re.compile(args["pattern"].encode('utf-8'), flags)
+
         try:
             # Collect all files to search
             files_to_search = []

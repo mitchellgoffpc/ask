@@ -14,12 +14,13 @@ class GlobTool(Tool):
         Parameter("path", "The absolute path of the directory to search in (must be absolute, not relative)", ParameterType.String),
         Parameter("pattern", "The glob pattern to match files against", ParameterType.String)]
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
-        args = super().check(args)
+    def check(self, args: dict[str, Any]) -> None:
+        super().check(args)
         self.check_absolute_path(Path(args['path']), is_file=False)
-        return {'path': Path(args['path']), 'pattern': args['pattern']}
 
-    async def run(self, path: Path, pattern: str) -> Blob:
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        path = Path(args['path'])
+        pattern = args['pattern']
         try:
             matches = glob.glob(str(path / pattern), recursive=True)
             matches = [m for m in matches if Path(m).is_file()]

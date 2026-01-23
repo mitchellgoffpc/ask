@@ -11,8 +11,10 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
         self.tool = EditTool()
 
     async def run_tool(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> str:
-        args = self.tool.check({'file_path': file_path, 'old_string': old_string, 'new_string': new_string, 'replace_all': replace_all})
-        result = await self.tool.run(**args)
+        args = {'file_path': file_path, 'old_string': old_string, 'new_string': new_string, 'replace_all': replace_all}
+        self.tool.check(args)
+        artifacts = self.tool.artifacts(args)
+        result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text
 

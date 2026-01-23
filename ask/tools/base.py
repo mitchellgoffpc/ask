@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, member, nonmember
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Coroutine, Union
+from typing import Any, ClassVar, Union
 
 from ask.messages import Blob
 
@@ -44,7 +44,6 @@ class Tool:
     name: str
     description: str
     parameters: list[Parameter]
-    run: Callable[..., Coroutine[Any, Any, 'Blob']]
 
     def get_parameter_schema(self, ptype: ParameterType | ParameterType.Enum | ParameterType.Array, description: str) -> dict[str, Any]:
         description_dict = {"description": description} if description else {}
@@ -114,6 +113,14 @@ class Tool:
         if unexpected_args:
             raise ToolError(f"Unexpected arguments: {prefix}{', '.join(unexpected_args)}")
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
+    def check(self, args: dict[str, Any]) -> None:
         self.check_arguments(args, self.parameters)
-        return args
+
+    def artifacts(self, args: dict[str, Any]) -> dict[str, Any]:
+        return {}
+
+    def process(self, args: dict[str, Any], artifacts: dict[str, Any]) -> dict[str, Any]:
+        return artifacts
+
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        raise NotImplementedError

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from ask.messages import Message, Text, Image, PDF, ToolRequest, CheckedToolRequest, ToolResponse, ToolCallStatus
+from ask.messages import Message, Text, Image, PDF, ToolRequest, ToolResponse, ToolCallStatus
 from ask.tools import TOOL_LIST
 from ask.tree import MessageTree, MessageEncoder, message_decoder
 
@@ -76,13 +76,13 @@ class TestEncoderDecoder(unittest.TestCase):
             for tool in TOOL_LIST:
                 with self.subTest(tool=tool.name):
                     args = dummy_args[tool.name]
-                    request = CheckedToolRequest(call_id='call_123', tool=tool.name, arguments=args, processed_arguments=tool.check(args))
+                    request = ToolRequest(call_id='call_123', tool=tool.name, arguments=args, _artifacts=tool.artifacts(args))
                     encoded = json.dumps(request, cls=MessageEncoder)
                     decoded = json.loads(encoded, object_hook=message_decoder)
 
                     self.assertEqual(decoded.call_id, request.call_id)
                     self.assertEqual(decoded.tool, request.tool)
-                    self.assertIsNotNone(decoded.processed_arguments)
+                    self.assertEqual(decoded.artifacts, request.artifacts)
 
     def test_tool_response_encode_decode(self):
         for tool in TOOL_LIST:

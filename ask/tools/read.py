@@ -54,16 +54,14 @@ class ReadTool(Tool):
     def __init__(self, add_line_numbers: bool = True):
         self.add_line_numbers = add_line_numbers
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
-        args = super().check(args)
-        file_path = Path(args["file_path"])
-        self.check_absolute_path(file_path, is_file=True)
+    def check(self, args: dict[str, Any]) -> None:
+        super().check(args)
+        self.check_absolute_path(Path(args["file_path"]), is_file=True)
 
-        offset = int(args.get("offset", 0))
-        limit = int(args.get("limit", 2000))
-        return {'file_path': file_path, 'offset': offset, 'limit': limit}
-
-    async def run(self, file_path: Path, offset: int, limit: int) -> Blob:
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        file_path = Path(args['file_path'])
+        offset = args.get("offset", 0)
+        limit = args.get("limit", 2000)
         try:
             return read_file(file_path, offset, max_lines=limit, max_cols=2000, add_line_numbers=self.add_line_numbers)
         except UnicodeDecodeError as e:

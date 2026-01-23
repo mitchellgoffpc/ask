@@ -16,5 +16,5 @@ class ToDoTool(Tool):
         ]))
     ]
 
-    async def run(self, todos: list[dict[str, Any]]) -> Blob:
-        return Text(load_tool_prompt('todo', 'response').format(todo_list_json=json.dumps(todos, indent=2)))
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        return Text(load_tool_prompt('todo', 'response').format(todo_list_json=json.dumps(args['todos'], indent=2)))

@@ -1,24 +1,25 @@
-import difflib
 from pathlib import Path
 from typing import Any
 
 from ask.messages import Blob, Text
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType
+from ask.tools.base import ToolError, Parameter, ParameterType
+from ask.tools.edit import EditTool
 
-class WriteTool(Tool):
+class WriteTool(EditTool):
     name = "Write"
     description = load_tool_prompt('write')
     parameters = [
         Parameter("file_path", "The absolute path to the file to write (must be absolute, not relative)", ParameterType.String),
         Parameter("content", "The content to write to the file", ParameterType.String)]
 
-    def check(self, args: dict[str, Any]) -> dict[str, Any]:
-        args = super().check(args)
-        file_path = Path(args["file_path"])
-        if not file_path.is_absolute():
-            raise ToolError(f"Path '{file_path}' is not an absolute path. Please provide an absolute path.")
+    def check(self, args: dict[str, Any]) -> None:
+        super(EditTool, self).check(args)
+        if not (path := Path(args["file_path"])).is_absolute():
+            raise ToolError(f"Path '{path}' is not an absolute path. Please provide an absolute path.")
 
+    def artifacts(self, args: dict[str, Any]) -> dict[str, Any]:
+        file_path = Path(args["file_path"])
         new_content = args['content']
         old_content = ""
         if file_path.exists():
@@ -32,12 +33,12 @@ class WriteTool(Tool):
             except PermissionError as e:
                 raise ToolError(f"Permission denied for file '{file_path}'.") from e
 
-        old_lines = old_content.splitlines(keepends=True)
-        new_lines = new_content.splitlines(keepends=True)
-        diff = list(difflib.unified_diff(old_lines, new_lines, n=3))
-        return {'file_path': file_path, 'old_content': old_content, 'new_content': new_content, 'diff': diff}
+        return {'old_content': old_content, 'new_content': new_content}
 
-    async def run(self, file_path: Path, old_content: str, new_content: str, diff: list[str]) -> Blob:
+    async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
+        file_path = Path(args['file_path'])
+        new_content = artifacts['new_content']
+
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_exists = file_path.exists()
         try:
