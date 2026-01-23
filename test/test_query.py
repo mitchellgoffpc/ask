@@ -1,14 +1,14 @@
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from ask.messages import Message, Text, Reasoning, ToolDescriptor, ToolRequest, CheckedToolRequest, ToolResponse, Usage, ToolCallStatus
+from ask.messages import Message, Content, Text, Reasoning, ToolDescriptor, ToolRequest, CheckedToolRequest, ToolResponse, Usage, ToolCallStatus
 from ask.models.base import Model, Context, Capabilities
 from ask.models.openai import OpenAIAPI
 from ask.query import query_agent
 from ask.tools.base import Tool
 from test.models.helpers import to_async
 
-def create_mock_tool(name='test_tool', description='A test tool'):
+def create_mock_tool(name: str = 'test_tool', description: str = 'A test tool') -> MagicMock:
     tool = MagicMock(spec=Tool)
     tool.name = name
     tool.description = description
@@ -35,7 +35,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
 
     async def test_agent_loop_reasoning_only(self):
         initial_messages = [Message('user', Text('Hello'))]
-        query_responses = [
+        query_responses: list[list[tuple[str, Content]]] = [
             [('', Reasoning(data='thinking', encrypted=True))],
             [('', Text('Response'))]]
         expected = [
@@ -51,7 +51,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
         initial_messages = [
             Message('user', ToolDescriptor(self.tool.name, self.tool.description, self.tool.get_input_schema())),
             Message('user', Text('Hello'))]
-        query_responses = [
+        query_responses: list[list[tuple[str, Content | None]]] = [
             [('', Reasoning(data='thinking', encrypted=True)),
              ('', ToolRequest('call_1', 'test_tool', {'arg': 'value'}))],
             [('Hello', None),

@@ -38,17 +38,17 @@ def highlight_code(code: str, *, language: str = '', file_path: str = '') -> str
 # Codeblock parsing extension
 
 class FencedCodeExtension(Extension):
-    def extendMarkdown(self, md):
+    def extendMarkdown(self, md: Markdown) -> None:
         md.parser.blockprocessors.register(FencedCodeBlockProcessor(md.parser), 'fenced_code', 175)
 
 class FencedCodeBlockProcessor(BlockProcessor):
     RE_FENCE_START = r'(?:^|\n)```(?P<lang>[\w#.+-]*) *(?=\n)'
     RE_FENCE_END = r'\n```$'
 
-    def test(self, parent, block):
-        return re.search(self.RE_FENCE_START, block)
+    def test(self, parent: Element, block: str) -> bool:
+        return bool(re.search(self.RE_FENCE_START, block))
 
-    def run(self, parent, blocks):
+    def run(self, parent: Element, blocks: list[str]) -> bool:
         match = re.search(self.RE_FENCE_START, blocks[0])
         assert match is not None
 
@@ -134,11 +134,11 @@ class ANSIExtension(Extension):
         self.render_element(element, stream, indent=0)
         return stream.getvalue()
 
-    def extendMarkdown(self, md):
+    def extendMarkdown(self, md: Markdown) -> None:
         self.tab_length = md.tab_length
         md.serializer = self.render_root
         md.stripTopLevelTags = False
-        md.set_output_format = lambda x: x
+        md.set_output_format = lambda x: x  # type: ignore
 
 
 # Markdown renderer

@@ -1,3 +1,5 @@
+from typing import Any, AsyncIterable, Iterable
+
 from ask.messages import Message, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, ToolCallStatus, SystemPrompt, ToolDescriptor
 
 INPUT_MESSAGES = [
@@ -21,6 +23,6 @@ DECODE_OUTPUT = (
     [('Hello', None), (' world', None)] +
     [('', x) for x in RESULT_OUTPUT[1:]])
 
-async def to_async(data):
+async def to_async(data: Iterable[Any]) -> AsyncIterable[Any]:
     for item in data:
         yield item

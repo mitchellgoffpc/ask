@@ -8,7 +8,7 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tool = PythonTool()
 
-    async def run_tool(self, code, timeout_seconds = 10):
+    async def run_tool(self, code: str, timeout_seconds: int = 10) -> str:
         args = self.tool.check({"code": code})
         result = await self.tool.run(code=code, nodes=args['nodes'], timeout_seconds=timeout_seconds, description='')
         assert isinstance(result, Text)

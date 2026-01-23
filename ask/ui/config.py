@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 CONFIG_DIR = Path('~/.ask/').expanduser()
 CONFIG_PATH = CONFIG_DIR / 'config.json'
@@ -17,7 +17,7 @@ class _History:
             self._data = json.loads(HISTORY_PATH.read_text() or '[]') if HISTORY_PATH.is_file() else []
         return self._data
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.data)
 
     def append(self, item: str) -> None:

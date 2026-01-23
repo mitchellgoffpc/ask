@@ -13,7 +13,7 @@ from typing import Any
 
 
 def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue[tuple[str, str] | None]) -> None:
-    def signal_handler(signum, frame):
+    def signal_handler(signum: int, frame: Any) -> None:
         raise KeyboardInterrupt()
 
     signal.signal(signal.SIGINT, signal_handler)

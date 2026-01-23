@@ -111,7 +111,7 @@ async def query_agent(model: Model, messages: list[Message],
         if not (has_tool_requests or (has_reasoning and not has_text)):
             return
 
-        async def reject(_): return False
+        async def reject(_: CheckedToolRequest) -> bool: return False
         for req in tool_requests:
             response = await _execute_tool(req, approval)
             if response.status == ToolCallStatus.CANCELLED:

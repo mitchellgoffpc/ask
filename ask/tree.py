@@ -10,7 +10,7 @@ from ask.messages import ToolCallStatus, Message, Role, Content, CheckedToolRequ
 from ask.tools import TOOLS
 
 class MessageEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj: Any) -> Any:
         if isinstance(obj, bytes):
             return {'__type__': 'bytes', 'data': base64.b64encode(obj).decode()}
         elif isinstance(obj, Path):
@@ -27,7 +27,7 @@ class MessageEncoder(json.JSONEncoder):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
         return super().default(obj)
 
-def message_decoder(obj):
+def message_decoder(obj: Any) -> Any:
     content_types = {cls.__name__: cls for cls in (*get_args(Content), CheckedToolRequest)}
     if isinstance(obj, dict) and obj.get('__type__') == 'bytes':
         return base64.b64decode(obj['data'])

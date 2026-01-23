@@ -51,7 +51,7 @@ def hide_cursor(writable_stream: TextIO = sys.stderr) -> None:
     writable_stream.write(cursor_hide)
     writable_stream.flush()
 
-def show_cursor_on_exit():
+def show_cursor_on_exit() -> None:
     sys.stderr.write(cursor_show)
     sys.stderr.flush()
 
