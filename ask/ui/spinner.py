@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from ask.ui.core.components import Component, Controller, Box, Text, Widget
+from ask.ui.core.components import ElementTree, Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Flex, Theme
 from ask.ui.tools.todo import ToDos
 
@@ -18,8 +18,8 @@ class SpinnerController(Controller[Spinner]):
     text = "Loading…"
     spinner_state = 0
 
-    def handle_mount(self) -> None:
-        super().handle_mount()
+    def handle_mount(self, tree: ElementTree) -> None:
+        super().handle_mount(tree)
         asyncio.create_task(self.spin())
 
     async def spin(self) -> None:

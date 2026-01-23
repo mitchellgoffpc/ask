@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args
+from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
@@ -73,6 +73,14 @@ def apply_boxing(content: str, max_width: int, element: Element) -> str:
     content = apply_borders(content, padded_width, {k for k, v in element.border.items() if v}, element.border_style, element.border_color)
     content = apply_spacing(content, element.margin)
     return content
+
+
+class ElementTree:
+    def __init__(self) -> None:
+        self.dirty: set[UUID] = set()
+        self.nodes: dict[UUID, Component] = {}
+        self.parents: dict[UUID, UUID] = {}
+        self.children: dict[UUID, list[Component | None]] = {}
 
 
 class Component:
@@ -178,30 +186,33 @@ class Box(Element):
 ComponentType = TypeVar('ComponentType')
 
 class Controller(Component, Generic[ComponentType]):
+    mounted = False
     state: list[str] = []
+    tree: ElementTree | None = None
 
     def __init__(self, props: ComponentType) -> None:
         self.props = props
         self.uuid = uuid4()
-        self.mounted = False
 
     def __call__(self, props: ComponentType) -> None:
         self.props = props
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if key in self.state:
             self.set_dirty()
         super().__setattr__(key, value)
 
     def set_dirty(self) -> None:
-        from ask.ui.core.render import dirty
-        dirty.add(self.uuid)
+        if self.tree:
+            self.tree.dirty.add(self.uuid)
 
-    def handle_mount(self):
+    def handle_mount(self, tree: ElementTree) -> None:
         self.mounted = True
+        self.tree = tree
 
-    def handle_unmount(self):
+    def handle_unmount(self) -> None:
         self.mounted = False
+        self.tree = None
 
     def handle_input(self, ch: str) -> None:
         pass

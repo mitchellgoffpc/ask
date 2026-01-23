@@ -11,14 +11,9 @@ from itertools import zip_longest
 from typing import Any, Iterator
 from uuid import UUID
 
-from ask.ui.core.components import Box, Component, Element, Widget, get_rendered_width
+from ask.ui.core.components import ElementTree, Component, Element, Box, Widget, get_rendered_width
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.core.styles import Flex, ansi_len
-
-dirty: set[UUID] = set()
-nodes: dict[UUID, Component] = {}
-parents: dict[UUID, UUID] = {}
-children: dict[UUID, list[Component | None]] = {}
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
@@ -31,101 +26,101 @@ def nonblocking(fd: int) -> Iterator[None]:
         fcntl.fcntl(fd, fcntl.F_SETFL, original_fl)
 
 # Utility function to print the component tree
-def print_node(uuid: UUID, level: int = 0) -> None:
-    component = nodes[uuid]
+def print_node(tree: ElementTree, uuid: UUID, level: int = 0) -> None:
+    component = tree.nodes[uuid]
     print('  ' * level + f'└─ {component.__class__.__name__}')
-    for child in children.get(uuid, []):
+    for child in tree.children.get(uuid, []):
         if child:  # Skip None values
-            print_node(child.uuid, level + 1)
+            print_node(tree, child.uuid, level + 1)
 
 # Add a component and all its children to the tree
-def mount(component: Component) -> None:
+def mount(tree: ElementTree, component: Component) -> None:
     if isinstance(component, Widget):
         component.controller = component.__controller__()(component)
-        component.controller.handle_mount()
-    nodes[component.uuid] = component
+        component.controller.handle_mount(tree)
+    tree.nodes[component.uuid] = component
     contents = component.contents()
-    children[component.uuid] = contents
+    tree.children[component.uuid] = contents
     for child in contents:
         if child:
-            mount(child)
-            parents[child.uuid] = component.uuid
+            mount(tree, child)
+            tree.parents[child.uuid] = component.uuid
 
 # Remove a component and all its children from the tree
-def unmount(component: Component) -> None:
-    for child in children[component.uuid]:
+def unmount(tree: ElementTree, component: Component) -> None:
+    for child in tree.children[component.uuid]:
         if child:
-            unmount(child)
-    del nodes[component.uuid], children[component.uuid], parents[component.uuid]
+            unmount(tree, child)
+    del tree.nodes[component.uuid], tree.children[component.uuid], tree.parents[component.uuid]
     if isinstance(component, Widget):
         component.controller.handle_unmount()
         component.controller = None
 
 # Update a component's subtree
-def update(component: Component) -> None:
+def update(tree: ElementTree, component: Component) -> None:
     uuid = component.uuid
     new_contents = component.contents()
-    old_contents = children[uuid]
+    old_contents = tree.children[uuid]
 
     for i, (old_child, new_child) in enumerate(zip_longest(old_contents, new_contents, fillvalue=None)):
         if not old_child and not new_child:
             continue
         elif new_child and not old_child:
             # New child added
-            if i >= len(children[uuid]):
-                children[uuid].append(new_child)
+            if i >= len(tree.children[uuid]):
+                tree.children[uuid].append(new_child)
             else:
-                children[uuid][i] = new_child
-            mount(new_child)
-            parents[new_child.uuid] = uuid
+                tree.children[uuid][i] = new_child
+            mount(tree, new_child)
+            tree.parents[new_child.uuid] = uuid
         elif old_child and not new_child:
             # Child removed
-            unmount(old_child)
-            children[uuid][i] = None
+            unmount(tree, old_child)
+            tree.children[uuid][i] = None
         elif old_child and new_child and type(old_child) is not type(new_child):
             # Class changed, replace the child
-            assert parents[old_child.uuid] == uuid
-            unmount(old_child)
-            mount(new_child)
-            parents[new_child.uuid] = uuid
-            children[uuid][i] = new_child
+            assert tree.parents[old_child.uuid] == uuid
+            unmount(tree, old_child)
+            mount(tree, new_child)
+            tree.parents[new_child.uuid] = uuid
+            tree.children[uuid][i] = new_child
         elif old_child and new_child and type(old_child) is type(new_child):
             # Class is the same, update recursively
             if isinstance(old_child, Widget) and isinstance(new_child, Widget):
                 new_child.controller = old_child.controller
                 new_child.controller(new_child)
-            assert parents[old_child.uuid] == uuid
-            del nodes[old_child.uuid]
-            nodes[new_child.uuid] = new_child
-            parents[new_child.uuid] = parents.pop(old_child.uuid)
-            children[new_child.uuid] = children.pop(old_child.uuid)
-            for child in children.get(new_child.uuid, []):
+            assert tree.parents[old_child.uuid] == uuid
+            del tree.nodes[old_child.uuid]
+            tree.nodes[new_child.uuid] = new_child
+            tree.parents[new_child.uuid] = tree.parents.pop(old_child.uuid)
+            tree.children[new_child.uuid] = tree.children.pop(old_child.uuid)
+            for child in tree.children.get(new_child.uuid, []):
                 if child:
-                    parents[child.uuid] = new_child.uuid
-            children[uuid][i] = new_child
-            update(new_child)
+                    tree.parents[child.uuid] = new_child.uuid
+            tree.children[uuid][i] = new_child
+            update(tree, new_child)
 
 
 # Render a component and its subtree to a string
-def collapse(component: Component | None) -> list[Element]:
+def collapse(tree: ElementTree, component: Component | None) -> list[Element]:
     match component:
         case None: return []
-        case Widget(): return [x for child in children[component.uuid] for x in collapse(child)]
+        case Widget(): return [x for child in tree.children[component.uuid] for x in collapse(tree, child)]
         case Element(): return [component]
         case _: raise ValueError(f"Unknown component type: {type(component)}")
 
-def render(element: Element, width: int) -> str:
+def render(tree: ElementTree, element: Element, width: int) -> str:
     remaining_width = element.get_content_width(width)
     flex = element.flex if isinstance(element, Box) else Flex.VERTICAL
-    collapsed = [x for child in children[element.uuid] for x in collapse(child)]
+    collapsed = [x for child in tree.children[element.uuid] for x in collapse(tree, child)]
     renders = {}
     for i, c in enumerate(collapsed):
         if isinstance(c.width, int) and remaining_width > 0:
-            renders[i] = render(c, c.width)
+            renders[i] = render(tree, c, c.width)
             remaining_width -= c.rendered_width if flex is Flex.HORIZONTAL else 0
     for i, c in enumerate(collapsed):
         if c.width is None and remaining_width > 0:
-            renders[i] = render(c, remaining_width)
+            renders[i] = render(tree, c, remaining_width)
             remaining_width -= c.rendered_width if flex is Flex.HORIZONTAL else 0
 
     if flex is Flex.HORIZONTAL:
@@ -134,7 +129,7 @@ def render(element: Element, width: int) -> str:
         scale = float(remaining_width)
     for i, c in enumerate(collapsed):
         if c and isinstance(c.width, float) and remaining_width > 0:
-            renders[i] = render(c, min(remaining_width, int(c.width * scale)))
+            renders[i] = render(tree, c, min(remaining_width, int(c.width * scale)))
             remaining_width -= c.rendered_width
 
     contents = [c for _, c in sorted(renders.items())]
@@ -143,20 +138,20 @@ def render(element: Element, width: int) -> str:
     return rendered
 
 # Get the depth of a node
-def depth(node: Component, root: Component) -> int:
+def depth(tree: ElementTree, node: Component, root: Component) -> int:
     depth = 0
     while node is not root:
-        node = nodes[parents[node.uuid]]
+        node = tree.nodes[tree.parents[node.uuid]]
         depth += 1
     return depth
 
 # Propogate input to a component and its subtree
-def propogate(node: Component, value: Any, event_type: str) -> None:
+def propogate(tree: ElementTree, node: Component, value: Any, event_type: str) -> None:
     if isinstance(node, Widget):
         getattr(node.controller, f'handle_{event_type}')(value)
-    for child in children.get(node.uuid, []):
+    for child in tree.children.get(node.uuid, []):
         if child:
-            propogate(child, value, event_type)
+            propogate(tree, child, value, event_type)
 
 
 # Main render loop
@@ -164,9 +159,10 @@ def propogate(node: Component, value: Any, event_type: str) -> None:
 async def render_root(_root: Component) -> None:
     hide_cursor()
 
+    tree = ElementTree()
     root = _root if isinstance(_root, Element) else Box()[_root]  # Root component needs to be an element
-    mount(root)
-    initial_render = render(root, shutil.get_terminal_size().columns)
+    mount(tree, root)
+    initial_render = render(tree, root, shutil.get_terminal_size().columns)
     previous_render_lines = initial_render.split('\n')
     print('\n\r'.join(previous_render_lines))
 
@@ -181,20 +177,20 @@ async def render_root(_root: Component) -> None:
                     sequence = ''
                     while (ch := sys.stdin.read(1)):
                         sequence += ch
-                propogate(root, sequence, 'input')
+                propogate(tree, root, sequence, 'input')
 
             # Check for dirty components
-            if not dirty:
+            if not tree.dirty:
                 await asyncio.sleep(0.01)
                 continue
-            for uuid in sorted(dirty, key=lambda uuid: depth(nodes[uuid], root)):  # start at the top and work downwards
-                if uuid in nodes:
-                    update(nodes[uuid])
-            dirty.clear()
+            for uuid in sorted(tree.dirty, key=lambda uuid: depth(tree, tree.nodes[uuid], root)):  # start at the top and work downwards
+                if uuid in tree.nodes:
+                    update(tree, tree.nodes[uuid])
+            tree.dirty.clear()
 
             # Re-render the tree
             terminal_size = shutil.get_terminal_size()
-            new_render_lines = render(root, terminal_size.columns).split('\n')
+            new_render_lines = render(tree, root, terminal_size.columns).split('\n')
 
             # Check if we need to clear screen due to large difference in output size
             if len(previous_render_lines) - len(new_render_lines) > min(terminal_size.lines / 2, terminal_size.lines - 20):

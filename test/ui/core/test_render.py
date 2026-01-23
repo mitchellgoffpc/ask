@@ -1,14 +1,12 @@
 import unittest
 
-from ask.ui.core.components import Box, Text
-from ask.ui.core.render import render, mount, nodes, children, parents
+from ask.ui.core.components import ElementTree, Box, Text
+from ask.ui.core.render import render, mount
 from ask.ui.core.styles import Flex
 
 class TestRender(unittest.TestCase):
-    def tearDown(self):
-        nodes.clear()
-        children.clear()
-        parents.clear()
+    def setUp(self):
+        self.tree = ElementTree()
 
     def test_empty_box(self):
         """Test empty box."""
@@ -16,8 +14,8 @@ class TestRender(unittest.TestCase):
             Box(),
             Text("Hello"),
         ]
-        mount(box)
-        result = render(box, 100)
+        mount(self.tree, box)
+        result = render(self.tree, box, 100)
         self.assertEqual(result, "Hello")
 
     def test_width_types(self):
@@ -34,8 +32,8 @@ class TestRender(unittest.TestCase):
                 box = Box(width=width, flex=Flex.HORIZONTAL)[
                     *(Text(text, width=width) for text, width, _ in _children)
                 ]
-                mount(box)
-                result = render(box, width or 100)
+                mount(self.tree, box)
+                result = render(self.tree, box, width or 100)
 
                 expected_box_width = width or sum(expected_width for _, _, expected_width in _children)
                 expected_result = ''.join(f'{text:<{expected_width}}' for text, _, expected_width in _children).ljust(expected_box_width)
@@ -44,8 +42,8 @@ class TestRender(unittest.TestCase):
     def test_width_constrained_by_max_width(self):
         """Test components are constrained by max_width parameter."""
         text = Text("Very long text that should be wrapped")
-        mount(text)
-        result = render(text, 10)
+        mount(self.tree, text)
+        result = render(self.tree, text, 10)
         self.assertEqual(result, "Very long \ntext that \nshould be \nwrapped   ")
 
     def test_width_constrained_by_parent_width(self):
@@ -55,8 +53,8 @@ class TestRender(unittest.TestCase):
                 Text("Very long text that should be wrapped")
             ]
         ]
-        mount(box)
-        result = render(box, 100)
+        mount(self.tree, box)
+        result = render(self.tree, box, 100)
         self.assertEqual(result, "Very long \ntext that \nshould be \nwrapped   ")
 
     def test_mixed_flex_components(self):
@@ -68,6 +66,6 @@ class TestRender(unittest.TestCase):
             ],
             Text("Side")
         ]
-        mount(outer)
-        result = render(outer, 100)
+        mount(self.tree, outer)
+        result = render(self.tree, outer, 100)
         self.assertEqual(result, "Top   Side\nBottom    ")

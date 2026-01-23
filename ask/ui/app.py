@@ -11,7 +11,7 @@ from ask.messages import Message, Text as TextContent, CheckedToolRequest, ToolR
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
-from ask.ui.core.components import Component, Controller, Box, Text, Widget
+from ask.ui.core.components import ElementTree, Component, Controller, Box, Text, Widget
 from ask.ui.core.styles import Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
@@ -85,7 +85,8 @@ class AppController(Controller[App]):
         self.loading = False
         ticker.cancel()
 
-    def handle_mount(self) -> None:
+    def handle_mount(self, tree: ElementTree) -> None:
+        super().handle_mount(tree)
         if self.props.query:
             self.tasks.append(asyncio.create_task(self.query(self.props.query)))
 
