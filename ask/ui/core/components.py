@@ -8,8 +8,6 @@ Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Size = int | float | None
 
-dirty: set[UUID] = set()
-
 def get_rendered_width(contents: str) -> int:
     return max(ansi_len(line) for line in contents.split('\n'))
 
@@ -192,8 +190,12 @@ class Controller(Component, Generic[ComponentType]):
 
     def __setattr__(self, key, value):
         if key in self.state:
-            dirty.add(self.uuid)
+            self.set_dirty()
         super().__setattr__(key, value)
+
+    def set_dirty(self) -> None:
+        from ask.ui.core.render import dirty
+        dirty.add(self.uuid)
 
     def handle_mount(self):
         self.mounted = True
