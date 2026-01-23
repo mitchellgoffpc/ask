@@ -2,14 +2,14 @@ import base64
 import json
 import unittest
 
-from ask.models.base import Model
+from ask.models.base import Model, Context, Capabilities
 from ask.models.anthropic import AnthropicAPI
 from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.api = AnthropicAPI('http://api.test', 'TEST_KEY', 'Test')
-        self.model = Model('test-model', self.api, [])
+        self.model = Model(self.api, 'test-model', [], Context(8192, 4096), None, Capabilities())
 
     def test_params(self):
         image_data = base64.b64encode(b'fakeimagedata').decode()

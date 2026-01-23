@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from ask.messages import Message, Text, Reasoning, ToolDescriptor, ToolRequest, CheckedToolRequest, ToolResponse, Usage, ToolCallStatus
-from ask.models.base import Model
+from ask.models.base import Model, Context, Capabilities
 from ask.models.openai import OpenAIAPI
 from ask.query import query_agent
 from ask.tools.base import Tool
@@ -18,7 +18,7 @@ def create_mock_tool(name='test_tool', description='A test tool'):
 class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.api = OpenAIAPI('http://api.test', 'TEST_KEY', 'Test')
-        self.model = Model('test-model', self.api, [])
+        self.model = Model(self.api, 'test-model', [], Context(8192, 4096), None, Capabilities())
         self.tool = create_mock_tool('test_tool', 'A test tool')
         self.tool.check.return_value = {'arg': 'processed_value'}
         self.approval = AsyncMock(return_value=True)
