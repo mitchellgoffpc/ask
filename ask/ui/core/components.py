@@ -8,14 +8,6 @@ Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Length = int | float | None
 
-class Offset(NamedTuple):
-    x: int
-    y: int
-
-class Size(NamedTuple):
-    width: int
-    height: int
-
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
     return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
@@ -80,6 +72,10 @@ def apply_boxing(content: str, max_width: int, element: Element) -> str:
     return content
 
 
+class Offset(NamedTuple):
+    x: int
+    y: int
+
 class ElementTree:
     def __init__(self) -> None:
         self.dirty: set[UUID] = set()
@@ -87,7 +83,8 @@ class ElementTree:
         self.parents: dict[UUID, UUID] = {}
         self.children: dict[UUID, list[Component | None]] = {}
         self.offsets: dict[UUID, Offset] = {}
-        self.sizes: dict[UUID, Size] = {}
+        self.widths: dict[UUID, int] = {}
+        self.heights: dict[UUID, int] = {}
 
 
 class Component:
