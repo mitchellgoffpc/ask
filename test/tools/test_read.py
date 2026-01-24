@@ -11,7 +11,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, file_path: str, offset: int = 0, limit: int = 1000) -> str:
         args = {"file_path": file_path, "offset": offset, "limit": limit}
         self.tool.check(args)
-        artifacts = self.tool.artifacts(args)
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
         result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text

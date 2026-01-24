@@ -54,7 +54,7 @@ class EditTool(Tool):
     def process(self, args: dict[str, Any], artifacts: dict[str, Any]) -> dict[str, Any]:
         old_lines = artifacts['old_content'].splitlines(keepends=True)
         new_lines = artifacts['new_content'].splitlines(keepends=True)
-        return {'diff': list(difflib.unified_diff(old_lines, new_lines, n=3))}
+        return {**artifacts, 'diff': list(difflib.unified_diff(old_lines, new_lines, n=3))}
 
     async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
         file_path = Path(args['file_path'])

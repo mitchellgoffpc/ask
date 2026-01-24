@@ -12,7 +12,7 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
     async def run_tool(self, **kwargs: Any) -> str:
         self.tool.check(kwargs)
-        artifacts = self.tool.artifacts(kwargs)
+        artifacts = self.tool.process(kwargs, self.tool.artifacts(kwargs))
         result = await self.tool.run(kwargs, artifacts)
         assert isinstance(result, Text)
         return result.text

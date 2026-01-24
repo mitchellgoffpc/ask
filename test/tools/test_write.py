@@ -12,7 +12,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, file_path: str, content: str) -> str:
         args = {"file_path": file_path, "content": content}
         self.tool.check(args)
-        artifacts = self.tool.artifacts(args)
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
         result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text

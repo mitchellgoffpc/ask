@@ -12,7 +12,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, path: str, ignore: list[str]) -> str:
         args = {"path": path, "ignore": ignore}
         self.tool.check(args)
-        artifacts = self.tool.artifacts(args)
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
         result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text

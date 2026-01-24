@@ -12,7 +12,8 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, command: str, timeout: int = 10000) -> str:
         args = {"command": command, "timeout": timeout}
         self.tool.check(args)
-        result = await self.tool.run(args, self.tool.artifacts(args))
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
+        result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text
 

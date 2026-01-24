@@ -13,7 +13,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, file_path: str, edits: list[dict]) -> str:
         args = {'file_path': file_path, 'edits': edits}
         self.tool.check(args)
-        artifacts = self.tool.artifacts(args)
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
         result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text

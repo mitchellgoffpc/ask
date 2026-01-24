@@ -11,7 +11,7 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, code: str, timeout_seconds: int = 10) -> str:
         args = {"code": code, "timeout": timeout_seconds * 1000}
         self.tool.check(args)
-        artifacts = self.tool.artifacts(args)
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
         result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text

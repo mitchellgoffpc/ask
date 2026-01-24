@@ -13,7 +13,7 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> str:
         args = {'file_path': file_path, 'old_string': old_string, 'new_string': new_string, 'replace_all': replace_all}
         self.tool.check(args)
-        artifacts = self.tool.artifacts(args)
+        artifacts = self.tool.process(args, self.tool.artifacts(args))
         result = await self.tool.run(args, artifacts)
         assert isinstance(result, Text)
         return result.text
