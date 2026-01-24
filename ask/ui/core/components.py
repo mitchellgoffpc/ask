@@ -1,15 +1,20 @@
 from __future__ import annotations
-from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args
+from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, NamedTuple, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
-Size = int | float | None
+Length = int | float | None
 
-def get_rendered_width(contents: str) -> int:
-    return max(ansi_len(line) for line in contents.split('\n'))
+class Offset(NamedTuple):
+    x: int
+    y: int
+
+class Size(NamedTuple):
+    width: int
+    height: int
 
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
@@ -81,6 +86,8 @@ class ElementTree:
         self.nodes: dict[UUID, Component] = {}
         self.parents: dict[UUID, UUID] = {}
         self.children: dict[UUID, list[Component | None]] = {}
+        self.offsets: dict[UUID, Offset] = {}
+        self.sizes: dict[UUID, Size] = {}
 
 
 class Component:
@@ -91,8 +98,8 @@ class Component:
 class Element(Component):
     def __init__(
         self,
-        width: Size,
-        height: int | None,
+        width: Length,
+        height: Length,
         margin: Spacing,
         padding: Spacing,
         border: Sequence[Side],
@@ -110,17 +117,26 @@ class Element(Component):
 
         self.children: list[Component | None] = []
         self.uuid = uuid4()
-        self.rendered_width = 0
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         self.children = [args] if isinstance(args, Component) else list(args) if args else []
         return self
 
+    def get_horizontal_chrome(self) -> int:
+        return (self.padding['left'] + self.padding['right'] +
+                self.margin['left'] + self.margin['right'] +
+                self.border['left'] + self.border['right'])
+
+    def get_vertical_chrome(self) -> int:
+        return (self.padding['top'] + self.padding['bottom'] +
+                self.margin['top'] + self.margin['bottom'] +
+                self.border['top'] + self.border['bottom'])
+
     def get_content_width(self, width: int) -> int:
-        horizontal_padding = self.padding['left'] + self.padding['right']
-        horizontal_margin = self.margin['left'] + self.margin['right']
-        horizontal_border = self.border['left'] + self.border['right']
-        return max(0, width - horizontal_padding - horizontal_margin - horizontal_border)
+        return max(0, width - self.get_horizontal_chrome())
+
+    def get_content_height(self, height: int) -> int:
+        return max(0, height - self.get_vertical_chrome())
 
     def contents(self) -> list[Component | None]:
         return self.children
@@ -133,8 +149,8 @@ class Text(Element):
     def __init__(
         self,
         text: str,
-        width: Size = None,
-        height: int | None = None,
+        width: Length = None,
+        height: Length = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
         border: Sequence[Side] = (),
@@ -158,8 +174,8 @@ class Box(Element):
     def __init__(
         self,
         flex: Flex = Flex.VERTICAL,
-        width: Size = None,
-        height: int | None = None,
+        width: Length = None,
+        height: Length = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
         border: Sequence[Side] = (),
