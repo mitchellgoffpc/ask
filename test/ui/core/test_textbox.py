@@ -1,18 +1,27 @@
 import unittest
 from unittest.mock import Mock
 
-from ask.ui.core.components import Text
+from ask.ui.core.components import ElementTree, Box
+from ask.ui.core.render import layout, mount, update
 from ask.ui.core.textbox import TextBox, TextBoxController
+
+def create_tree(textbox: TextBox) -> tuple[ElementTree, Box, TextBoxController]:
+    tree = ElementTree()
+    root = Box()[textbox]
+    mount(tree, root)
+
+    controller = textbox.__controller_instance__
+    assert isinstance(controller, TextBoxController)
+    return tree, root, controller
 
 class TestTextBoxWrapping(unittest.TestCase):
     def test_textbox_line_wrapping_methods(self):
         """Test line wrapping and cursor position calculation methods."""
-        textbox = TextBoxController(TextBox(width=5))  # Small width for testing
+        tree, root, textbox = create_tree(TextBox(width=5))
         textbox._text = 'Hello World'
         textbox._cursor_pos = 8
-        text = textbox.contents()[0]
-        assert isinstance(text, Text)
-        text.rendered_width = 5
+        update(tree, root)
+        layout(tree, root)
 
         # Test cursor line/col calculation
         line, col = textbox.get_cursor_line_col()
@@ -155,11 +164,9 @@ class TestTextBoxInputHandling(unittest.TestCase):
 
     def test_textbox_multiline_navigation(self):
         """Test multiline navigation with Ctrl+N and Ctrl+P."""
-        textbox = TextBoxController(TextBox(width=5))  # Small width to test line wrapping
+        tree, root, textbox = create_tree(TextBox(width=5))  # Small width to test line wrapping
         textbox._text = 'Hello\nWorld\nTest'
-        text = textbox.contents()[0]
-        assert isinstance(text, Text)
-        text.rendered_width = 5
+        layout(tree, root)
 
         # Ctrl+N - move to next line
         textbox.handle_input('\x0e')
@@ -173,12 +180,10 @@ class TestTextBoxInputHandling(unittest.TestCase):
 
     def test_textbox_arrow_key_navigation(self):
         """Test arrow key navigation."""
-        textbox = TextBoxController(TextBox(width=20))
+        tree, root, textbox = create_tree(TextBox(width=20))
         textbox._text = 'Hello\nWorld'
         textbox._cursor_pos = 5
-        text = textbox.contents()[0]
-        assert isinstance(text, Text)
-        text.rendered_width = 20
+        layout(tree, root)
 
         # Left arrow
         textbox.handle_input('\x1b[D')

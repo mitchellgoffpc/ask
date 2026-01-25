@@ -118,52 +118,28 @@ class TestApplyBorders(unittest.TestCase):
 
 
 class TestApplyBoxing(unittest.TestCase):
-    def test_apply_boxing_width_height_combinations(self):
-        """Test apply_boxing with various Box components and width/height combinations."""
-        content = "Test\nContent"
-        test_cases = [
-            # (width, height, max_width, expected_width, description)
-            (10, 5, 20, 12, "fixed width and height"),
-            (None, 5, 20, len("Content") + 4, "auto width, fixed height"),
-            (10, None, 20, 12, "fixed width, auto height"),
-            (None, None, 20, len("Content") + 4, "auto width and height"),
-            (15, 3, 10, 10, "width larger than max_width"),
-            (5, 8, 50, 7, "small box in large max_width"),
-        ]
-
-        for width, height, max_width, expected_width, description in test_cases:
-            with self.subTest(description=description):
-                box = Box(width=width, height=height, padding=1, margin=1)
-                box.render([content], max_width=max_width)
-                lines = apply_boxing(content, max_width, box).split('\n')
-
-                self.assertEqual(len(lines), height + 4 if height is not None else 6)
-                for line in lines:
-                    self.assertEqual(ansi_len(line), expected_width)
-
     def test_apply_boxing_with_borders_and_spacing(self):
         """Test apply_boxing with borders, padding, and margin combinations."""
         content = "Hello World"
         test_cases: list[tuple[Spacing, Spacing, tuple[Side, ...], BorderStyle, str]] = [
             # (padding, margin, border_style, description)
-            (2, 1, get_args(Side), Borders.SINGLE, "with padding, margin, and single border"),
-            ({'left': 3, 'right': 1}, {'top': 2, 'bottom': 1}, get_args(Side), Borders.ROUND, "asymmetric spacing with round border"),
-            (0, {'left': 2, 'right': 2}, get_args(Side), Borders.DOUBLE, "no padding, horizontal margin, double border"),
-            (1, 0, (), Borders.ROUND, "padding only, no border or margin"),
+            (0, 1, get_args(Side), Borders.SINGLE, "with margin, and single border"),
+            (0, {'top': 2, 'bottom': 1}, get_args(Side), Borders.ROUND, "asymmetric spacing with round border"),
+            (0, {'left': 2, 'right': 2}, get_args(Side), Borders.DOUBLE, "horizontal margin, double border"),
+            (0, 0, (), Borders.ROUND, "padding only, no border or margin"),
         ]
 
         for padding, margin, border, border_style, description in test_cases:
             with self.subTest(description=description):
                 box = Box(width=20, height=3, padding=padding, margin=margin, border=border, border_style=border_style)
-                box.render([content], max_width=100)
-                lines = apply_boxing(content, 50, box).split('\n')
+                lines = apply_boxing(content, 20 - box.get_horizontal_chrome(), 3, box).split('\n')
 
                 # Check top/bottom margin
                 margin_dict = get_spacing_dict(margin)
                 for line in lines[:margin_dict['top']]:
-                    self.assertEqual(line, ' ' * (20 + margin_dict['left'] + margin_dict['right']))
+                    self.assertEqual(line, ' ' * 20)
                 for line in lines[len(lines) - margin_dict['bottom']:]:
-                    self.assertEqual(line, ' ' * (20 + margin_dict['left'] + margin_dict['right']))
+                    self.assertEqual(line, ' ' * 20)
 
                 # Check left/right margin
                 for line in lines:

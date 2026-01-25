@@ -47,10 +47,9 @@ class TextBoxController(Controller[TextBox]):
 
     @property
     def content_width(self) -> int:
-        if self.tree and self.textbox_ref.uuid in self.tree.sizes:
-            return self.textbox_ref.get_content_width(self.tree.sizes[self.textbox_ref.uuid].width)
-        # Fallback for tests or before layout is computed
-        return self.textbox_ref.get_content_width(80)
+        if self.tree and self.text_ref.uuid in self.tree.widths:
+            return self.text_ref.get_content_width(self.tree.widths[self.text_ref.uuid])
+        raise ValueError("TextBoxController: content_width requested before layout")
 
     @property
     def cursor_pos(self) -> int:
@@ -291,5 +290,5 @@ class TextBoxController(Controller[TextBox]):
                 under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
                 styled_text = before + Styles.inverse(under) + after
 
-        self.textbox_ref = Text(styled_text)
-        return [self.textbox_ref]
+        self.text_ref = Text(styled_text, width=self.props.width)
+        return [self.text_ref]

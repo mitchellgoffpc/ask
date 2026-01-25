@@ -122,7 +122,7 @@ def update(tree: ElementTree, component: Component) -> None:
 
 # Layout functions - compute sizes and offsets before rendering
 
-def layout(tree: ElementTree, element: Element, available_width: int, available_height: int | None = None) -> None:
+def layout(tree: ElementTree, element: Element, available_width: int | None = None, available_height: int | None = None) -> None:
     collapse_tree(tree, element)
     compute_lengths(tree, element, Axis.HORIZONTAL, available_width)
     compute_lengths(tree, element, Axis.VERTICAL, available_height)
