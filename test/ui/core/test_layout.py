@@ -22,17 +22,24 @@ class TestLayout(unittest.TestCase):
                 [('Fixed', None, 5), ('Flex', None, None), ('Frac', None, 0.5)],
                 [(0, 0, 5, 5), (5, 0, 4, 1), (9, 0, 4, 50)]),
 
-            ("text width constraint", (Flex.HORIZONTAL, None, None), (20, 2), [('This text is longer than twenty chars', 20, None)], [(0, 0, 20, 2)]),
-            ("child text width constraint", (Flex.HORIZONTAL, 20, None), (20, 2), [('This text is longer than twenty chars', None, None)], [(0, 0, 20, 2)]),
-            ("child box width constraint", (Flex.HORIZONTAL, 20, None), (20, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 10, 1)]),
-
             ("fixed widths", (Flex.VERTICAL, None, None), (20, 2), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (0, 1, 20, 1)]),
             ("flexible widths", (Flex.VERTICAL, None, None), (5, 2), [('Hello', None, None), ('World', None, None)], [(0, 0, 5, 1), (0, 1, 5, 1)]),
             ("fractional widths", (Flex.VERTICAL, None, None), (75, 2), [('X', 0.25, None), ('Y', 0.75, None)], [(0, 0, 25, 1), (0, 1, 75, 1)]),
+            ("mixed widths", (Flex.VERTICAL, None, None), (50, 3),
+                [('Fixed', 5, None), ('Flex', None, None), ('Frac', 0.5, None)],
+                [(0, 0, 5, 1), (0, 1, 4, 1), (0, 2, 50, 1)]),
 
             ("fixed heights", (Flex.VERTICAL, None, None), (1, 8), [('A', None, 3), ('B', None, 5)], [(0, 0, 1, 3), (0, 3, 1, 5)]),
             ("flexible heights", (Flex.VERTICAL, None, None), (2, 2), [('A', None, None), ('BB', None, None)], [(0, 0, 1, 1), (0, 1, 2, 1)]),
             ("fractional heights", (Flex.VERTICAL, None, None), (1, 100), [('X', None, 0.25), ('Y', None, 0.75)], [(0, 0, 1, 25), (0, 25, 1, 75)]),
+            ("mixed heights", (Flex.VERTICAL, None, None), (10, 55),
+                [('Fixed', None, 10), ('Flex-12345', None, None), ('Frac', None, 0.5)],
+                [(0, 0, 5, 10), (0, 10, 10, 1), (0, 11, 4, 44)]),
+
+            ("empty child", (Flex.HORIZONTAL, None, None), (0, 0), [('', None, None)], [(0, 0, 0, 0)]),
+            ("text width constraint", (Flex.HORIZONTAL, None, None), (20, 2), [('This text is longer than twenty chars', 20, None)], [(0, 0, 20, 2)]),
+            ("child text width constraint", (Flex.HORIZONTAL, 20, None), (20, 2), [('This text is longer than twenty chars', None, None)], [(0, 0, 20, 2)]),
+            ("child box width constraint", (Flex.HORIZONTAL, 20, None), (20, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 10, 1)]),
         ]
 
         for description, (flex, width, height), (expected_width, expected_height), children, expected_layouts in test_cases:

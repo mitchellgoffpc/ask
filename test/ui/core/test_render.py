@@ -1,21 +1,20 @@
 import unittest
 
 from ask.ui.core.components import ElementTree, Box, Text
-from ask.ui.core.render import render, mount
+from ask.ui.core.render import render, layout, mount
 from ask.ui.core.styles import Flex
 
 class TestRender(unittest.TestCase):
-    def setUp(self):
-        self.tree = ElementTree()
-
     def test_empty_box(self):
         """Test empty box."""
+        tree = ElementTree()
         box = Box()[
             Box(),
             Text("Hello"),
         ]
-        mount(self.tree, box)
-        result = render(self.tree, box, 100)
+        mount(tree, box)
+        layout(tree, box, 100)
+        result = render(tree, box)
         self.assertEqual(result, "Hello")
 
     def test_width_types(self):
@@ -29,43 +28,41 @@ class TestRender(unittest.TestCase):
 
         for description, width, _children in test_cases:
             with self.subTest(description=description):
-                box = Box(width=width, flex=Flex.HORIZONTAL)[
-                    *(Text(text, width=width) for text, width, _ in _children)
-                ]
-                mount(self.tree, box)
-                result = render(self.tree, box, width or 100)
-
+                tree = ElementTree()
+                box = Box(width=width, flex=Flex.HORIZONTAL)[(Text(text, width=width) for text, width, _ in _children)]
+                mount(tree, box)
+                layout(tree, box, 100)
+                result = render(tree, box)
                 expected_box_width = width or sum(expected_width for _, _, expected_width in _children)
                 expected_result = ''.join(f'{text:<{expected_width}}' for text, _, expected_width in _children).ljust(expected_box_width)
                 self.assertEqual(result, expected_result)
 
     def test_width_constrained_by_max_width(self):
         """Test components are constrained by max_width parameter."""
+        tree = ElementTree()
         text = Text("Very long text that should be wrapped")
-        mount(self.tree, text)
-        result = render(self.tree, text, 10)
+        mount(tree, text)
+        layout(tree, text, 10)
+        result = render(tree, text)
         self.assertEqual(result, "Very long \ntext that \nshould be \nwrapped   ")
 
     def test_width_constrained_by_parent_width(self):
         """Test components are constrained by parent width."""
-        box = Box()[
-            Box(width=10)[
-                Text("Very long text that should be wrapped")
-            ]
-        ]
-        mount(self.tree, box)
-        result = render(self.tree, box, 100)
+        tree = ElementTree()
+        box = Box()[Box(width=10)[Text("Very long text that should be wrapped")]]
+        mount(tree, box)
+        layout(tree, box, 100)
+        result = render(tree, box)
         self.assertEqual(result, "Very long \ntext that \nshould be \nwrapped   ")
 
     def test_mixed_flex_components(self):
         """Test nested boxes with different flex directions."""
+        tree = ElementTree()
         outer = Box(flex=Flex.HORIZONTAL)[
-            Box(flex=Flex.VERTICAL)[
-                Text("Top"),
-                Text("Bottom")
-            ],
+            Box(flex=Flex.VERTICAL)[Text("Top"), Text("Bottom")],
             Text("Side")
         ]
-        mount(self.tree, outer)
-        result = render(self.tree, outer, 100)
+        mount(tree, outer)
+        layout(tree, outer, 100)
+        result = render(tree, outer)
         self.assertEqual(result, "Top   Side\nBottom    ")

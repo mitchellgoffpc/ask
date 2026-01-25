@@ -300,7 +300,7 @@ class Colors:
 
 
 
-class Flex(Enum):
+class Axis(Enum):
     VERTICAL = 'vertical'
     HORIZONTAL = 'horizontal'
 
@@ -340,3 +340,5 @@ class Theme:
     GRAY = '#AAAAAA'
     DARK_GRAY = '#888888'
     WHITE = '#FFFFFF'
+
+Flex = Axis

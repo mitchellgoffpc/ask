@@ -7,13 +7,13 @@ import sys
 import termios
 import tty
 from contextlib import contextmanager
-from itertools import zip_longest
+from itertools import chain, zip_longest
 from typing import Any, Iterator
 from uuid import UUID
 
-from ask.ui.core.components import ElementTree, Component, Element, Box, Text, Widget, Offset
+from ask.ui.core.components import ElementTree, Component, Element, Box, Text, Widget, Offset, apply_boxing, apply_sizing
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
-from ask.ui.core.styles import Flex, ansi_len, wrap_lines
+from ask.ui.core.styles import Axis, ansi_len
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
@@ -32,6 +32,25 @@ def print_node(tree: ElementTree, uuid: UUID, level: int = 0) -> None:
     for child in tree.children.get(uuid, []):
         if child:  # Skip None values
             print_node(tree, child.uuid, level + 1)
+
+# Get the depth of a node
+def depth(tree: ElementTree, node: Component, root: Component) -> int:
+    depth = 0
+    while node is not root:
+        node = tree.nodes[tree.parents[node.uuid]]
+        depth += 1
+    return depth
+
+# Propogate input to a component and its subtree
+def propogate(tree: ElementTree, node: Component, value: Any, event_type: str) -> None:
+    if isinstance(node, Widget):
+        getattr(node.controller, f'handle_{event_type}')(value)
+    for child in tree.children.get(node.uuid, []):
+        if child:
+            propogate(tree, child, value, event_type)
+
+
+# Update functions - mount, unmount, update
 
 # Add a component and all its children to the tree
 def mount(tree: ElementTree, component: Component) -> None:
@@ -101,193 +120,123 @@ def update(tree: ElementTree, component: Component) -> None:
             update(tree, new_child)
 
 
-# Render a component and its subtree to a string
-def collapse(tree: ElementTree, component: Component | None) -> list[Element]:
-    match component:
-        case None: return []
-        case Widget(): return [x for child in tree.children[component.uuid] for x in collapse(tree, child)]
-        case Element(): return [component]
-        case _: raise ValueError(f"Unknown component type: {type(component)}")
-
-
 # Layout functions - compute sizes and offsets before rendering
 
 def layout(tree: ElementTree, element: Element, available_width: int, available_height: int | None = None) -> None:
-    """Main layout function that computes sizes and offsets for all elements."""
-    compute_widths(tree, element, available_width)
-    compute_heights(tree, element, available_height)
+    collapse_tree(tree, element)
+    compute_lengths(tree, element, Axis.HORIZONTAL, available_width)
+    compute_lengths(tree, element, Axis.VERTICAL, available_height)
     compute_offsets(tree, element)
 
+def collapse_tree(tree: ElementTree, element: Element) -> None:
+    tree.collapsed_children[element.uuid] = list(chain.from_iterable(collapse_children(tree, child) for child in tree.children[element.uuid]))
+    for child in tree.collapsed_children[element.uuid]:
+        collapse_tree(tree, child)
 
-def compute_widths(tree: ElementTree, element: Element, available_width: int) -> None:
-    """First pass: compute widths for element and all descendants.
+def collapse_children(tree: ElementTree, component: Component | None) -> list[Element]:
+    match component:
+        case None: return []
+        case Widget(): return list(chain.from_iterable(collapse_children(tree, child) for child in tree.children[component.uuid]))
+        case Element(): return [component]
+        case _: raise ValueError(f"Unknown component type: {type(component)}")
 
-    Order of operations: fixed-width (int) -> flexible-width (None) -> fractional-width (float)
-    """
-    flex = element.flex if isinstance(element, Box) else Flex.VERTICAL
-    collapsed = [x for child in tree.children[element.uuid] for x in collapse(tree, child)]
-    if isinstance(element.width, int):
-        available_width = min(available_width, element.width)
-    content_width = element.get_content_width(available_width)
-    remaining_width = content_width
+def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_length: int | None = None) -> None:
+    flex = element.flex if isinstance(element, Box) else Axis.VERTICAL
+    collapsed = tree.collapsed_children[element.uuid]
+    child_lengths = [child.length(axis) for child in collapsed]
+    computed_lengths = tree.widths if axis is Axis.HORIZONTAL else tree.heights
 
-    # First: fixed-width children (int)
-    for child in collapsed:
-        if isinstance(child.width, int):
-            compute_widths(tree, child, min(child.width, remaining_width))
-            if flex is Flex.HORIZONTAL:
-                remaining_width = max(0, remaining_width - tree.widths[child.uuid])
+    if isinstance((element_length := element.length(axis)), int):
+        available_length = min(available_length, element_length) if available_length is not None else element_length
+    content_length = element.get_content_length(axis, available_length) if available_length else None
+    remaining_length = content_length
 
-    # Second: flexible-width children (None)
-    for child in collapsed:
-        if child.width is None:
-            compute_widths(tree, child, remaining_width)
-            if flex is Flex.HORIZONTAL:
-                remaining_width = max(0, remaining_width - tree.widths[child.uuid])
+    # First: fixed-length children (int)
+    for child, child_length in zip(collapsed, child_lengths, strict=True):
+        if isinstance(child_length, int):
+            compute_lengths(tree, child, axis, min(remaining_length, child_length) if remaining_length is not None else child_length)
+            if flex is axis and remaining_length is not None:
+                remaining_length = max(0, remaining_length - computed_lengths[child.uuid])
 
-    # Third: fractional-width children (float)
-    total_fraction = sum(c.width for c in collapsed if isinstance(c.width, float))
-    if flex is Flex.HORIZONTAL:
-        scale = remaining_width / max(1, total_fraction)
-    else:
-        scale = float(remaining_width)
-    for child in collapsed:
-        if isinstance(child.width, float):
-            scaled_width = min(remaining_width, int(child.width * scale))
-            compute_widths(tree, child, scaled_width)
-            remaining_width = max(0, remaining_width - tree.widths[child.uuid])
+    # Second: flexible-length children (None)
+    for child, child_length in zip(collapsed, child_lengths, strict=True):
+        if child_length is None or (isinstance(child_length, float) and remaining_length is None):
+            compute_lengths(tree, child, axis, remaining_length)
+            if flex is axis and remaining_length is not None:
+                remaining_length = max(0, remaining_length - computed_lengths[child.uuid])
 
-    # Compute this element's width based on its width specification
-    if isinstance(element.width, int):
-        final_width = element.width
-    elif isinstance(element.width, float):
-        final_width = available_width
+    # Third: fractional-length children (float)
+    if remaining_length is not None:
+        total_fraction = sum(x for x in child_lengths if isinstance(x, float))
+        scale = remaining_length / max(1, total_fraction) if flex is axis else float(remaining_length)
+        for child, child_length in zip(collapsed, child_lengths, strict=True):
+            if isinstance(child_length, float):
+                scaled_length = min(remaining_length, int(child_length * scale))
+                compute_lengths(tree, child, axis, scaled_length)
+                remaining_length = max(0, remaining_length - computed_lengths[child.uuid])
+
+    # Compute this element's length based on its length specification
+    if isinstance(element_length, int):
+        final_length = element_length
+    elif isinstance(element_length, float):
+        final_length = available_length or 0
     else:  # None - flexible, size to content
         if isinstance(element, Text):
-            wrapped = wrap_lines(element.text.replace('\t', ' ' * 8), content_width)
-            inner_width = max((ansi_len(line) for line in wrapped.split('\n')), default=0)
-        elif flex is Flex.HORIZONTAL:
-            inner_width = sum((tree.widths[c.uuid] for c in collapsed), start=0)
+            if axis is Axis.HORIZONTAL:
+                wrapped = element.wrap(content_length) if content_length else element.text.replace('\t', ' ' * 8)
+                inner_length = max((ansi_len(line) for line in wrapped.split('\n')), default=0)
+            else:  # VERTICAL - heights depend on widths for text wrapping
+                content_width = element.get_content_width(tree.widths[element.uuid])
+                wrapped = element.wrap(content_width)
+                inner_length = wrapped.count('\n') + 1 if wrapped else 0
+        elif flex is axis:
+            inner_length = sum((computed_lengths[c.uuid] for c in collapsed), start=0)
         else:
-            inner_width = max((tree.widths[c.uuid] for c in collapsed), default=0)
-        final_width = inner_width + element.get_horizontal_chrome()
+            inner_length = max((computed_lengths[c.uuid] for c in collapsed), default=0)
+        final_length = inner_length + element.get_chrome(axis)
 
-    tree.widths[element.uuid] = min(available_width, final_width)
-
-
-def compute_heights(tree: ElementTree, element: Element, available_height: int | None = None) -> None:
-    """Second pass: compute heights for element and all descendants.
-
-    Heights depend on widths (e.g., text wrapping), so this runs after compute_widths.
-    Order of operations: fixed-height (int) -> flexible-height (None) -> fractional-height (float)
-    """
-    flex = element.flex if isinstance(element, Box) else Flex.VERTICAL
-    collapsed = [x for child in tree.children[element.uuid] for x in collapse(tree, child)]
-    if isinstance(element.height, int):
-        available_height = min(available_height, element.height) if available_height is not None else element.height
-    content_height = element.get_content_height(available_height) if available_height else None
-    remaining_height = content_height
-
-    # First: fixed-height children (int) and flexible-height children (None)
-    # These are processed together since flexible heights are intrinsic (don't need remaining space)
-    for child in collapsed:
-        if isinstance(child.height, int):
-            compute_heights(tree, child, min(remaining_height, child.height) if remaining_height is not None else child.height)
-            if flex is Flex.VERTICAL and remaining_height is not None:
-                remaining_height = max(0, remaining_height - tree.heights[child.uuid])
-        elif child.height is None:
-            compute_heights(tree, child, remaining_height)
-            if flex is Flex.VERTICAL and remaining_height is not None:
-                remaining_height = max(0, remaining_height - tree.heights[child.uuid])
-
-    # Second: fractional-height children (float)
-    if remaining_height is not None:
-        total_fraction = sum(c.height for c in collapsed if isinstance(c.height, float))
-        if flex is Flex.VERTICAL:
-            scale = remaining_height / max(1, total_fraction)
-        else:
-            scale = float(remaining_height)
-        for child in collapsed:
-            if isinstance(child.height, float):
-                scaled_height = min(remaining_height, int(child.height * scale))
-                compute_heights(tree, child, scaled_height)
-                remaining_height -= tree.heights[child.uuid]
-    else:
-        # No height constraint - fractional heights get 0
-        for child in collapsed:
-            if isinstance(child.height, float):
-                compute_heights(tree, child, 0)
-
-    # Compute this element's height based on its height specification
-    if isinstance(element.height, int):
-        final_height = element.height
-    elif isinstance(element.height, float):
-        final_height = available_height if available_height else 0
-    else:  # None - flexible, size to content
-        if isinstance(element, Text):
-            content_width = element.get_content_width(tree.widths[element.uuid])
-            wrapped = wrap_lines(element.text.replace('\t', ' ' * 8), content_width)
-            inner_height = wrapped.count('\n') + 1
-        elif flex is Flex.VERTICAL:
-            inner_height = sum((tree.heights[c.uuid] for c in collapsed), start=0)
-        else:
-            inner_height = max((tree.heights[c.uuid] for c in collapsed), default=0)
-        final_height = inner_height + element.get_vertical_chrome()
-
-    tree.heights[element.uuid] =  min(available_height, final_height) if available_height is not None else final_height
-
+    computed_lengths[element.uuid] = min(available_length, final_length) if available_length is not None else final_length
 
 def compute_offsets(tree: ElementTree, element: Element) -> None:
-    """Third pass: compute offsets for all children.
-
-    Offsets are relative to parent, not absolute positions.
-    Accumulate widths (horizontal flex) or heights (vertical flex) to determine offsets.
-    """
-    flex = element.flex if isinstance(element, Box) else Flex.VERTICAL
-    collapsed = [x for child in tree.children[element.uuid] for x in collapse(tree, child)]
-
-    # Starting offset accounts for this element's margin, border, and padding
+    flex = element.flex if isinstance(element, Box) else Axis.VERTICAL
     x_offset = element.margin['left'] + element.border['left'] + element.padding['left']
     y_offset = element.margin['top'] + element.border['top'] + element.padding['top']
 
-    for child in collapsed:
+    for child in tree.collapsed_children[element.uuid]:
         tree.offsets[child.uuid] = Offset(x=x_offset, y=y_offset)
-        # Accumulate in the flex direction
-        if flex is Flex.HORIZONTAL:
+        if flex is Axis.HORIZONTAL:
             x_offset += tree.widths[child.uuid]
-        else:  # VERTICAL
+        else:
             y_offset += tree.heights[child.uuid]
-        # Recursively compute offsets for children
         compute_offsets(tree, child)
 
 
-def render(tree: ElementTree, element: Element, width: int) -> str:
-    """Render element and its subtree to a string.
+# Rendering
 
-    Note: layout() must be called first to populate tree.sizes.
-    """
-    collapsed = [x for child in tree.children[element.uuid] for x in collapse(tree, child)]
+def render(tree: ElementTree, element: Element) -> str:
+    width = tree.widths[element.uuid]
+    height = tree.heights[element.uuid]
+    content_width = element.get_content_width(width)
+    content_height = element.get_content_height(height)
 
-    # Render children using their pre-computed sizes
-    contents = [render(tree, c, tree.widths[c.uuid]) for c in collapsed]
+    match element:
+        case Text():
+            content = element.wrap(content_width)
+        case Box():
+            collapsed = tree.collapsed_children[element.uuid]
+            contents = [render(tree, child) for child in collapsed]
+            if element.flex is Axis.VERTICAL:
+                content = '\n'.join(x for x in contents if x)
+            else:
+                max_child_height = max((tree.heights[child.uuid] for child in collapsed), default=0)
+                contents = [apply_sizing(child_content, tree.widths[child.uuid], max_child_height)
+                            for child_content, child in zip(contents, collapsed, strict=True)]
+                lines = [child.split('\n') for child in contents]
+                content = '\n'.join(''.join(columns) for columns in zip(*lines, strict=True))
+        case _:
+            raise ValueError(f"Unknown element type: {type(element)}")
 
-    return element.render(contents, width)
-
-# Get the depth of a node
-def depth(tree: ElementTree, node: Component, root: Component) -> int:
-    depth = 0
-    while node is not root:
-        node = tree.nodes[tree.parents[node.uuid]]
-        depth += 1
-    return depth
-
-# Propogate input to a component and its subtree
-def propogate(tree: ElementTree, node: Component, value: Any, event_type: str) -> None:
-    if isinstance(node, Widget):
-        getattr(node.controller, f'handle_{event_type}')(value)
-    for child in tree.children.get(node.uuid, []):
-        if child:
-            propogate(tree, child, value, event_type)
+    return apply_boxing(content, content_width, content_height, element)
 
 
 # Main render loop
@@ -300,7 +249,7 @@ async def render_root(_root: Component) -> None:
     mount(tree, root)
     terminal_width = shutil.get_terminal_size().columns
     layout(tree, root, terminal_width)
-    initial_render = render(tree, root, terminal_width)
+    initial_render = render(tree, root)
     previous_render_lines = initial_render.split('\n')
     print('\n\r'.join(previous_render_lines))
 
@@ -329,7 +278,7 @@ async def render_root(_root: Component) -> None:
             # Re-render the tree
             terminal_size = shutil.get_terminal_size()
             layout(tree, root, terminal_size.columns)
-            new_render_lines = render(tree, root, terminal_size.columns).split('\n')
+            new_render_lines = render(tree, root).split('\n')
 
             # Check if we need to clear screen due to large difference in output size
             if len(previous_render_lines) - len(new_render_lines) > min(terminal_size.lines / 2, terminal_size.lines - 20):
