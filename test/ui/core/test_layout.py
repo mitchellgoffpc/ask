@@ -2,7 +2,7 @@ import unittest
 
 from ask.ui.core.components import ElementTree, Box, Text
 from ask.ui.core.render import layout, mount
-from ask.ui.core.styles import Flex
+from ask.ui.core.styles import Colors, Flex
 
 class TestLayout(unittest.TestCase):
     def test_flex_layout(self):
@@ -104,6 +104,7 @@ class TestLayout(unittest.TestCase):
             ("child chrome v, fixed height", Flex.VERTICAL, (0, 0, 0), (13, 14),
                 [('A', None, None, (2, 1, 3)), ('B', None, None, (0, 0, 0))],
                 [(0, 0, 13, 13), (0, 13, 1, 1)]),
+            ("child chrome, tight packing", Flex.HORIZONTAL, (0, 0, 0), (3, 3), [(Colors.hex('A', '#333333'), 3, None, (1, 0, 0))], [(0, 0, 3, 3)]),
         ]
 
         for description, flex, chrome, (expected_w, expected_h), children, expected_layouts in test_cases:
