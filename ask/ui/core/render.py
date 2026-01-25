@@ -71,6 +71,10 @@ def unmount(tree: ElementTree, component: Component) -> None:
         if child:
             unmount(tree, child)
     del tree.nodes[component.uuid], tree.children[component.uuid], tree.parents[component.uuid]
+    tree.collapsed_children.pop(component.uuid, None)
+    tree.offsets.pop(component.uuid, None)
+    tree.widths.pop(component.uuid, None)
+    tree.heights.pop(component.uuid, None)
     if isinstance(component, Widget):
         component.controller.handle_unmount()
         component.controller = None
@@ -113,6 +117,10 @@ def update(tree: ElementTree, component: Component) -> None:
             tree.nodes[new_child.uuid] = new_child
             tree.parents[new_child.uuid] = tree.parents.pop(old_child.uuid)
             tree.children[new_child.uuid] = tree.children.pop(old_child.uuid)
+            tree.collapsed_children.pop(old_child.uuid, None)
+            tree.offsets.pop(old_child.uuid, None)
+            tree.widths.pop(old_child.uuid, None)
+            tree.heights.pop(old_child.uuid, None)
             for child in tree.children.get(new_child.uuid, []):
                 if child:
                     tree.parents[child.uuid] = new_child.uuid
