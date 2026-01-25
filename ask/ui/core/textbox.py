@@ -2,7 +2,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Callable, ClassVar
 
-from ask.ui.core.components import Component, Controller, Size, Text, Widget
+from ask.ui.core.components import Length, Component, Controller, Text, Widget
 from ask.ui.core.styles import Styles, Colors
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
@@ -13,7 +13,7 @@ def is_stop_char(ch: str) -> bool:
 @dataclass
 class TextBox(Widget):
     __controller__: ClassVar = lambda _: TextBoxController
-    width: Size = 1.0
+    width: Length = 1.0
     text: str | None = None
     placeholder: str = ""
     history: list[str] | None = None
@@ -47,7 +47,9 @@ class TextBoxController(Controller[TextBox]):
 
     @property
     def content_width(self) -> int:
-        return self.textbox_ref.get_content_width(self.textbox_ref.rendered_width)
+        if self.tree and self.text_ref.uuid in self.tree.widths:
+            return self.text_ref.get_content_width(self.tree.widths[self.text_ref.uuid])
+        raise ValueError("TextBoxController: content_width requested before layout")
 
     @property
     def cursor_pos(self) -> int:
@@ -288,5 +290,5 @@ class TextBoxController(Controller[TextBox]):
                 under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
                 styled_text = before + Styles.inverse(under) + after
 
-        self.textbox_ref = Text(styled_text)
-        return [self.textbox_ref]
+        self.text_ref = Text(styled_text, width=self.props.width)
+        return [self.text_ref]

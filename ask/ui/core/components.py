@@ -1,15 +1,12 @@
 from __future__ import annotations
-from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args
+from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, NamedTuple, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
-Size = int | float | None
-
-def get_rendered_width(contents: str) -> int:
-    return max(ansi_len(line) for line in contents.split('\n'))
+Length = int | float | None
 
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
@@ -56,17 +53,8 @@ def apply_borders(content: str, width: int, borders: set[Side], border_style: Bo
     right_border = Colors.ansi(border_style.right, color_code) if 'right' in borders else ''
     return '\n'.join(top_border + [left_border + line + right_border for line in lines] + bottom_border)
 
-def apply_boxing(content: str, max_width: int, element: Element) -> str:
-    max_content_width = element.get_content_width(max_width)
-    if isinstance(element.width, int):
-        content_width = min(max_content_width, element.get_content_width(element.width + element.margin['left'] + element.margin['right']))
-    elif isinstance(element.width, float):
-        content_width = max_content_width
-    else:
-        content_width = min(max_content_width, get_rendered_width(content))
-    content_height: int = element.height if element.height is not None else content.count('\n') + 1 if content else 0
+def apply_boxing(content: str, content_width: int, content_height: int, element: Element) -> str:
     padded_width = content_width + element.padding['left'] + element.padding['right']
-
     content = apply_sizing(content, content_width, content_height)
     content = apply_spacing(content, element.padding)
     content = apply_background(content, padded_width, element.background_color)
@@ -75,12 +63,20 @@ def apply_boxing(content: str, max_width: int, element: Element) -> str:
     return content
 
 
+class Offset(NamedTuple):
+    x: int
+    y: int
+
 class ElementTree:
     def __init__(self) -> None:
         self.dirty: set[UUID] = set()
         self.nodes: dict[UUID, Component] = {}
         self.parents: dict[UUID, UUID] = {}
         self.children: dict[UUID, list[Component | None]] = {}
+        self.collapsed_children: dict[UUID, list[Element]] = {}
+        self.offsets: dict[UUID, Offset] = {}
+        self.widths: dict[UUID, int] = {}
+        self.heights: dict[UUID, int] = {}
 
 
 class Component:
@@ -91,8 +87,8 @@ class Component:
 class Element(Component):
     def __init__(
         self,
-        width: Size,
-        height: int | None,
+        width: Length,
+        height: Length,
         margin: Spacing,
         padding: Spacing,
         border: Sequence[Side],
@@ -110,31 +106,46 @@ class Element(Component):
 
         self.children: list[Component | None] = []
         self.uuid = uuid4()
-        self.rendered_width = 0
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         self.children = [args] if isinstance(args, Component) else list(args) if args else []
         return self
 
+    def get_horizontal_chrome(self) -> int:
+        return (self.padding['left'] + self.padding['right'] +
+                self.margin['left'] + self.margin['right'] +
+                self.border['left'] + self.border['right'])
+
+    def get_vertical_chrome(self) -> int:
+        return (self.padding['top'] + self.padding['bottom'] +
+                self.margin['top'] + self.margin['bottom'] +
+                self.border['top'] + self.border['bottom'])
+
     def get_content_width(self, width: int) -> int:
-        horizontal_padding = self.padding['left'] + self.padding['right']
-        horizontal_margin = self.margin['left'] + self.margin['right']
-        horizontal_border = self.border['left'] + self.border['right']
-        return max(0, width - horizontal_padding - horizontal_margin - horizontal_border)
+        return max(0, width - self.get_horizontal_chrome())
+
+    def get_content_height(self, height: int) -> int:
+        return max(0, height - self.get_vertical_chrome())
+
+    def length(self, axis: Flex) -> Length:
+        return self.width if axis is Flex.HORIZONTAL else self.height
+
+    def get_chrome(self, axis: Flex) -> int:
+        return self.get_horizontal_chrome() if axis is Flex.HORIZONTAL else self.get_vertical_chrome()
+
+    def get_content_length(self, axis: Flex, length: int) -> int:
+        return self.get_content_width(length) if axis is Flex.HORIZONTAL else self.get_content_height(length)
 
     def contents(self) -> list[Component | None]:
         return self.children
-
-    def render(self, contents: list[str], max_width: int) -> str:
-        raise NotImplementedError()
 
 
 class Text(Element):
     def __init__(
         self,
         text: str,
-        width: Size = None,
-        height: int | None = None,
+        width: Length = None,
+        height: Length = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
         border: Sequence[Side] = (),
@@ -145,21 +156,23 @@ class Text(Element):
         super().__init__(width=width, height=height, margin=margin, padding=padding,
                          border=border, border_color=border_color, border_style=border_style, background_color=background_color)
         self.text = text
+        self._wrapped: dict[int, str] = {}
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
 
-    def render(self, _: list[str], max_width: int) -> str:
-        wrapped = wrap_lines(self.text.replace('\t', ' ' * 8), max_width)
-        return apply_boxing(wrapped, max_width, self)
+    def wrap(self, width: int) -> str:
+        if width not in self._wrapped:
+            self._wrapped[width] = wrap_lines(self.text.replace('\t', ' ' * 8), width)
+        return self._wrapped[width]
 
 
 class Box(Element):
     def __init__(
         self,
         flex: Flex = Flex.VERTICAL,
-        width: Size = None,
-        height: int | None = None,
+        width: Length = None,
+        height: Length = None,
         margin: Spacing = 0,
         padding: Spacing = 0,
         border: Sequence[Side] = (),
@@ -170,17 +183,6 @@ class Box(Element):
         super().__init__(width=width, height=height, margin=margin, padding=padding,
                          border=border, border_color=border_color, border_style=border_style, background_color=background_color)
         self.flex = flex
-
-    def render(self, contents: list[str], max_width: int) -> str:
-        if self.flex is Flex.VERTICAL:
-            content = '\n'.join(x for x in contents if x)
-        elif self.flex is Flex.HORIZONTAL:
-            max_child_height = max((child.count('\n') + 1 for child in contents), default=0)
-            contents = [apply_sizing(child, width=get_rendered_width(child), height=max_child_height) for child in contents]
-            lines = [child.split('\n') for child in contents]
-            content = '\n'.join(''.join(columns) for columns in zip(*lines, strict=True))
-
-        return apply_boxing(content, max_width, self)
 
 
 ComponentType = TypeVar('ComponentType')

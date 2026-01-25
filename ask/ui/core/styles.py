@@ -124,6 +124,7 @@ def ansi_slice(string: str, start: int, end: int) -> str:
     active_styles: set[str] = set()
     active_color = None
     active_bgcolor = None
+    has_content = False
 
     for chunk in chunks:
         if match_ := ansi_pattern.match(chunk):
@@ -176,9 +177,9 @@ def ansi_slice(string: str, start: int, end: int) -> str:
                     if active_bgcolor:
                         result.append(active_bgcolor)
                 result.append(chunk[slice_start:slice_end])
+                has_content = True
             if chunk_end >= end:
                 break
-
             current_pos = chunk_end
 
     reset = ''
@@ -188,7 +189,7 @@ def ansi_slice(string: str, start: int, end: int) -> str:
         reset += Colors.BG_END
     if active_styles:
         reset += Styles.RESET
-    return ''.join(result) + reset
+    return ''.join(result) + reset if has_content else ''
 
 def wrap_lines(content: str, max_width: int) -> str:
     lines = []
@@ -300,7 +301,7 @@ class Colors:
 
 
 
-class Flex(Enum):
+class Axis(Enum):
     VERTICAL = 'vertical'
     HORIZONTAL = 'horizontal'
 
@@ -340,3 +341,5 @@ class Theme:
     GRAY = '#AAAAAA'
     DARK_GRAY = '#888888'
     WHITE = '#FFFFFF'
+
+Flex = Axis
