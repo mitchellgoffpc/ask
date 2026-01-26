@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ask.prompts import get_relative_path
-from ask.ui.core.styles import Styles
+from ask.ui.core import Styles
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
 @dataclass

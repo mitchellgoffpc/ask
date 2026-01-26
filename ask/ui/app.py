@@ -12,8 +12,7 @@ from ask.messages import Message, Text as TextContent, ToolRequest, ToolResponse
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
-from ask.ui.core.components import ElementTree, Component, Controller, Box, Text, Widget
-from ask.ui.core.styles import Colors, Theme
+from ask.ui.core import ElementTree, Component, Controller, Box, Text, Widget, Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.spinner import Spinner

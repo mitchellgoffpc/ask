@@ -1,5 +1,4 @@
-from ask.ui.core.components import Component, Text, Box
-from ask.ui.core.styles import Axis, Colors, Theme
+from ask.ui.core import Component, Text, Box, Axis, Colors, Theme
 
 
 def Diff(diff: list[str], rejected: bool = False) -> Component:

@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
 from ask.messages import Blob, Text as TextContent, ToolRequest, ToolResponse, ToolCallStatus
-from ask.ui.core.components import Component, Controller, Box, Text, Widget
-from ask.ui.core.styles import Axis, Colors, Styles, Theme
+from ask.ui.core import Component, Controller, Box, Text, Widget, Axis, Colors, Styles, Theme
 
 STATUS_COLORS = {
     ToolCallStatus.PENDING: Theme.GRAY,

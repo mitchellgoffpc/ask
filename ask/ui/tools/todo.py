@@ -1,7 +1,6 @@
 from typing import Any
 
-from ask.ui.core.components import Component, Text
-from ask.ui.core.styles import Colors, Styles, Theme
+from ask.ui.core import Component, Text, Colors, Styles, Theme
 
 def ToDos(todos: dict[str, Any], expanded: bool) -> Component:
     if expanded:

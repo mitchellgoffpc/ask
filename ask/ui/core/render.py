@@ -11,9 +11,9 @@ from itertools import chain, zip_longest
 from typing import Any, Iterator
 from uuid import UUID
 
-from ask.ui.core.components import ElementTree, Component, Element, Box, Text, Widget, Offset, apply_boxing, apply_sizing
+from ask.ui.core.components import ElementTree, Offset, Component, Element, Box, Text, Widget, ansi_len, apply_boxing, apply_sizing
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
-from ask.ui.core.styles import Axis, ansi_len
+from ask.ui.core.styles import Axis
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
@@ -201,7 +201,7 @@ def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_l
             inner_length = sum((computed_lengths[c.uuid] for c in collapsed), start=0)
         else:
             inner_length = max((computed_lengths[c.uuid] for c in collapsed), default=0)
-        final_length = inner_length + element.get_chrome(axis)
+        final_length = inner_length + element.chrome(axis)
 
     computed_lengths[element.uuid] = min(available_length, final_length) if available_length is not None else final_length
 

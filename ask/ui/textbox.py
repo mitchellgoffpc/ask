@@ -8,9 +8,7 @@ from typing import Callable, ClassVar
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
-from ask.ui.core.components import Component, Box, Text, Widget, Controller
-from ask.ui.core.styles import Axis, Colors, Styles, Theme
-from ask.ui.core.textbox import TextBox
+from ask.ui.core import Component, Box, Text, Widget, Controller, TextBox, Axis, Colors, Styles, Theme
 from ask.ui.dialogs import EDIT_TOOLS
 
 class Mode(Enum):

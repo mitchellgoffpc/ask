@@ -5,8 +5,7 @@ from typing import ClassVar
 
 from ask.messages import ToolRequest
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
-from ask.ui.core.components import Box, Component, Controller, Text, Widget
-from ask.ui.core.styles import Colors, Theme
+from ask.ui.core import Box, Component, Controller, Text, Widget, Colors, Theme
 
 EDIT_TOOLS = {EditTool.name, MultiEditTool.name, WriteTool.name}
 

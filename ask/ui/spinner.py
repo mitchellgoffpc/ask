@@ -2,8 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from ask.ui.core.components import ElementTree, Component, Controller, Box, Text, Widget
-from ask.ui.core.styles import Axis, Colors, Theme
+from ask.ui.core import ElementTree, Component, Controller, Box, Text, Widget, Axis, Colors, Theme
 from ask.ui.tools.todo import ToDos
 
 @dataclass

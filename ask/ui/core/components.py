@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, NamedTuple, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.core.styles import Borders, Colors, BorderStyle, Axis, ansi_len, ansi_slice, wrap_lines
+from ask.ui.core.styles import Axis, Borders, BorderStyle, Colors, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]

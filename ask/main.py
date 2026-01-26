@@ -13,7 +13,7 @@ from ask.prompts import load_system_prompt, get_agents_md_path
 from ask.tools import TOOLS
 from ask.tools.read import read_file
 from ask.ui.app import App
-from ask.ui.core.render import render_root
+from ask.ui.core import render_root
 
 
 def main() -> None:

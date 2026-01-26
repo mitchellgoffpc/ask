@@ -2,9 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass
 
 from ask.messages import Text as TextContent
-from ask.ui.core.components import Component, Text, Box
-from ask.ui.core.markdown_ import highlight_code
-from ask.ui.core.styles import Axis, Colors, Theme
+from ask.ui.core import Component, Text, Box, Axis, Colors, Theme, highlight_code
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
 @dataclass

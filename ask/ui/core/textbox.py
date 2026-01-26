@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable, ClassVar
 
 from ask.ui.core.components import Length, Component, Controller, Text, Widget
-from ask.ui.core.styles import Styles, Colors
+from ask.ui.core.styles import Colors, Styles
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
