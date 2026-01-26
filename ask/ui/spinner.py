@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from ask.ui.core.components import ElementTree, Component, Controller, Box, Text, Widget
-from ask.ui.core.styles import Colors, Flex, Theme
+from ask.ui.core.styles import Axis, Colors, Theme
 from ask.ui.tools.todo import ToDos
 
 @dataclass
@@ -41,7 +41,7 @@ class SpinnerController(Controller[Spinner]):
         spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
         return [
             Text(spinner_text, margin={'top': 1}),
-            Box(flex=Flex.HORIZONTAL)[
+            Box(flex=Axis.HORIZONTAL)[
                 Text("  ⎿  "),
                 ToDos(self.props.todos, expanded=self.props.expanded)
             ] if self.props.todos else None,

@@ -2,7 +2,7 @@ from ask.commands import PythonCommand, BashCommand, SlashCommand
 from ask.messages import Text as TextContent, ToolRequest, ToolResponse, Error, ToolCallStatus
 from ask.ui.core.components import Component, Box, Text
 from ask.ui.core.markdown_ import render_markdown
-from ask.ui.core.styles import Flex, Colors, Theme
+from ask.ui.core.styles import Axis, Colors, Theme
 from ask.ui.tools import TOOL_COMPONENTS
 
 NUM_PREVIEW_LINES = 5
@@ -30,19 +30,19 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
 # Components
 
 def PromptMessage(text: TextContent) -> Component | None:
-    return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
+    return Box(flex=Axis.HORIZONTAL, margin={'top': 1})[
         Text(Colors.hex("> ", Theme.GRAY)),
         Text(Colors.hex(text.text, Theme.GRAY))
     ] if text.text.strip() else None
 
 def ResponseMessage(text: TextContent) -> Component:
-    return Box(flex=Flex.HORIZONTAL, margin={'top': 1})[
+    return Box(flex=Axis.HORIZONTAL, margin={'top': 1})[
         Text("● "),
         Text(render_markdown(text.text))
     ]
 
 def ErrorMessage(error: Error) -> Component:
-    return Box(flex=Flex.HORIZONTAL)[
+    return Box(flex=Axis.HORIZONTAL)[
         Text(Colors.hex("  ⎿  ", Theme.GRAY)),
         Text(Colors.hex(error.text, Theme.RED))
     ]
@@ -55,11 +55,11 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
 def SlashCommandMessage(command: SlashCommand) -> Component:
     return Box()[
         PromptMessage(TextContent(command.render_command())),
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text(Colors.hex("  ⎿  ", Theme.GRAY)),
             Text(Colors.hex(command.output, Theme.GRAY))
         ] if command.output else None,
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text("  ⎿  "),
             Text(Colors.hex(command.error, Theme.RED))
         ] if command.error else None,
@@ -68,15 +68,15 @@ def SlashCommandMessage(command: SlashCommand) -> Component:
 def BashCommandMessage(command: BashCommand, elapsed: float) -> Component:
     output, error = get_bash_output(command.stdout, command.stderr, command.status, elapsed)
     return Box(margin={'top': 1})[
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text(Colors.hex("! ", Theme.PINK)),
             Text(Colors.hex(command.command, Theme.GRAY))
         ],
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text("  ⎿  "),
             Text(output)
         ] if output else None,
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text("  ⎿  "),
             Text(Colors.hex(error, Theme.RED))
         ] if error else None,
@@ -85,15 +85,15 @@ def BashCommandMessage(command: BashCommand, elapsed: float) -> Component:
 def PythonCommandMessage(command: PythonCommand, elapsed: float) -> Component:
     output, error = get_bash_output(command.output, command.error, command.status, elapsed)
     return Box(margin={'top': 1})[
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text(Colors.hex(">>> ", Theme.GREEN)),
             Text(Colors.hex(command.command, Theme.GRAY))
         ],
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text("  ⎿  "),
             Text(output)
         ] if output else None,
-        Box(flex=Flex.HORIZONTAL)[
+        Box(flex=Axis.HORIZONTAL)[
             Text("  ⎿  "),
             Text(error)
         ] if error else None,

@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from ask.messages import Text as TextContent, ToolCallStatus
 from ask.prompts import get_relative_path
 from ask.ui.core.components import Component, Box, Text
-from ask.ui.core.diff import Diff
-from ask.ui.core.styles import Styles, Colors, Theme, Flex
+from ask.ui.core.styles import Axis, Colors, Theme, Styles
+from ask.ui.tools.diff import Diff
 from ask.ui.tools.base import STATUS_COLORS, ToolOutput, ToolOutputController
 
 @dataclass
@@ -33,7 +33,7 @@ class EditToolOutputController(ToolOutputController):
             case ToolCallStatus.FAILED:
                 assert self.props.response is not None
                 assert isinstance(self.props.response.response, TextContent)
-                return Box(flex=Flex.HORIZONTAL)[
+                return Box(flex=Axis.HORIZONTAL)[
                     Text("  ⎿  "),
                     self.get_error_message(self.props.response.response.text),
                 ]
@@ -42,7 +42,7 @@ class EditToolOutputController(ToolOutputController):
 
     def contents(self) -> list[Component | None]:
         return [
-            Box(flex=Flex.HORIZONTAL)[
+            Box(flex=Axis.HORIZONTAL)[
                 Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
                 Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
             ],

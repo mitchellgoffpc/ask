@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ask.messages import Blob, Text as TextContent, ToolRequest, ToolResponse, ToolCallStatus
 from ask.ui.core.components import Component, Controller, Box, Text, Widget
-from ask.ui.core.styles import Flex, Colors, Styles, Theme
+from ask.ui.core.styles import Axis, Colors, Styles, Theme
 
 STATUS_COLORS = {
     ToolCallStatus.PENDING: Theme.GRAY,
@@ -67,12 +67,12 @@ class ToolOutputController(Controller[ToolOutput]):
 
     def contents(self) -> list[Component | None]:
         return [
-            Box(flex=Flex.HORIZONTAL)[
+            Box(flex=Axis.HORIZONTAL)[
                 Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
                 Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
 
             ],
-            Box(flex=Flex.HORIZONTAL)[
+            Box(flex=Axis.HORIZONTAL)[
                 Text("  ⎿  "),
                 self.get_tool_output(),
             ]

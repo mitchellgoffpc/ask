@@ -9,7 +9,7 @@ from typing import Callable, ClassVar
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
 from ask.ui.core.components import Component, Box, Text, Widget, Controller
-from ask.ui.core.styles import Colors, Flex, Styles, Theme
+from ask.ui.core.styles import Axis, Colors, Styles, Theme
 from ask.ui.core.textbox import TextBox
 from ask.ui.dialogs import EDIT_TOOLS
 
@@ -53,7 +53,7 @@ def CommandDesc(desc: str, active: bool) -> Text:
     return Text(Colors.hex(desc, Theme.BLUE if active else Theme.GRAY))
 
 def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
-    return Box(flex=Flex.HORIZONTAL)[
+    return Box(flex=Axis.HORIZONTAL)[
         Box(margin={'left': 2})[(CommandName(cmd, idx == selected_idx) for idx, cmd in enumerate(commands.keys()))],
         Box(margin={'left': 3})[(CommandDesc(desc, idx == selected_idx) for idx, desc in enumerate(commands.values()))]
     ]
@@ -221,7 +221,7 @@ class PromptTextBoxController(Controller):
         autocomplete_matches = self.autocomplete_matches
 
         return [
-            Box(flex=Flex.HORIZONTAL, width=1.0, margin={'top': 1}, border=('top', 'bottom'), border_color=Colors.HEX(COLORS.get(self.mode, Theme.DARK_GRAY)))[
+            Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, border=('top', 'bottom'), border_color=Colors.HEX(COLORS.get(self.mode, Theme.DARK_GRAY)))[
                 Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 TextBox(
                     width=1.0,
@@ -241,7 +241,7 @@ class PromptTextBoxController(Controller):
                 if matching_models else
             CommandsList(matching_commands, self.selected_idx)
                 if matching_commands else
-            Box(flex=Flex.HORIZONTAL)[
+            Box(flex=Axis.HORIZONTAL)[
                 Text(self.get_shortcuts_text(), width=1.0, margin={'left': 2}),
                 Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
                 Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2})

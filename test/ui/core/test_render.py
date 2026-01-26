@@ -2,7 +2,7 @@ import unittest
 
 from ask.ui.core.components import ElementTree, Box, Text
 from ask.ui.core.render import render, layout, mount
-from ask.ui.core.styles import Flex
+from ask.ui.core.styles import Axis
 
 class TestRender(unittest.TestCase):
     def test_empty_box(self):
@@ -29,7 +29,7 @@ class TestRender(unittest.TestCase):
         for description, width, _children in test_cases:
             with self.subTest(description=description):
                 tree = ElementTree()
-                box = Box(width=width, flex=Flex.HORIZONTAL)[(Text(text, width=width) for text, width, _ in _children)]
+                box = Box(width=width, flex=Axis.HORIZONTAL)[(Text(text, width=width) for text, width, _ in _children)]
                 mount(tree, box)
                 layout(tree, box, 100)
                 result = render(tree, box)
@@ -58,8 +58,8 @@ class TestRender(unittest.TestCase):
     def test_mixed_flex_components(self):
         """Test nested boxes with different flex directions."""
         tree = ElementTree()
-        outer = Box(flex=Flex.HORIZONTAL)[
-            Box(flex=Flex.VERTICAL)[Text("Top"), Text("Bottom")],
+        outer = Box(flex=Axis.HORIZONTAL)[
+            Box(flex=Axis.VERTICAL)[Text("Top"), Text("Bottom")],
             Text("Side")
         ]
         mount(tree, outer)

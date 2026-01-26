@@ -341,5 +341,3 @@ class Theme:
     GRAY = '#AAAAAA'
     DARK_GRAY = '#888888'
     WHITE = '#FFFFFF'
-
-Flex = Axis

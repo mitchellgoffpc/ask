@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, NamedTuple, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.core.styles import Borders, Colors, BorderStyle, Flex, ansi_len, ansi_slice, wrap_lines
+from ask.ui.core.styles import Borders, Colors, BorderStyle, Axis, ansi_len, ansi_slice, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
@@ -127,14 +127,14 @@ class Element(Component):
     def get_content_height(self, height: int) -> int:
         return max(0, height - self.get_vertical_chrome())
 
-    def length(self, axis: Flex) -> Length:
-        return self.width if axis is Flex.HORIZONTAL else self.height
+    def length(self, axis: Axis) -> Length:
+        return self.width if axis is Axis.HORIZONTAL else self.height
 
-    def get_chrome(self, axis: Flex) -> int:
-        return self.get_horizontal_chrome() if axis is Flex.HORIZONTAL else self.get_vertical_chrome()
+    def chrome(self, axis: Axis) -> int:
+        return self.get_horizontal_chrome() if axis is Axis.HORIZONTAL else self.get_vertical_chrome()
 
-    def get_content_length(self, axis: Flex, length: int) -> int:
-        return self.get_content_width(length) if axis is Flex.HORIZONTAL else self.get_content_height(length)
+    def get_content_length(self, axis: Axis, length: int) -> int:
+        return self.get_content_width(length) if axis is Axis.HORIZONTAL else self.get_content_height(length)
 
     def contents(self) -> list[Component | None]:
         return self.children
@@ -170,7 +170,7 @@ class Text(Element):
 class Box(Element):
     def __init__(
         self,
-        flex: Flex = Flex.VERTICAL,
+        flex: Axis = Axis.VERTICAL,
         width: Length = None,
         height: Length = None,
         margin: Spacing = 0,

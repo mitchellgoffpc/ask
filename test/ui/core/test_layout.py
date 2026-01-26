@@ -2,44 +2,44 @@ import unittest
 
 from ask.ui.core.components import ElementTree, Box, Text
 from ask.ui.core.render import layout, mount
-from ask.ui.core.styles import Colors, Flex
+from ask.ui.core.styles import Colors, Axis
 
 class TestLayout(unittest.TestCase):
     def test_flex_layout(self):
         test_cases: list[tuple[str, tuple, tuple, list[tuple], list[tuple]]] = [
             # description, parent_spec, expected_parent_size, children, expected_layouts (x, y, width, height)
-            ("fixed widths", (Flex.HORIZONTAL, None, None), (30, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 20, 1)]),
-            ("flexible widths", (Flex.HORIZONTAL, None, None), (10, 1), [('Hello', None, None), ('World', None, None)], [(0, 0, 5, 1), (5, 0, 5, 1)]),
-            ("fractional widths", (Flex.HORIZONTAL, None, None), (100, 1), [('X', 0.25, None), ('Y', 0.75, None)], [(0, 0, 25, 1), (25, 0, 75, 1)]),
-            ("mixed widths", (Flex.HORIZONTAL, None, None), (60, 1),
+            ("fixed widths", (Axis.HORIZONTAL, None, None), (30, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 20, 1)]),
+            ("flexible widths", (Axis.HORIZONTAL, None, None), (10, 1), [('Hello', None, None), ('World', None, None)], [(0, 0, 5, 1), (5, 0, 5, 1)]),
+            ("fractional widths", (Axis.HORIZONTAL, None, None), (100, 1), [('X', 0.25, None), ('Y', 0.75, None)], [(0, 0, 25, 1), (25, 0, 75, 1)]),
+            ("mixed widths", (Axis.HORIZONTAL, None, None), (60, 1),
                 [('Fixed', 10, None), ('Flex-12345', None, None), ('Frac', 0.5, None)],
                 [(0, 0, 10, 1), (10, 0, 10, 1), (20, 0, 40, 1)]),
 
-            ("fixed heights", (Flex.HORIZONTAL, None, None), (2, 5), [('A', None, 3), ('B', None, 5)], [(0, 0, 1, 3), (1, 0, 1, 5)]),
-            ("flexible heights", (Flex.HORIZONTAL, None, None), (3, 1), [('A', None, None), ('BB', None, None)], [(0, 0, 1, 1), (1, 0, 2, 1)]),
-            ("fractional heights", (Flex.HORIZONTAL, None, None), (2, 75), [('X', None, 0.25), ('Y', None, 0.75)], [(0, 0, 1, 25), (1, 0, 1, 75)]),
-            ("mixed heights", (Flex.HORIZONTAL, None, None), (13, 50),
-                [('Fixed', None, 5), ('Flex', None, None), ('Frac', None, 0.5)],
+            ("fixed heights", (Axis.HORIZONTAL, None, None), (2, 5), [('A', None, 3), ('B', None, 5)], [(0, 0, 1, 3), (1, 0, 1, 5)]),
+            ("flexible heights", (Axis.HORIZONTAL, None, None), (3, 1), [('A', None, None), ('BB', None, None)], [(0, 0, 1, 1), (1, 0, 2, 1)]),
+            ("fractional heights", (Axis.HORIZONTAL, None, None), (2, 75), [('X', None, 0.25), ('Y', None, 0.75)], [(0, 0, 1, 25), (1, 0, 1, 75)]),
+            ("mixed heights", (Axis.HORIZONTAL, None, None), (13, 50),
+                [('Fixed', None, 5), ('Axis', None, None), ('Frac', None, 0.5)],
                 [(0, 0, 5, 5), (5, 0, 4, 1), (9, 0, 4, 50)]),
 
-            ("fixed widths", (Flex.VERTICAL, None, None), (20, 2), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (0, 1, 20, 1)]),
-            ("flexible widths", (Flex.VERTICAL, None, None), (5, 2), [('Hello', None, None), ('World', None, None)], [(0, 0, 5, 1), (0, 1, 5, 1)]),
-            ("fractional widths", (Flex.VERTICAL, None, None), (75, 2), [('X', 0.25, None), ('Y', 0.75, None)], [(0, 0, 25, 1), (0, 1, 75, 1)]),
-            ("mixed widths", (Flex.VERTICAL, None, None), (50, 3),
-                [('Fixed', 5, None), ('Flex', None, None), ('Frac', 0.5, None)],
+            ("fixed widths", (Axis.VERTICAL, None, None), (20, 2), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (0, 1, 20, 1)]),
+            ("flexible widths", (Axis.VERTICAL, None, None), (5, 2), [('Hello', None, None), ('World', None, None)], [(0, 0, 5, 1), (0, 1, 5, 1)]),
+            ("fractional widths", (Axis.VERTICAL, None, None), (75, 2), [('X', 0.25, None), ('Y', 0.75, None)], [(0, 0, 25, 1), (0, 1, 75, 1)]),
+            ("mixed widths", (Axis.VERTICAL, None, None), (50, 3),
+                [('Fixed', 5, None), ('Axis', None, None), ('Frac', 0.5, None)],
                 [(0, 0, 5, 1), (0, 1, 4, 1), (0, 2, 50, 1)]),
 
-            ("fixed heights", (Flex.VERTICAL, None, None), (1, 8), [('A', None, 3), ('B', None, 5)], [(0, 0, 1, 3), (0, 3, 1, 5)]),
-            ("flexible heights", (Flex.VERTICAL, None, None), (2, 2), [('A', None, None), ('BB', None, None)], [(0, 0, 1, 1), (0, 1, 2, 1)]),
-            ("fractional heights", (Flex.VERTICAL, None, None), (1, 100), [('X', None, 0.25), ('Y', None, 0.75)], [(0, 0, 1, 25), (0, 25, 1, 75)]),
-            ("mixed heights", (Flex.VERTICAL, None, None), (10, 55),
+            ("fixed heights", (Axis.VERTICAL, None, None), (1, 8), [('A', None, 3), ('B', None, 5)], [(0, 0, 1, 3), (0, 3, 1, 5)]),
+            ("flexible heights", (Axis.VERTICAL, None, None), (2, 2), [('A', None, None), ('BB', None, None)], [(0, 0, 1, 1), (0, 1, 2, 1)]),
+            ("fractional heights", (Axis.VERTICAL, None, None), (1, 100), [('X', None, 0.25), ('Y', None, 0.75)], [(0, 0, 1, 25), (0, 25, 1, 75)]),
+            ("mixed heights", (Axis.VERTICAL, None, None), (10, 55),
                 [('Fixed', None, 10), ('Flex-12345', None, None), ('Frac', None, 0.5)],
                 [(0, 0, 5, 10), (0, 10, 10, 1), (0, 11, 4, 44)]),
 
-            ("empty child", (Flex.HORIZONTAL, None, None), (0, 0), [('', None, None)], [(0, 0, 0, 0)]),
-            ("text width constraint", (Flex.HORIZONTAL, None, None), (20, 2), [('This text is longer than twenty chars', 20, None)], [(0, 0, 20, 2)]),
-            ("child text width constraint", (Flex.HORIZONTAL, 20, None), (20, 2), [('This text is longer than twenty chars', None, None)], [(0, 0, 20, 2)]),
-            ("child box width constraint", (Flex.HORIZONTAL, 20, None), (20, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 10, 1)]),
+            ("empty child", (Axis.HORIZONTAL, None, None), (0, 0), [('', None, None)], [(0, 0, 0, 0)]),
+            ("text width constraint", (Axis.HORIZONTAL, None, None), (20, 2), [('This text is longer than twenty chars', 20, None)], [(0, 0, 20, 2)]),
+            ("child text width constraint", (Axis.HORIZONTAL, 20, None), (20, 2), [('This text is longer than twenty chars', None, None)], [(0, 0, 20, 2)]),
+            ("child box width constraint", (Axis.HORIZONTAL, 20, None), (20, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 10, 1)]),
         ]
 
         for description, (flex, width, height), (expected_width, expected_height), children, expected_layouts in test_cases:
@@ -88,23 +88,23 @@ class TestLayout(unittest.TestCase):
         def make_chrome(m: int, b: int, p: int) -> dict:
             return {'margin': m, 'border': ('top', 'bottom', 'left', 'right') if b else (), 'padding': p}
 
-        test_cases: list[tuple[str, Flex, tuple, tuple, list[tuple], list[tuple]]] = [
+        test_cases: list[tuple[str, Axis, tuple, tuple, list[tuple], list[tuple]]] = [
             # description, flex, parent_chrome, expected_parent_size, children [(text, width, height, chrome)], expected_layouts (x, y, width, height)
-            ("parent chrome h", Flex.HORIZONTAL, (2, 1, 3), (100, 13), [('A', 1.0, None, (0, 0, 0))], [(6, 6, 88, 1)]),
-            ("parent chrome v", Flex.VERTICAL, (2, 1, 3), (13, 100), [('A', None, 1.0, (0, 0, 0))], [(6, 6, 1, 88)]),
-            ("child chrome h, fixed width", Flex.HORIZONTAL, (0, 0, 0), (40, 13),
+            ("parent chrome h", Axis.HORIZONTAL, (2, 1, 3), (100, 13), [('A', 1.0, None, (0, 0, 0))], [(6, 6, 88, 1)]),
+            ("parent chrome v", Axis.VERTICAL, (2, 1, 3), (13, 100), [('A', None, 1.0, (0, 0, 0))], [(6, 6, 1, 88)]),
+            ("child chrome h, fixed width", Axis.HORIZONTAL, (0, 0, 0), (40, 13),
                 [('A', 20, None, (2, 1, 3)), ('B', 20, None, (0, 0, 0))],
                 [(0, 0, 20, 13), (20, 0, 20, 1)]),
-            ("child chrome v, fixed height", Flex.VERTICAL, (0, 0, 0), (13, 40),
+            ("child chrome v, fixed height", Axis.VERTICAL, (0, 0, 0), (13, 40),
                 [('A', None, 20, (2, 1, 3)), ('B', None, 20, (0, 0, 0))],
                 [(0, 0, 13, 20), (0, 20, 1, 20)]),
-            ("child chrome h, flexible width", Flex.HORIZONTAL, (0, 0, 0), (14, 13),
+            ("child chrome h, flexible width", Axis.HORIZONTAL, (0, 0, 0), (14, 13),
                 [('A', None, None, (2, 1, 3)), ('B', None, None, (0, 0, 0))],
                 [(0, 0, 13, 13), (13, 0, 1, 1)]),
-            ("child chrome v, fixed height", Flex.VERTICAL, (0, 0, 0), (13, 14),
+            ("child chrome v, fixed height", Axis.VERTICAL, (0, 0, 0), (13, 14),
                 [('A', None, None, (2, 1, 3)), ('B', None, None, (0, 0, 0))],
                 [(0, 0, 13, 13), (0, 13, 1, 1)]),
-            ("child chrome, tight packing", Flex.HORIZONTAL, (0, 0, 0), (3, 3), [(Colors.hex('A', '#333333'), 3, None, (1, 0, 0))], [(0, 0, 3, 3)]),
+            ("child chrome, tight packing", Axis.HORIZONTAL, (0, 0, 0), (3, 3), [(Colors.hex('A', '#333333'), 3, None, (1, 0, 0))], [(0, 0, 3, 3)]),
         ]
 
         for description, flex, chrome, (expected_w, expected_h), children, expected_layouts in test_cases:

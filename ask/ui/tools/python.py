@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from ask.messages import Text as TextContent
 from ask.ui.core.components import Component, Text, Box
 from ask.ui.core.markdown_ import highlight_code
-from ask.ui.core.styles import Colors, Flex, Theme
+from ask.ui.core.styles import Axis, Colors, Theme
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
 @dataclass
@@ -15,7 +15,7 @@ class PythonToolOutputController(ToolOutputController):
     def contents(self) -> list[Component | None]:
         lines = highlight_code(self.props.request.arguments['code'], language='python').strip().split('\n')
         return [
-            *[Box(flex=Flex.HORIZONTAL)[
+            *[Box(flex=Axis.HORIZONTAL)[
                 Text(Colors.hex('>>> ' if i == 0 else '... ', Theme.GREEN)),
                 Text(line)
             ] for i, line in enumerate(lines)],

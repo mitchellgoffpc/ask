@@ -1,5 +1,5 @@
 from ask.ui.core.components import Component, Text, Box
-from ask.ui.core.styles import Colors, Flex, Theme
+from ask.ui.core.styles import Axis, Colors, Theme
 
 
 def Diff(diff: list[str], rejected: bool = False) -> Component:
@@ -19,7 +19,7 @@ def Diff(diff: list[str], rejected: bool = False) -> Component:
         elif line.startswith('-'):
             line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
             bg_color = Theme.FADED_RED if rejected else Theme.DARK_RED
-            components.append(Box(flex=Flex.HORIZONTAL)[
+            components.append(Box(flex=Axis.HORIZONTAL)[
                 Text(f'{line_num} '),
                 Text(Colors.bg_hex(Colors.hex('-  ', Theme.WHITE), bg_color)),
                 Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color))
@@ -28,7 +28,7 @@ def Diff(diff: list[str], rejected: bool = False) -> Component:
         elif line.startswith('+'):
             line_num = Colors.hex(f"{new_line_num:>4}", Theme.GRAY)
             bg_color = Theme.FADED_GREEN if rejected else Theme.DARK_GREEN
-            components.append(Box(flex=Flex.HORIZONTAL)[
+            components.append(Box(flex=Axis.HORIZONTAL)[
                 Text(f'{line_num} '),
                 Text(Colors.bg_hex(Colors.hex('+  ', Theme.WHITE), bg_color)),
                 Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color))
@@ -37,10 +37,10 @@ def Diff(diff: list[str], rejected: bool = False) -> Component:
         elif line.startswith(' '):
             line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
             delta = Colors.hex(f'   {delta}', Theme.WHITE)
-            components.append(Box(flex=Flex.HORIZONTAL)[Text(f'{line_num} '), Text(delta)])
+            components.append(Box(flex=Axis.HORIZONTAL)[Text(f'{line_num} '), Text(delta)])
             old_line_num += 1
             new_line_num += 1
         if not line.endswith('\n'):
-            components.append(Box(flex=Flex.HORIZONTAL)[Text(f'{line_num} '), Text('\\ No newline at end of file')])
+            components.append(Box(flex=Axis.HORIZONTAL)[Text(f'{line_num} '), Text('\\ No newline at end of file')])
 
     return Box()[components]
