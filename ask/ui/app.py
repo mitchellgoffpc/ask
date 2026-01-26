@@ -8,11 +8,11 @@ from typing import ClassVar
 
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
 from ask.config import History
-from ask.messages import Message, Text as TextContent, ToolRequest, ToolResponse, Error
+from ask.messages import Message, Text, ToolRequest, ToolResponse, Error
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
-from ask.ui.core import ElementTree, Component, Controller, Box, Text, Widget, Colors, Theme
+from ask.ui.core import UI, ElementTree, Colors, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.spinner import Spinner
@@ -20,12 +20,12 @@ from ask.ui.textbox import PromptTextBox
 from ask.ui.tools.todo import ToDos
 
 @dataclass
-class App(Widget):
+class App(UI.Widget):
     __controller__: ClassVar = lambda _: AppController
     messages: dict[UUID, Message]
     query: str
 
-class AppController(Controller[App]):
+class AppController(UI.Controller[App]):
     state = ['expanded', 'exiting', 'show_todos', 'loading', 'elapsed', 'approvals', 'approved_tools', 'messages']
     expanded = False
     exiting = False
@@ -118,15 +118,15 @@ class AppController(Controller[App]):
             self.tasks.append(asyncio.create_task(self.query(query)))
         return True
 
-    def textbox(self) -> Component:
+    def textbox(self) -> UI.Component:
         if self.exiting:
-            return Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY), margin={'top': 1})
+            return UI.Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY), margin={'top': 1})
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
             tool_call, future = self.pending_approvals[tool_call_id]
             return ApprovalDialog(tool_call=tool_call, future=future)
         elif self.expanded:
-            return Box(width=1.0, margin={'top': 1}, border=['top'])[
-                Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
+            return UI.Box(width=1.0, margin={'top': 1}, border=['top'])[
+                UI.Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
             ]
         else:
             return PromptTextBox(
@@ -135,7 +135,7 @@ class AppController(Controller[App]):
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
 
-    def contents(self) -> list[Component | None]:
+    def contents(self) -> list[UI.Component | None]:
         tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolRequest)}
         tool_responses = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolResponse)}
         if latest_todos := next((c.arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
@@ -145,7 +145,7 @@ class AppController(Controller[App]):
         messages = []
         for msg in self.messages.values(self.head):
             match (msg.role, msg.content):
-                case ('user', TextContent()):
+                case ('user', Text()):
                     messages.append(PromptMessage(text=msg.content))
                 case ('user', Error()):
                     messages.append(ErrorMessage(error=msg.content))
@@ -155,7 +155,7 @@ class AppController(Controller[App]):
                     messages.append(PythonCommandMessage(command=msg.content, elapsed=self.elapsed))
                 case ('user', SlashCommand()):
                     messages.append(SlashCommandMessage(command=msg.content))
-                case ('assistant', TextContent()):
+                case ('assistant', Text()):
                     messages.append(ResponseMessage(text=msg.content))
                 case ('assistant', ToolRequest()):
                     if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
@@ -165,12 +165,12 @@ class AppController(Controller[App]):
                     pass
 
         return [
-            Box()[*messages],
-            Box()[
+            UI.Box()[*messages],
+            UI.Box()[
                 Spinner(todos=latest_todos, expanded=self.show_todos)
                     if self.loading and not self.pending_approvals else None,
-                Box(margin={'top': 1})[
-                    Text(Colors.hex("To Do", Theme.GRAY)),
+                UI.Box(margin={'top': 1})[
+                    UI.Text(Colors.hex("To Do", Theme.GRAY)),
                     ToDos(latest_todos, expanded=True)
                 ] if latest_todos and self.show_todos and not self.pending_approvals else None,
             ],

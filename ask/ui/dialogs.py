@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from ask.messages import ToolRequest
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
-from ask.ui.core import Box, Component, Controller, Text, Widget, Colors, Theme
+from ask.ui.core import UI, Colors, Theme
 
 EDIT_TOOLS = {EditTool.name, MultiEditTool.name, WriteTool.name}
 
@@ -15,16 +15,16 @@ def get_formatted_options(command_type: str) -> dict[str, str | None]:
         f'Yes, allow all {command_type} during this session': 'shift+tab',
         'No, and give instructions on what to do differently': 'esc'}
 
-def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -> Text:
+def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -> UI.Text:
     if active:
-        return Text(Colors.hex(f'❯ {idx+1}. {option}' + (f' ({keybinding})' if keybinding else ''), Theme.BLUE))
+        return UI.Text(Colors.hex(f'❯ {idx+1}. {option}' + (f' ({keybinding})' if keybinding else ''), Theme.BLUE))
     else:
-        return Text(f'  {Colors.hex(f"{idx+1}.", Theme.GRAY)} {option}' + (f' ({Colors.hex(keybinding, Theme.GRAY)})' if keybinding else ''))
+        return UI.Text(f'  {Colors.hex(f"{idx+1}.", Theme.GRAY)} {option}' + (f' ({Colors.hex(keybinding, Theme.GRAY)})' if keybinding else ''))
 
-def OptionsList(options: dict[str, str | None], selected_idx: int) -> Box:
-    return Box()[(Option(option, idx, idx == selected_idx, keybinding) for idx, (option, keybinding) in enumerate(options.items()))]
+def OptionsList(options: dict[str, str | None], selected_idx: int) -> UI.Box:
+    return UI.Box()[(Option(option, idx, idx == selected_idx, keybinding) for idx, (option, keybinding) in enumerate(options.items()))]
 
-def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> Component:
+def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> UI.Component:
 
     components = {
         BashTool.name: partial(SelectionDialog, approved_tools={BashTool.name}, options=get_formatted_options('bash commands')),
@@ -32,20 +32,20 @@ def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> Component:
         MultiEditTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits')),
         PythonTool.name: partial(SelectionDialog, approved_tools={PythonTool.name}, options=get_formatted_options('Python commands')),
         WriteTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits'))}
-    return Box(margin={'top': 1})[
+    return UI.Box(margin={'top': 1})[
         components[tool_call.tool](tool_call=tool_call, future=future)
     ]
 
 
 @dataclass
-class SelectionDialog(Widget):
+class SelectionDialog(UI.Widget):
     __controller__: ClassVar = lambda _: SelectionDialogController
     tool_call: ToolRequest
     future: asyncio.Future
     approved_tools: set[str]
     options: dict[str, str | None]
 
-class SelectionDialogController(Controller[SelectionDialog]):
+class SelectionDialogController(UI.Controller[SelectionDialog]):
     state = ['selected_idx']
     selected_idx: int = 0
 
@@ -69,8 +69,8 @@ class SelectionDialogController(Controller[SelectionDialog]):
             else:  # 'No' option
                 self.props.future.cancel()
 
-    def contents(self) -> list[Component | None]:
+    def contents(self) -> list[UI.Component | None]:
         return [
-            Text("Do you want to proceed?"),
+            UI.Text("Do you want to proceed?"),
             OptionsList(self.props.options, self.selected_idx),
         ]

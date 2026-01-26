@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from ask.messages import Blob, Image, PDF
 from ask.prompts import get_relative_path
-from ask.ui.core import Component, Text, Styles
+from ask.ui.core import UI, Styles
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
 @dataclass
@@ -21,8 +21,8 @@ class ReadToolOutputController(ToolOutputController):
     def get_response(self, response: str) -> str:
         return '\n'.join(line.split('→')[-1] for line in response.split('\n'))
 
-    def get_completed_output(self, response: Blob) -> Component:
+    def get_completed_output(self, response: Blob) -> UI.Component:
         match response:
-            case Image(): return Text("Read Image")
-            case PDF(): return Text("Read PDF")
+            case Image(): return UI.Text("Read Image")
+            case PDF(): return UI.Text("Read PDF")
             case _: return super().get_completed_output(response)

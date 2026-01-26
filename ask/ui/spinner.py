@@ -2,16 +2,16 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from ask.ui.core import ElementTree, Component, Controller, Box, Text, Widget, Axis, Colors, Theme
+from ask.ui.core import UI, ElementTree, Axis, Colors, Theme
 from ask.ui.tools.todo import ToDos
 
 @dataclass
-class Spinner(Widget):
+class Spinner(UI.Widget):
     __controller__: ClassVar = lambda _: SpinnerController
     todos: dict[str, Any] | None
     expanded: bool
 
-class SpinnerController(Controller[Spinner]):
+class SpinnerController(UI.Controller[Spinner]):
     state = ['spinner_state']
     frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
     text = "Loading…"
@@ -26,7 +26,7 @@ class SpinnerController(Controller[Spinner]):
             self.spinner_state += 1
             await asyncio.sleep(0.05)
 
-    def contents(self) -> list[Component | None]:
+    def contents(self) -> list[UI.Component | None]:
         spinner_char = self.frames[(self.spinner_state // 2) % len(self.frames)]
 
         # Calculate highlight position
@@ -39,9 +39,9 @@ class SpinnerController(Controller[Spinner]):
         highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
         spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
         return [
-            Text(spinner_text, margin={'top': 1}),
-            Box(flex=Axis.HORIZONTAL)[
-                Text("  ⎿  "),
+            UI.Text(spinner_text, margin={'top': 1}),
+            UI.Box(flex=Axis.HORIZONTAL)[
+                UI.Text("  ⎿  "),
                 ToDos(self.props.todos, expanded=self.props.expanded)
             ] if self.props.todos else None,
         ]

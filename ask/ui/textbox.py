@@ -8,7 +8,7 @@ from typing import Callable, ClassVar
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
-from ask.ui.core import Component, Box, Text, Widget, Controller, TextBox, Axis, Colors, Styles, Theme
+from ask.ui.core import UI, Axis, Colors, Styles, Theme
 from ask.ui.dialogs import EDIT_TOOLS
 
 class Mode(Enum):
@@ -44,21 +44,21 @@ COMMANDS = {
     '/exit': 'Exit the REPL',
     '/quit': 'Exit the REPL'}
 
-def CommandName(name: str, active: bool) -> Text:
-    return Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
+def CommandName(name: str, active: bool) -> UI.Text:
+    return UI.Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
 
-def CommandDesc(desc: str, active: bool) -> Text:
-    return Text(Colors.hex(desc, Theme.BLUE if active else Theme.GRAY))
+def CommandDesc(desc: str, active: bool) -> UI.Text:
+    return UI.Text(Colors.hex(desc, Theme.BLUE if active else Theme.GRAY))
 
-def CommandsList(commands: dict[str, str], selected_idx: int) -> Box:
-    return Box(flex=Axis.HORIZONTAL)[
-        Box(margin={'left': 2})[(CommandName(cmd, idx == selected_idx) for idx, cmd in enumerate(commands.keys()))],
-        Box(margin={'left': 3})[(CommandDesc(desc, idx == selected_idx) for idx, desc in enumerate(commands.values()))]
+def CommandsList(commands: dict[str, str], selected_idx: int) -> UI.Box:
+    return UI.Box(flex=Axis.HORIZONTAL)[
+        UI.Box(margin={'left': 2})[(CommandName(cmd, idx == selected_idx) for idx, cmd in enumerate(commands.keys()))],
+        UI.Box(margin={'left': 3})[(CommandDesc(desc, idx == selected_idx) for idx, desc in enumerate(commands.values()))]
     ]
 
 
 @dataclass
-class PromptTextBox(Widget):
+class PromptTextBox(UI.Widget):
     __controller__: ClassVar = lambda _: PromptTextBoxController
     model: Model
     approved_tools: set[str]
@@ -66,7 +66,7 @@ class PromptTextBox(Widget):
     handle_exit: Callable[[], None]
 
 
-class PromptTextBoxController(Controller):
+class PromptTextBoxController(UI.Controller):
     state = ['text', 'mode', 'show_exit_prompt', 'selected_idx', 'autocomplete_matches']
     text = ''
     mode = Mode.TEXT
@@ -213,15 +213,15 @@ class PromptTextBoxController(Controller):
             return True
         return False
 
-    def contents(self) -> list[Component | None]:
+    def contents(self) -> list[UI.Component | None]:
         matching_commands = self.get_matching_commands()
         matching_models = self.get_matching_models()
-        autocomplete_matches = self.autocomplete_matches
+        border_color = Colors.HEX(COLORS.get(self.mode, Theme.DARK_GRAY))
 
         return [
-            Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, border=('top', 'bottom'), border_color=Colors.HEX(COLORS.get(self.mode, Theme.DARK_GRAY)))[
-                Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
-                TextBox(
+            UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, border=('top', 'bottom'), border_color=border_color)[
+                UI.Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
+                UI.TextBox(
                     width=1.0,
                     text=self.text,
                     history=History['queries'],
@@ -231,17 +231,17 @@ class PromptTextBoxController(Controller):
                     handle_change=self.handle_textbox_change,
                     handle_submit=self.handle_textbox_submit)
             ],
-            Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
+            UI.Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
                 if self.show_exit_prompt else
-            CommandsList({match: '' for match in autocomplete_matches}, self.selected_idx)
-                if autocomplete_matches else
+            CommandsList({match: '' for match in self.autocomplete_matches}, self.selected_idx)
+                if self.autocomplete_matches else
             CommandsList({model: MODELS_BY_NAME[model].api.display_name for model in matching_models}, self.selected_idx)
                 if matching_models else
             CommandsList(matching_commands, self.selected_idx)
                 if matching_commands else
-            Box(flex=Axis.HORIZONTAL)[
-                Text(self.get_shortcuts_text(), width=1.0, margin={'left': 2}),
-                Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
-                Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2})
+            UI.Box(flex=Axis.HORIZONTAL)[
+                UI.Text(self.get_shortcuts_text(), width=1.0, margin={'left': 2}),
+                UI.Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
+                UI.Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2})
             ]
         ]
