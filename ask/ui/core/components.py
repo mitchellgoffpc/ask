@@ -62,30 +62,13 @@ class Element(Component):
         self.children = [args] if isinstance(args, Component) else list(args) if args else []
         return self
 
-    def get_horizontal_chrome(self) -> int:
-        return (self.padding['left'] + self.padding['right'] +
-                self.margin['left'] + self.margin['right'] +
-                self.border['left'] + self.border['right'])
-
-    def get_vertical_chrome(self) -> int:
-        return (self.padding['top'] + self.padding['bottom'] +
-                self.margin['top'] + self.margin['bottom'] +
-                self.border['top'] + self.border['bottom'])
-
-    def get_content_width(self, width: int) -> int:
-        return max(0, width - self.get_horizontal_chrome())
-
-    def get_content_height(self, height: int) -> int:
-        return max(0, height - self.get_vertical_chrome())
-
     def length(self, axis: Axis) -> Length:
         return self.width if axis is Axis.HORIZONTAL else self.height
 
     def chrome(self, axis: Axis) -> int:
-        return self.get_horizontal_chrome() if axis is Axis.HORIZONTAL else self.get_vertical_chrome()
-
-    def get_content_length(self, axis: Axis, length: int) -> int:
-        return self.get_content_width(length) if axis is Axis.HORIZONTAL else self.get_content_height(length)
+        a: Side = 'left' if axis is Axis.HORIZONTAL else 'top'
+        b: Side = 'right' if axis is Axis.HORIZONTAL else 'bottom'
+        return self.padding[a] + self.padding[b] + self.margin[a] + self.margin[b] + self.border[a] + self.border[b]
 
     def contents(self) -> list[Component | None]:
         return self.children

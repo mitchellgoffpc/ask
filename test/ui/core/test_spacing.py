@@ -2,7 +2,7 @@ import unittest
 from typing import get_args
 
 from ask.ui.core.components import Box, Side, Spacing, get_spacing_dict
-from ask.ui.core.styles import Borders, BorderStyle, Colors, ansi_len
+from ask.ui.core.styles import Axis, Borders, BorderStyle, Colors, ansi_len
 from ask.ui.core.render import apply_sizing, apply_spacing, apply_borders, apply_boxing
 
 class TestApplySizing(unittest.TestCase):
@@ -133,7 +133,7 @@ class TestApplyBoxing(unittest.TestCase):
         for padding, margin, border, border_style, description in test_cases:
             with self.subTest(description=description):
                 box = Box(width=20, height=3, padding=padding, margin=margin, border=border, border_style=border_style)
-                lines = apply_boxing(content, 20 - box.get_horizontal_chrome(), 3, box).split('\n')
+                lines = apply_boxing(content, 20 - box.chrome(Axis.HORIZONTAL), 3, box).split('\n')
 
                 # Check top/bottom margin
                 margin_dict = get_spacing_dict(margin)

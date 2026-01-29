@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable, ClassVar
 
 from ask.ui.core.components import Length, Component, Controller, Text, Widget
-from ask.ui.core.styles import Colors, Styles
+from ask.ui.core.styles import Axis, Colors, Styles
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
@@ -48,7 +48,7 @@ class TextBoxController(Controller[TextBox]):
     @property
     def content_width(self) -> int:
         if self.tree and self.text_ref.uuid in self.tree.widths:
-            return self.text_ref.get_content_width(self.tree.widths[self.text_ref.uuid])
+            return max(0, self.tree.widths[self.text_ref.uuid] - self.text_ref.chrome(Axis.HORIZONTAL))
         raise ValueError("TextBoxController: content_width requested before layout")
 
     @property

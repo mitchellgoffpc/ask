@@ -158,7 +158,7 @@ def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_l
 
     if isinstance((element_length := element.length(axis)), int):
         available_length = min(available_length, element_length) if available_length is not None else element_length
-    content_length = element.get_content_length(axis, available_length) if available_length else None
+    content_length = max(0, available_length - element.chrome(axis)) if available_length else None
     remaining_length = content_length
 
     # First: fixed-length children (int)
@@ -196,7 +196,7 @@ def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_l
                 wrapped = element.wrap(content_length) if content_length else element.text.replace('\t', ' ' * 8)
                 inner_length = max((ansi_len(line) for line in wrapped.split('\n')), default=0)
             else:  # VERTICAL - heights depend on widths for text wrapping
-                content_width = element.get_content_width(tree.widths[element.uuid])
+                content_width = max(0, tree.widths[element.uuid] - element.chrome(Axis.HORIZONTAL))
                 wrapped = element.wrap(content_width)
                 inner_length = wrapped.count('\n') + 1 if wrapped else 0
         elif flex is axis:
@@ -274,10 +274,8 @@ def apply_boxing(content: str, content_width: int, content_height: int, element:
     return content
 
 def render(tree: ElementTree, element: Element) -> str:
-    width = tree.widths[element.uuid]
-    height = tree.heights[element.uuid]
-    content_width = element.get_content_width(width)
-    content_height = element.get_content_height(height)
+    content_width = max(0, tree.widths[element.uuid] - element.chrome(Axis.HORIZONTAL))
+    content_height = max(0, tree.heights[element.uuid] - element.chrome(Axis.VERTICAL))
 
     match element:
         case Text():
