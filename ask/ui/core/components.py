@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, NamedTuple, Self, Sequence, TypeVar, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.core.styles import Axis, Borders, BorderStyle, Colors, ansi_len, ansi_slice, wrap_lines
+from ask.ui.core.styles import Axis, Borders, BorderStyle, wrap_lines
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
@@ -11,56 +11,6 @@ Length = int | float | None
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
     return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
-
-def apply_background(content: str, width: int, background_color: str | None) -> str:
-    if not background_color:
-        return content
-    lines = content.split('\n')
-    assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for background to be applied"
-    return '\n'.join(Colors.bg_ansi(line, background_color) for line in lines)
-
-def apply_sizing(content: str, width: int, height: int) -> str:
-    lines = [ansi_slice(line, 0, width) + ' ' * max(0, width - ansi_len(line)) for line in content.split('\n')]
-    lines = lines[:height] + [' ' * width] * max(0, height - len(lines))
-    return '\n'.join(lines)
-
-def apply_spacing(content: str, spacing: dict[Side, int]) -> str:
-    lines = content.split('\n')
-    line_width = ansi_len(lines[0]) if lines else 0
-    assert all(ansi_len(line) == line_width for line in lines), "All lines must have the same width for spacing to be applied"
-    width = line_width + spacing['left'] + spacing['right']
-    top_spacing = (' ' * width + '\n') * spacing['top']
-    bottom_spacing = ('\n' + ' ' * width) * spacing['bottom']
-    left_spacing = ' ' * spacing['left']
-    right_spacing = ' ' * spacing['right']
-    return top_spacing + '\n'.join(left_spacing + line + right_spacing for line in lines) + bottom_spacing
-
-def apply_borders(content: str, width: int, borders: set[Side], border_style: BorderStyle, border_color: str | None) -> str:
-    if not borders:
-        return content
-    color_code = border_color or ''
-    lines = content.split('\n') if content else []
-    assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for borders to be applied"
-
-    top_left = border_style.top_left if borders >= {'top', 'left'} else ''
-    top_right = border_style.top_right if borders >= {'top', 'right'} else ''
-    bottom_left = border_style.bottom_left if borders >= {'bottom', 'left'} else ''
-    bottom_right = border_style.bottom_right if borders >= {'bottom', 'right'} else ''
-
-    top_border = [Colors.ansi(top_left + border_style.top * width + top_right, color_code)] if 'top' in borders else []
-    bottom_border = [Colors.ansi(bottom_left + border_style.bottom * width + bottom_right, color_code)] if 'bottom' in borders else []
-    left_border = Colors.ansi(border_style.left, color_code) if 'left' in borders else ''
-    right_border = Colors.ansi(border_style.right, color_code) if 'right' in borders else ''
-    return '\n'.join(top_border + [left_border + line + right_border for line in lines] + bottom_border)
-
-def apply_boxing(content: str, content_width: int, content_height: int, element: Element) -> str:
-    padded_width = content_width + element.padding['left'] + element.padding['right']
-    content = apply_sizing(content, content_width, content_height)
-    content = apply_spacing(content, element.padding)
-    content = apply_background(content, padded_width, element.background_color)
-    content = apply_borders(content, padded_width, {k for k, v in element.border.items() if v}, element.border_style, element.border_color)
-    content = apply_spacing(content, element.margin)
-    return content
 
 
 class Offset(NamedTuple):
@@ -81,6 +31,7 @@ class ElementTree:
 
 class Component:
     uuid: UUID
+
     def contents(self) -> list[Component | None]:
         raise NotImplementedError()
 

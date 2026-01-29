@@ -1,8 +1,9 @@
 import unittest
 from typing import get_args
 
-from ask.ui.core.components import Box, Side, Spacing, apply_sizing, apply_spacing, apply_borders, apply_boxing, get_spacing_dict
+from ask.ui.core.components import Box, Side, Spacing, get_spacing_dict
 from ask.ui.core.styles import Borders, BorderStyle, Colors, ansi_len
+from ask.ui.core.render import apply_sizing, apply_spacing, apply_borders, apply_boxing
 
 class TestApplySizing(unittest.TestCase):
     def test_apply_sizing_truncation_and_padding(self):
