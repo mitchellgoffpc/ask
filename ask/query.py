@@ -110,8 +110,11 @@ async def query_agent(messages: list[Message], approval: ApprovalCallback, strea
                     messages.append(Message('assistant', content))
                     yield delta, Message('assistant', content)
 
-        if not (has_tool_requests or (has_reasoning and not has_text)):
-            return
+        if not has_tool_requests:
+            if not has_text and not has_reasoning:
+                messages.append(Message("user", Text("Please continue")))  # see https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons
+            elif has_text:
+                return
 
         async def reject(_: ToolRequest) -> bool: return False
         for req in tool_requests:
