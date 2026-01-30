@@ -92,4 +92,4 @@ class TestRenderPerformance(unittest.TestCase):
                 start = time.perf_counter()
                 render(tree, root)
                 elapsed = time.perf_counter() - start
-                self.assertLess(elapsed, 0.03, f"Render for {widget.__name__} took {elapsed*1000:.2f}ms, expected <30ms")
+                self.assertLess(elapsed, 0.01, f"Render for {widget.__name__} took {elapsed*1000:.2f}ms, expected <10ms")
