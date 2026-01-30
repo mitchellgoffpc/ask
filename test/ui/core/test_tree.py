@@ -1,3 +1,4 @@
+import time
 import unittest
 from collections import deque
 from dataclasses import dataclass
@@ -5,6 +6,7 @@ from typing import ClassVar, Iterator
 
 from ask.ui.core.components import Component, Box, Text, Controller, Widget
 from ask.ui.core.tree import ElementTree, mount, update
+from test.ui.core.helpers import WideTree, DeepTree
 
 def toposort(tree: ElementTree) -> Iterator[Component]:
     queue = deque([tree.root.uuid])
@@ -74,3 +76,17 @@ class TestTree(unittest.TestCase):
         self.assertTrue(box3.uuid != box4.uuid)
         self.assertEqual(tree.parents, {box4.uuid: parent.uuid})
         self.assertEqual(tree.children, {parent.uuid: [box4], box4.uuid: [None]})
+
+
+class TestUpdatePerformance(unittest.TestCase):
+    def test_update_performance(self):
+        for widget in (WideTree, DeepTree):
+            with self.subTest(widget=widget.__name__):
+                root = Box()[widget()]
+                tree = ElementTree(root)
+                mount(tree, root)
+
+                start = time.perf_counter()
+                update(tree, root)
+                elapsed = time.perf_counter() - start
+                self.assertLess(elapsed, 0.01, f"Update for {widget.__name__} tree took {elapsed*1000:.2f}ms, expected <10ms")

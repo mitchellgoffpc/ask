@@ -1,9 +1,11 @@
+import time
 import unittest
 
 from ask.ui.core.components import Box, Text
 from ask.ui.core.tree import ElementTree, mount
 from ask.ui.core.layout import layout
 from ask.ui.core.styles import Colors, Axis
+from test.ui.core.helpers import WideTree, DeepTree
 
 class TestLayout(unittest.TestCase):
     def test_flex_layout(self):
@@ -123,3 +125,17 @@ class TestLayout(unittest.TestCase):
                     self.assertEqual(tree.offsets[child.uuid].y, y)
                     self.assertEqual(tree.widths[child.uuid], width)
                     self.assertEqual(tree.heights[child.uuid], height)
+
+
+class TestLayoutPerformance(unittest.TestCase):
+    def test_layout_performance(self):
+        for widget in (WideTree, DeepTree):
+            with self.subTest(widget=widget.__name__):
+                root = Box()[widget()]
+                tree = ElementTree(root)
+                mount(tree, root)
+
+                start = time.perf_counter()
+                layout(tree, root, 200)
+                elapsed = time.perf_counter() - start
+                self.assertLess(elapsed, 0.01, f"Layout for {widget.__name__} took {elapsed*1000:.2f}ms, expected <10ms")

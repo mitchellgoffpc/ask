@@ -1,3 +1,4 @@
+import time
 import unittest
 
 from ask.ui.core.components import Box, Text
@@ -5,6 +6,7 @@ from ask.ui.core.layout import layout
 from ask.ui.core.render import render
 from ask.ui.core.styles import Axis
 from ask.ui.core.tree import ElementTree, mount
+from test.ui.core.helpers import WideTree, DeepTree
 
 class TestRender(unittest.TestCase):
     def test_empty_box(self):
@@ -68,3 +70,18 @@ class TestRender(unittest.TestCase):
         layout(tree, outer, 100)
         result = render(tree, outer)
         self.assertEqual(result, "Top   Side\nBottom    ")
+
+
+class TestRenderPerformance(unittest.TestCase):
+    def test_render_performance(self):
+        for widget in (WideTree, DeepTree):
+            with self.subTest(widget=widget.__name__):
+                root = Box()[widget()]
+                tree = ElementTree(root)
+                mount(tree, root)
+                layout(tree, root, 200)
+
+                start = time.perf_counter()
+                render(tree, root)
+                elapsed = time.perf_counter() - start
+                self.assertLess(elapsed, 0.01, f"Render for {widget.__name__} took {elapsed*1000:.2f}ms, expected <10ms")
