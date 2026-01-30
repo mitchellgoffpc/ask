@@ -40,6 +40,9 @@ class TestAnsiSlice(unittest.TestCase):
             ("multiline slice", f"{Colors.RED}hello\nworld{Colors.END}", 3, 9, f"{Colors.RED}lo\nwor{Colors.END}"),
             ("empty slice at start", f"{Colors.RED}hello{Colors.END}", 0, 0, ""),
             ("empty slice past end", f"{Colors.RED}hello{Colors.END}", 5, 6, ""),
+            ("slice starting with color reset", f"{Colors.END}a{Colors.RED}bcd{Colors.END}", 0, 3, f"a{Colors.RED}bc{Colors.END}"),
+            ("slice starting with style reset", f"{Styles.BOLD_END}a{Styles.BOLD}bcd{Styles.BOLD_END}", 0, 3, f"a{Styles.BOLD}bc{Styles.RESET}"),
+            ("slice with empty ansi blocks", f"{Colors.RED}{Colors.END}a{Colors.BLUE}{Colors.END}bc{Styles.BOLD}{Styles.BOLD_END}", 0, 3, "abc"),
         ]
         for description, text, start, end, expected in test_cases:
             with self.subTest(description=description):
@@ -49,12 +52,16 @@ class TestAnsiSlice(unittest.TestCase):
 
 
 class TestWrapLines(unittest.TestCase):
-    def test_wrap_character(self):
-        styled_text = f"{Colors.RED}A{Colors.END}"
-        lines = wrap_lines(styled_text, 1).split('\n')
-        self.assertEqual(len(lines), 1)
-        for line in lines:
-            self.assertEqual(ansi_len(line), 1)
+    def test_no_wrap(self):
+        test_cases = [
+            ("plain text", "Hello World", 20),
+            ("single character", f"{Colors.RED}A{Colors.END}", 1),
+            ("multiple lines", "line1\nline2", 5),
+            ("multiple styled lines", f"{Colors.RED}line1{Colors.END}\n{Colors.BLUE}line2{Colors.END}", 5),
+        ]
+        for description, styled_text, width in test_cases:
+            with self.subTest(description=description):
+                self.assertEqual(wrap_lines(styled_text, width), styled_text)
 
     def test_wrap_lines(self):
         styled_text = f"{Colors.RED}This is a very {Styles.BOLD}long red text{Styles.BOLD_END} that should wrap{Colors.END}"

@@ -121,15 +121,11 @@ def ansi_slice(string: str, start: int, end: int) -> str:
 
     result = []
     current_pos = 0
-    active_styles: set[str] = set()
-    active_color = None
-    active_bgcolor = None
-    has_content = False
+    active_styles: dict[str, bool] = {}
+    active_color = active_bgcolor = ('', False)
 
     for chunk in chunks:
         if match_ := ansi_pattern.match(chunk):
-            if current_pos >= start:
-                result.append(chunk)
             codes = deque(match_.group(1).split(';'))
             while codes:
                 code = int(codes.popleft())
@@ -143,21 +139,29 @@ def ansi_slice(string: str, start: int, end: int) -> str:
                         ansi_code = f'\u001B[{code};2;{r};{g};{b}m'
 
                 if code == 0:
+                    if any(active_styles.values()) or active_color[1] or active_bgcolor[1]:
+                        result.append(Styles.RESET)
                     active_styles.clear()
-                    active_color = None
-                    active_bgcolor = None
+                    active_color = active_bgcolor = ('', False)
                 elif code in range(30, 39) or code in range(90, 98):
-                    active_color = ansi_code
+                    active_color = (ansi_code, False)
                 elif code in range(40, 49) or code in range(100, 108):
-                    active_bgcolor = ansi_code
+                    active_bgcolor = (ansi_code, False)
                 elif code == 39:
-                    active_color = None
+                    if active_color[1]:
+                        result.append(Colors.END)
+                    active_color = ('', False)
                 elif code == 49:
-                    active_bgcolor = None
+                    if active_bgcolor[1]:
+                        result.append(Colors.BG_END)
+                    active_bgcolor = ('', False)
                 elif ansi_code in style_starts:
-                    active_styles.add(ansi_code)
+                    active_styles[ansi_code] = False
                 elif ansi_code in style_stops:
-                    active_styles.discard(Styles.__dict__[style_stops[ansi_code]])
+                    style_start = Styles.__dict__[style_stops[ansi_code]]
+                    if active_styles.get(style_start, False):
+                        result.append(ansi_code)
+                    active_styles.pop(style_start, None)
 
         else:
             chunk_end = current_pos + len(chunk)
@@ -170,26 +174,29 @@ def ansi_slice(string: str, start: int, end: int) -> str:
             slice_start = max(0, start - current_pos)
             slice_end = min(len(chunk), end - current_pos)
             if slice_start < slice_end:
-                if not result:
-                    result.extend(active_styles)
-                    if active_color:
-                        result.append(active_color)
-                    if active_bgcolor:
-                        result.append(active_bgcolor)
+                for style_code, has_style_content in active_styles.items():
+                    if not has_style_content:
+                        result.append(style_code)
+                        active_styles[style_code] = True
+                if active_color[0] and not active_color[1]:
+                    result.append(active_color[0])
+                    active_color = (active_color[0], True)
+                if active_bgcolor[0] and not active_bgcolor[1]:
+                    result.append(active_bgcolor[0])
+                    active_bgcolor = (active_bgcolor[0], True)
                 result.append(chunk[slice_start:slice_end])
-                has_content = True
             if chunk_end >= end:
                 break
             current_pos = chunk_end
 
     reset = ''
-    if active_color:
+    if active_color[0] and active_color[1]:
         reset += Colors.END
-    if active_bgcolor:
+    if active_bgcolor[0] and active_bgcolor[1]:
         reset += Colors.BG_END
-    if active_styles:
+    if any(active_styles.values()):
         reset += Styles.RESET
-    return ''.join(result) + reset if has_content else ''
+    return ''.join(result) + reset
 
 def wrap_lines(content: str, max_width: int) -> str:
     lines = []
@@ -198,7 +205,10 @@ def wrap_lines(content: str, max_width: int) -> str:
     while line := ansi_slice(content, pos, pos + max_width):
         line_len = max_width
         newline_pos = line.find('\n')
-        if newline_pos >= 0:
+        if newline_pos == 0:
+            pos += 1
+            continue
+        elif newline_pos > 0:
             first_line = line[:newline_pos]
             first_line_len = ansi_len(first_line)
             line = ansi_slice(content, pos, pos + first_line_len)

@@ -7,13 +7,13 @@ import sys
 import termios
 import tty
 from contextlib import contextmanager
-from itertools import zip_longest
+from itertools import chain, zip_longest
 from typing import Iterator
 
 from ask.ui.core.components import Side, Component, Element, Box, Text
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.core.layout import layout
-from ask.ui.core.styles import Axis, Colors, BorderStyle, ansi_len, ansi_slice
+from ask.ui.core.styles import Axis, Colors, BorderStyle, ansi_len
 from ask.ui.core.tree import ElementTree, depth, propogate, mount, update
 
 # Context manager to set O_NONBLOCK on a file descriptor
@@ -27,80 +27,84 @@ def nonblocking(fd: int) -> Iterator[None]:
         fcntl.fcntl(fd, fcntl.F_SETFL, original_fl)
 
 
-# Rendering
+Rows = list[list[str]]
 
-def apply_background(content: str, width: int, background_color: str | None) -> str:
-    if not background_color:
-        return content
-    lines = content.split('\n')
-    assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for background to be applied"
-    return '\n'.join(Colors.bg_ansi(line, background_color) for line in lines)
+def apply_spacing(rows: Rows, width: int, spacing: dict[Side, int]) -> Rows:
+    total_width = width + spacing['left'] + spacing['right']
+    left = ' ' * spacing['left']
+    right = ' ' * spacing['right']
+    result: Rows = []
+    for _ in range(spacing['top']):
+        result.append([' ' * total_width])
+    for row in rows:
+        result.append([left, *row, right])
+    for _ in range(spacing['bottom']):
+        result.append([' ' * total_width])
+    return result
 
-def apply_sizing(content: str, width: int, height: int) -> str:
-    lines = [ansi_slice(line, 0, width) + ' ' * max(0, width - ansi_len(line)) for line in content.split('\n')]
-    lines = lines[:height] + [' ' * width] * max(0, height - len(lines))
-    return '\n'.join(lines)
-
-def apply_spacing(content: str, spacing: dict[Side, int]) -> str:
-    lines = content.split('\n')
-    line_width = ansi_len(lines[0]) if lines else 0
-    assert all(ansi_len(line) == line_width for line in lines), "All lines must have the same width for spacing to be applied"
-    width = line_width + spacing['left'] + spacing['right']
-    top_spacing = (' ' * width + '\n') * spacing['top']
-    bottom_spacing = ('\n' + ' ' * width) * spacing['bottom']
-    left_spacing = ' ' * spacing['left']
-    right_spacing = ' ' * spacing['right']
-    return top_spacing + '\n'.join(left_spacing + line + right_spacing for line in lines) + bottom_spacing
-
-def apply_borders(content: str, width: int, borders: set[Side], border_style: BorderStyle, border_color: str | None) -> str:
+def apply_borders(rows: Rows, width: int, borders: set[Side], border_style: BorderStyle, border_color: str | None) -> Rows:
     if not borders:
-        return content
+        return rows
     color_code = border_color or ''
-    lines = content.split('\n') if content else []
-    assert all(ansi_len(line) == width for line in lines), "All lines must have the same width for borders to be applied"
-
     top_left = border_style.top_left if borders >= {'top', 'left'} else ''
     top_right = border_style.top_right if borders >= {'top', 'right'} else ''
     bottom_left = border_style.bottom_left if borders >= {'bottom', 'left'} else ''
     bottom_right = border_style.bottom_right if borders >= {'bottom', 'right'} else ''
-
-    top_border = [Colors.ansi(top_left + border_style.top * width + top_right, color_code)] if 'top' in borders else []
-    bottom_border = [Colors.ansi(bottom_left + border_style.bottom * width + bottom_right, color_code)] if 'bottom' in borders else []
     left_border = Colors.ansi(border_style.left, color_code) if 'left' in borders else ''
     right_border = Colors.ansi(border_style.right, color_code) if 'right' in borders else ''
-    return '\n'.join(top_border + [left_border + line + right_border for line in lines] + bottom_border)
 
-def apply_boxing(content: str, content_width: int, content_height: int, element: Element) -> str:
+    result: Rows = []
+    if 'top' in borders:
+        result.append([Colors.ansi(top_left + border_style.top * width + top_right, color_code)])
+    for row in rows:
+        result.append([left_border, *row, right_border])
+    if 'bottom' in borders:
+        result.append([Colors.ansi(bottom_left + border_style.bottom * width + bottom_right, color_code)])
+    return result
+
+def apply_chrome(rows: Rows, content_width: int, element: Element) -> Rows:
     padded_width = content_width + element.paddings['left'] + element.paddings['right']
-    content = apply_sizing(content, content_width, content_height)
-    content = apply_spacing(content, element.paddings)
-    content = apply_background(content, padded_width, element.background_color)
-    content = apply_borders(content, padded_width, {k for k, v in element.borders.items() if v}, element.border_style, element.border_color)
-    content = apply_spacing(content, element.margins)
-    return content
+    bordered_width = padded_width + element.borders['left'] + element.borders['right']
+    rows = apply_spacing(rows, content_width, element.paddings)
+    if element.background_color:
+        rows = [[element.background_color, *row, Colors.BG_END] for row in rows]
+    rows = apply_borders(rows, padded_width, {k for k, v in element.borders.items() if v}, element.border_style, element.border_color)
+    rows = apply_spacing(rows, bordered_width, element.margins)
+    return rows
 
-def render(tree: ElementTree, element: Element) -> str:
-    content_width = max(0, tree.widths[element.uuid] - element.chrome(Axis.HORIZONTAL))
-    content_height = max(0, tree.heights[element.uuid] - element.chrome(Axis.VERTICAL))
+def _render(tree: ElementTree, element: Element) -> Rows:
+    content_width = tree.widths[element.uuid] - element.chrome(Axis.HORIZONTAL)
+    content_height = tree.heights[element.uuid] - element.chrome(Axis.VERTICAL)
 
     match element:
         case Text():
-            content = element.wrap(content_width)
+            wrapped = element.wrap(content_width)
+            rows = [[line, ' ' * (content_width - ansi_len(line))] for line in wrapped.split('\n')]
+            rows = rows + [[' ' * content_width] for _ in range(content_height - len(rows))]
         case Box():
-            collapsed = tree.collapsed_children[element.uuid]
-            contents = [render(tree, child) for child in collapsed]
+            children = tree.collapsed_children[element.uuid]
+            child_rows = [_render(tree, child) for child in children]
+            child_widths = [tree.widths[child.uuid] for child in children]
+
             if element.flex is Axis.VERTICAL:
-                content = '\n'.join(x for x in contents if x)
+                rows = []
+                for crows, cwidth in zip(child_rows, child_widths, strict=True):
+                    rows.extend([[*row, ' ' * (content_width - cwidth)] for row in crows])
+                rows = rows + [[' ' * content_width] for _ in range(content_height - len(rows))]
             else:
-                max_child_height = max((tree.heights[child.uuid] for child in collapsed), default=0)
-                contents = [apply_sizing(child_content, tree.widths[child.uuid], max_child_height)
-                            for child_content, child in zip(contents, collapsed, strict=True)]
-                lines = [child.split('\n') for child in contents]
-                content = '\n'.join(''.join(columns) for columns in zip(*lines, strict=True))
+                for crows, cwidth in zip(child_rows, child_widths, strict=True):
+                    crows.extend([[' ' * cwidth] for _ in range(content_height - len(crows))])
+                remaining_width = content_width - sum(child_widths)
+                child_rows.append([[' ' * remaining_width] for _ in range(content_height)])
+                rows = [list(chain.from_iterable(row_parts)) for row_parts in zip(*child_rows, strict=True)]
         case _:
             raise ValueError(f"Unknown element type: {type(element)}")
 
-    return apply_boxing(content, content_width, content_height, element)
+    return apply_chrome(rows, content_width, element)
+
+def render(tree: ElementTree, element: Element) -> str:
+    rows = _render(tree, element)
+    return '\n'.join(''.join(row) for row in rows)
 
 
 # Main render loop
