@@ -1,21 +1,49 @@
+from dataclasses import asdict, is_dataclass
 from itertools import zip_longest
+from typing import Any, NamedTuple
 from uuid import UUID
-from typing import Any
 
-from ask.ui.core.components import ElementTree, Component, Widget
+from ask.ui.core.components import Component, Element, Text, Widget
 
-# Utility function to print the component tree
-def print_node(tree: ElementTree, uuid: UUID, level: int = 0) -> None:
-    component = tree.nodes[uuid]
-    print('  ' * level + f'└─ {component.__class__.__name__}')
+class Offset(NamedTuple):
+    x: int
+    y: int
+
+class ElementTree:
+    def __init__(self, root: Component) -> None:
+        self.root = root
+        self.nodes: dict[UUID, Component] = {}
+        self.parents: dict[UUID, UUID] = {}
+        self.children: dict[UUID, list[Component | None]] = {}
+        self.collapsed_children: dict[UUID, list[Element]] = {}
+        self.offsets: dict[UUID, Offset] = {}
+        self.widths: dict[UUID, int] = {}
+        self.heights: dict[UUID, int] = {}
+        self.dirty: set[UUID] = set()
+
+    def __str__(self) -> str:
+        return format(self, self.root.uuid)
+
+
+# Utility functions
+
+def format(tree: ElementTree, uuid: UUID, level: int = 0, verbose: bool = False) -> str:
+    prefix = '  ' * (max(0, level - 1)) + ('└─' if level > 0 else '')
+    match tree.nodes[uuid]:
+        case Text(text=text): attrs = {'text': text}
+        case Widget() as widget if is_dataclass(widget): attrs = asdict(widget)
+        case _: attrs = {}
+    uuid_str = f"{str(uuid).split('-')[0]} → " if verbose else ''
+    attrs_str = '('  + ', '.join(f'{k}={v!r}' for k, v in attrs.items()) + ')'
+    result = f"{prefix}{uuid_str}{tree.nodes[uuid].__class__.__name__}{attrs_str if attrs else ''}\n"
     for child in tree.children.get(uuid, []):
-        if child:  # Skip None values
-            print_node(tree, child.uuid, level + 1)
+        if child:
+            result += format(tree, child.uuid, level + 1, verbose=verbose)
+    return result
 
-# Get the depth of a node
-def depth(tree: ElementTree, node: Component, root: Component) -> int:
+def depth(tree: ElementTree, node: Component) -> int:
     depth = 0
-    while node is not root:
+    while node is not tree.root:
         node = tree.nodes[tree.parents[node.uuid]]
         depth += 1
     return depth

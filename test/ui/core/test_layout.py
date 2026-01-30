@@ -1,7 +1,7 @@
 import unittest
 
-from ask.ui.core.components import ElementTree, Box, Text
-from ask.ui.core.tree import mount
+from ask.ui.core.components import Box, Text
+from ask.ui.core.tree import ElementTree, mount
 from ask.ui.core.layout import layout
 from ask.ui.core.styles import Colors, Axis
 
@@ -45,9 +45,9 @@ class TestLayout(unittest.TestCase):
 
         for description, (flex, width, height), (expected_width, expected_height), children, expected_layouts in test_cases:
             with self.subTest(flex=flex, description=description):
-                tree = ElementTree()
                 texts = [Text(text, width=width, height=height) for text, width, height in children]
                 box = Box(flex=flex, width=width, height=height)[texts]
+                tree = ElementTree(box)
                 mount(tree, box)
                 layout(tree, box, 100, 100)
 
@@ -74,9 +74,9 @@ class TestLayout(unittest.TestCase):
 
         for description, (outer_w, outer_h), (inner_w, inner_h), (text, w, h), (exp_outer_w, exp_outer_h), (exp_text_w, exp_text_h) in test_cases:
             with self.subTest(description=description):
-                tree = ElementTree()
                 text_elem = Text(text, width=w, height=h)
                 outer_box = Box(width=outer_w, height=outer_h)[Box(width=inner_w, height=inner_h)[text_elem]]
+                tree = ElementTree(outer_box)
                 mount(tree, outer_box)
                 layout(tree, outer_box, 100, 100)
 
@@ -110,9 +110,9 @@ class TestLayout(unittest.TestCase):
 
         for description, flex, chrome, (expected_w, expected_h), children, expected_layouts in test_cases:
             with self.subTest(flex=flex, description=description):
-                tree = ElementTree()
                 texts = [Text(text, width=width, height=height, **make_chrome(*chrome)) for text, width, height, chrome in children]
                 box = Box(flex=flex, **make_chrome(*chrome))[texts]
+                tree = ElementTree(box)
                 mount(tree, box)
                 layout(tree, box, 100, 100)
 

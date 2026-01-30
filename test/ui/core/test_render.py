@@ -1,19 +1,19 @@
 import unittest
 
-from ask.ui.core.components import ElementTree, Box, Text
+from ask.ui.core.components import Box, Text
 from ask.ui.core.layout import layout
 from ask.ui.core.render import render
 from ask.ui.core.styles import Axis
-from ask.ui.core.tree import mount
+from ask.ui.core.tree import ElementTree, mount
 
 class TestRender(unittest.TestCase):
     def test_empty_box(self):
         """Test empty box."""
-        tree = ElementTree()
         box = Box()[
             Box(),
             Text("Hello"),
         ]
+        tree = ElementTree(box)
         mount(tree, box)
         layout(tree, box, 100)
         result = render(tree, box)
@@ -30,8 +30,8 @@ class TestRender(unittest.TestCase):
 
         for description, width, _children in test_cases:
             with self.subTest(description=description):
-                tree = ElementTree()
                 box = Box(width=width, flex=Axis.HORIZONTAL)[(Text(text, width=width) for text, width, _ in _children)]
+                tree = ElementTree(box)
                 mount(tree, box)
                 layout(tree, box, 100)
                 result = render(tree, box)
@@ -41,8 +41,8 @@ class TestRender(unittest.TestCase):
 
     def test_width_constrained_by_max_width(self):
         """Test components are constrained by max_width parameter."""
-        tree = ElementTree()
         text = Text("Very long text that should be wrapped")
+        tree = ElementTree(text)
         mount(tree, text)
         layout(tree, text, 10)
         result = render(tree, text)
@@ -50,8 +50,8 @@ class TestRender(unittest.TestCase):
 
     def test_width_constrained_by_parent_width(self):
         """Test components are constrained by parent width."""
-        tree = ElementTree()
         box = Box()[Box(width=10)[Text("Very long text that should be wrapped")]]
+        tree = ElementTree(box)
         mount(tree, box)
         layout(tree, box, 100)
         result = render(tree, box)
@@ -59,11 +59,11 @@ class TestRender(unittest.TestCase):
 
     def test_mixed_flex_components(self):
         """Test nested boxes with different flex directions."""
-        tree = ElementTree()
         outer = Box(flex=Axis.HORIZONTAL)[
             Box(flex=Axis.VERTICAL)[Text("Top"), Text("Bottom")],
             Text("Side")
         ]
+        tree = ElementTree(outer)
         mount(tree, outer)
         layout(tree, outer, 100)
         result = render(tree, outer)

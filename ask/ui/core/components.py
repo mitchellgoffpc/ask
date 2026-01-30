@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, NamedTuple, Self, Sequence, TypeVar, get_args
+from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Axis, Borders, BorderStyle, wrap_lines
+if TYPE_CHECKING:
+    from ask.ui.core.tree import ElementTree
 
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
@@ -11,22 +13,6 @@ Length = int | float | None
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
     return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
-
-
-class Offset(NamedTuple):
-    x: int
-    y: int
-
-class ElementTree:
-    def __init__(self) -> None:
-        self.dirty: set[UUID] = set()
-        self.nodes: dict[UUID, Component] = {}
-        self.parents: dict[UUID, UUID] = {}
-        self.children: dict[UUID, list[Component | None]] = {}
-        self.collapsed_children: dict[UUID, list[Element]] = {}
-        self.offsets: dict[UUID, Offset] = {}
-        self.widths: dict[UUID, int] = {}
-        self.heights: dict[UUID, int] = {}
 
 
 class Component:
@@ -122,7 +108,6 @@ class Box(Element):
 ComponentType = TypeVar('ComponentType')
 
 class Controller(Component, Generic[ComponentType]):
-    mounted = False
     state: list[str] = []
     tree: ElementTree | None = None
 
@@ -143,15 +128,17 @@ class Controller(Component, Generic[ComponentType]):
             self.tree.dirty.add(self.uuid)
 
     def handle_mount(self, tree: ElementTree) -> None:
-        self.mounted = True
         self.tree = tree
 
     def handle_unmount(self) -> None:
-        self.mounted = False
         self.tree = None
 
     def handle_input(self, ch: str) -> None:
         pass
+
+    @property
+    def mounted(self) -> bool:
+        return self.tree is not None
 
     def contents(self) -> list[Component | None]:
         raise NotImplementedError()

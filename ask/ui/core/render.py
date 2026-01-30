@@ -10,11 +10,11 @@ from contextlib import contextmanager
 from itertools import zip_longest
 from typing import Iterator
 
-from ask.ui.core.components import Side, ElementTree, Component, Element, Box, Text
+from ask.ui.core.components import Side, Component, Element, Box, Text
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.core.layout import layout
 from ask.ui.core.styles import Axis, Colors, BorderStyle, ansi_len, ansi_slice
-from ask.ui.core.tree import mount, update, propogate, depth
+from ask.ui.core.tree import ElementTree, depth, propogate, mount, update
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
@@ -108,8 +108,8 @@ def render(tree: ElementTree, element: Element) -> str:
 async def render_root(_root: Component) -> None:
     hide_cursor()
 
-    tree = ElementTree()
     root = _root if isinstance(_root, Element) else Box()[_root]  # Root component needs to be an element
+    tree = ElementTree(root)
     mount(tree, root)
     terminal_width = shutil.get_terminal_size().columns
     layout(tree, root, terminal_width)
@@ -134,7 +134,7 @@ async def render_root(_root: Component) -> None:
             if not tree.dirty:
                 await asyncio.sleep(0.01)
                 continue
-            for uuid in sorted(tree.dirty, key=lambda uuid: depth(tree, tree.nodes[uuid], root)):  # start at the top and work downwards
+            for uuid in sorted(tree.dirty, key=lambda uuid: depth(tree, tree.nodes[uuid])):  # start at the top and work downwards
                 if uuid in tree.nodes:
                     update(tree, tree.nodes[uuid])
             tree.dirty.clear()
