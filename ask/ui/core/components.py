@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
 from typing import Any, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args, TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -21,26 +22,21 @@ class Component:
     def contents(self) -> list[Component | None]:
         raise NotImplementedError()
 
+@dataclass
 class Element(Component):
-    def __init__(
-        self,
-        width: Length,
-        height: Length,
-        margin: Spacing,
-        padding: Spacing,
-        border: Sequence[Side],
-        border_color: str | None,
-        border_style: BorderStyle,
-        background_color: str | None,
-    ) -> None:
-        self.width, self.height = width, height
-        self.margin = get_spacing_dict(margin)
-        self.padding = get_spacing_dict(padding)
-        self.border = {side: int(side in border) for side in get_args(Side)}
-        self.border_color = border_color
-        self.border_style = border_style
-        self.background_color = background_color
+    width: Length = field(default=None, kw_only=True)
+    height: Length = field(default=None, kw_only=True)
+    margin: Spacing = field(default=0, kw_only=True)
+    padding: Spacing = field(default=0, kw_only=True)
+    border: Sequence[Side] = field(default=(), kw_only=True)
+    border_style: BorderStyle = field(default_factory=lambda: Borders.ROUND, kw_only=True)
+    border_color: str | None = field(default=None, kw_only=True)
+    background_color: str | None = field(default=None, kw_only=True)
 
+    def __post_init__(self) -> None:
+        self.margins = get_spacing_dict(self.margin)
+        self.paddings = get_spacing_dict(self.padding)
+        self.borders = {side: int(side in self.border) for side in get_args(Side)}
         self.children: list[Component | None] = []
         self.uuid = uuid4()
 
@@ -54,55 +50,24 @@ class Element(Component):
     def chrome(self, axis: Axis) -> int:
         a: Side = 'left' if axis is Axis.HORIZONTAL else 'top'
         b: Side = 'right' if axis is Axis.HORIZONTAL else 'bottom'
-        return self.padding[a] + self.padding[b] + self.margin[a] + self.margin[b] + self.border[a] + self.border[b]
+        return self.paddings[a] + self.paddings[b] + self.margins[a] + self.margins[b] + self.borders[a] + self.borders[b]
 
     def contents(self) -> list[Component | None]:
         return self.children
 
-
+@dataclass
 class Text(Element):
-    def __init__(
-        self,
-        text: str,
-        width: Length = None,
-        height: Length = None,
-        margin: Spacing = 0,
-        padding: Spacing = 0,
-        border: Sequence[Side] = (),
-        border_style: BorderStyle = Borders.ROUND,
-        border_color: str | None = None,
-        background_color: str | None = None,
-    ) -> None:
-        super().__init__(width=width, height=height, margin=margin, padding=padding,
-                         border=border, border_color=border_color, border_style=border_style, background_color=background_color)
-        self.text = text
-        self._wrapped: dict[int, str] = {}
+    text: str
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
 
     def wrap(self, width: int) -> str:
-        if width not in self._wrapped:
-            self._wrapped[width] = wrap_lines(self.text.replace('\t', ' ' * 8), width)
-        return self._wrapped[width]
+        return wrap_lines(self.text.replace('\t', ' ' * 8), width)
 
-
+@dataclass
 class Box(Element):
-    def __init__(
-        self,
-        flex: Axis = Axis.VERTICAL,
-        width: Length = None,
-        height: Length = None,
-        margin: Spacing = 0,
-        padding: Spacing = 0,
-        border: Sequence[Side] = (),
-        border_color: str | None = None,
-        border_style: BorderStyle = Borders.ROUND,
-        background_color: str | None = None,
-    ) -> None:
-        super().__init__(width=width, height=height, margin=margin, padding=padding,
-                         border=border, border_color=border_color, border_style=border_style, background_color=background_color)
-        self.flex = flex
+    flex: Axis = Axis.VERTICAL
 
 
 ComponentType = TypeVar('ComponentType')

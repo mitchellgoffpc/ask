@@ -71,12 +71,12 @@ def apply_borders(content: str, width: int, borders: set[Side], border_style: Bo
     return '\n'.join(top_border + [left_border + line + right_border for line in lines] + bottom_border)
 
 def apply_boxing(content: str, content_width: int, content_height: int, element: Element) -> str:
-    padded_width = content_width + element.padding['left'] + element.padding['right']
+    padded_width = content_width + element.paddings['left'] + element.paddings['right']
     content = apply_sizing(content, content_width, content_height)
-    content = apply_spacing(content, element.padding)
+    content = apply_spacing(content, element.paddings)
     content = apply_background(content, padded_width, element.background_color)
-    content = apply_borders(content, padded_width, {k for k, v in element.border.items() if v}, element.border_style, element.border_color)
-    content = apply_spacing(content, element.margin)
+    content = apply_borders(content, padded_width, {k for k, v in element.borders.items() if v}, element.border_style, element.border_color)
+    content = apply_spacing(content, element.margins)
     return content
 
 def render(tree: ElementTree, element: Element) -> str:

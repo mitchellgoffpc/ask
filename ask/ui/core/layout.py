@@ -81,8 +81,8 @@ def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_l
 
 def compute_offsets(tree: ElementTree, element: Element) -> None:
     flex = element.flex if isinstance(element, Box) else Axis.VERTICAL
-    x_offset = element.margin['left'] + element.border['left'] + element.padding['left']
-    y_offset = element.margin['top'] + element.border['top'] + element.padding['top']
+    x_offset = element.margins['left'] + element.borders['left'] + element.paddings['left']
+    y_offset = element.margins['top'] + element.borders['top'] + element.paddings['top']
 
     for child in tree.collapsed_children[element.uuid]:
         tree.offsets[child.uuid] = Offset(x=x_offset, y=y_offset)
