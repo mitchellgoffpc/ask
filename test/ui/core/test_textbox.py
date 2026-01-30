@@ -11,9 +11,8 @@ def create_tree(textbox: TextBox) -> tuple[ElementTree, Box, TextBoxController]:
     tree = ElementTree(root)
     mount(tree, root)
 
-    controller = textbox.__controller_instance__
-    assert isinstance(controller, TextBoxController)
-    return tree, root, controller
+    assert isinstance(textbox.controller, TextBoxController)
+    return tree, root, textbox.controller
 
 class TestTextBoxWrapping(unittest.TestCase):
     def test_textbox_line_wrapping_methods(self):

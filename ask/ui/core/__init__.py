@@ -1,6 +1,6 @@
 from typing import TypeAlias
 
-from ask.ui.core.components import Component, Element, Text, Box, Widget, Controller
+from ask.ui.core.components import Component, Element, Text, Box, Widget, BaseController
 from ask.ui.core.markdown_ import render_markdown, highlight_code
 from ask.ui.core.render import render_root
 from ask.ui.core.styles import Axis, Borders, Colors, Styles, Theme, ansi_len, ansi_slice, wrap_lines
@@ -13,7 +13,7 @@ class UI:
     Text: TypeAlias = Text
     Box: TypeAlias = Box
     Widget: TypeAlias = Widget
-    Controller: TypeAlias = Controller
+    Controller: TypeAlias = BaseController
     TextBox: TypeAlias = TextBox
 
 __all__ = [

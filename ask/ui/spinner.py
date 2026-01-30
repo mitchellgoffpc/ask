@@ -1,13 +1,12 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import Any
 
 from ask.ui.core import UI, ElementTree, Axis, Colors, Theme
 from ask.ui.tools.todo import ToDos
 
 @dataclass
 class Spinner(UI.Widget):
-    __controller__: ClassVar = lambda _: SpinnerController
     todos: dict[str, Any] | None
     expanded: bool
 

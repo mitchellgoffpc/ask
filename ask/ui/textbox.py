@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import Callable
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
@@ -59,14 +59,12 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> UI.Box:
 
 @dataclass
 class PromptTextBox(UI.Widget):
-    __controller__: ClassVar = lambda _: PromptTextBoxController
     model: Model
     approved_tools: set[str]
     handle_submit: Callable[[str], bool]
     handle_exit: Callable[[], None]
 
-
-class PromptTextBoxController(UI.Controller):
+class PromptTextBoxController(UI.Controller[PromptTextBox]):
     state = ['text', 'mode', 'show_exit_prompt', 'selected_idx', 'autocomplete_matches']
     text = ''
     mode = Mode.TEXT

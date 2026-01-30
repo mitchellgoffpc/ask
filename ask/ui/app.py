@@ -4,7 +4,6 @@ import sys
 import time
 from dataclasses import dataclass
 from uuid import UUID
-from typing import ClassVar
 
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
 from ask.config import History
@@ -21,7 +20,6 @@ from ask.ui.tools.todo import ToDos
 
 @dataclass
 class App(UI.Widget):
-    __controller__: ClassVar = lambda _: AppController
     messages: dict[UUID, Message]
     query: str
 

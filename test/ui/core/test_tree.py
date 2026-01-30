@@ -2,9 +2,9 @@ import time
 import unittest
 from collections import deque
 from dataclasses import dataclass
-from typing import ClassVar, Iterator
+from typing import Iterator
 
-from ask.ui.core.components import Component, Box, Text, Controller, Widget
+from ask.ui.core.components import Component, Box, Text, Widget, BaseController
 from ask.ui.core.tree import ElementTree, mount, update
 from test.ui.core.helpers import WideTree, DeepTree
 
@@ -18,22 +18,19 @@ def toposort(tree: ElementTree) -> Iterator[Component]:
 
 @dataclass
 class ChildWidget(Widget):
-    __controller__: ClassVar = lambda _: ChildController
     value: int
 
-class ChildController(Controller[ChildWidget]):
-    def contents(self) -> list[Component | None]:
-        return [Text(f"Child value: {self.props.value}")]
+    class Controller(BaseController):
+        def contents(self) -> list[Component | None]:
+            return [Text(f"Child value: {self.props.value}")]
 
 @dataclass
 class ParentWidget(Widget):
-    __controller__: ClassVar = lambda _: ParentController
+    class Controller(BaseController):
+        child_value: int | None = 0
 
-class ParentController(Controller[ParentWidget]):
-    child_value: int | None = 0
-
-    def contents(self) -> list[Component | None]:
-        return [Box()[ChildWidget(self.child_value) if self.child_value is not None else None]]
+        def contents(self) -> list[Component | None]:
+            return [Box()[ChildWidget(self.child_value) if self.child_value is not None else None]]
 
 class TestTree(unittest.TestCase):
     def test_widget_mount_and_update(self):

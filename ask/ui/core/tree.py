@@ -59,7 +59,7 @@ def propogate(tree: ElementTree, node: Component, value: Any, event_type: str) -
 # Add a component and all its children to the tree
 def mount(tree: ElementTree, component: Component) -> None:
     if isinstance(component, Widget):
-        component.controller = component.__controller__()(component)
+        component.controller = component.Controller(component)
         component.controller.handle_mount(tree)
     tree.nodes[component.uuid] = component
     contents = component.contents()

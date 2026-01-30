@@ -1,8 +1,8 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable, ClassVar
+from typing import Callable
 
-from ask.ui.core.components import Length, Component, Controller, Text, Widget
+from ask.ui.core.components import Length, Component, Text, Widget, BaseController
 from ask.ui.core.styles import Axis, Colors, Styles
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
@@ -12,7 +12,6 @@ def is_stop_char(ch: str) -> bool:
 
 @dataclass
 class TextBox(Widget):
-    __controller__: ClassVar = lambda _: TextBoxController
     width: Length = 1.0
     text: str | None = None
     placeholder: str = ""
@@ -22,8 +21,7 @@ class TextBox(Widget):
     handle_change: Callable[[str], None] | None = None
     handle_submit: Callable[[str], bool] | None = None
 
-
-class TextBoxController(Controller[TextBox]):
+class TextBoxController(BaseController[TextBox]):
     state = ['text', 'cursor_pos', 'history', 'history_idx', 'mark']
     _text = ''
     _cursor_pos = 0

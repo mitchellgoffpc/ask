@@ -1,7 +1,6 @@
 import asyncio
 from functools import partial
 from dataclasses import dataclass
-from typing import ClassVar
 
 from ask.messages import ToolRequest
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
@@ -39,7 +38,6 @@ def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> UI.Compone
 
 @dataclass
 class SelectionDialog(UI.Widget):
-    __controller__: ClassVar = lambda _: SelectionDialogController
     tool_call: ToolRequest
     future: asyncio.Future
     approved_tools: set[str]

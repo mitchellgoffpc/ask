@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Callable, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args, TYPE_CHECKING
+from typing import Any, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Axis, Borders, BorderStyle, wrap_lines
@@ -107,9 +107,17 @@ class Box(Element):
 
 ComponentType = TypeVar('ComponentType')
 
-class Controller(Component, Generic[ComponentType]):
+class BaseController(Component, Generic[ComponentType]):
     state: list[str] = []
     tree: ElementTree | None = None
+
+    def __init_subclass__(cls: type[BaseController[ComponentType]], *args: Any, **kwargs: Any) -> None:
+        super().__init_subclass__(*args, **kwargs)
+        for base in getattr(cls, '__orig_bases__', []):
+            for arg in get_args(base):
+                if isinstance(arg, type) and issubclass(arg, Widget) and not hasattr(arg, 'Controller'):
+                    arg.Controller = cls
+                    return
 
     def __init__(self, props: ComponentType) -> None:
         self.props = props
@@ -144,20 +152,17 @@ class Controller(Component, Generic[ComponentType]):
         raise NotImplementedError()
 
 class Widget(Component):
-    __controller__: ClassVar[Callable[[Self], type[Controller]]]
-    __controller_instance__: Controller | None = None
+    Controller: ClassVar[type[BaseController]]
+    _controller: BaseController | None = None
 
     @property
-    def controller(self) -> Controller:
-        assert self.__controller_instance__ is not None, "Widget's controller instance is not initialized"
-        return self.__controller_instance__
+    def controller(self) -> BaseController:
+        assert self._controller is not None, "Widget's controller instance is not initialized"
+        return self._controller
 
     @controller.setter
-    def controller(self, value: Controller | None) -> None:
-        self.__controller_instance__ = value
-
-    def contents(self) -> list[Component | None]:
-        return self.controller.contents()
+    def controller(self, value: BaseController | None) -> None:
+        self._controller = value
 
     @property
     def uuid(self) -> UUID:
@@ -166,3 +171,6 @@ class Widget(Component):
     @uuid.setter
     def uuid(self, value: UUID) -> None:
         self.controller.uuid = value
+
+    def contents(self) -> list[Component | None]:
+        return self.controller.contents()
