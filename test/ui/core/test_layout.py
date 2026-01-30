@@ -1,7 +1,8 @@
 import unittest
 
 from ask.ui.core.components import ElementTree, Box, Text
-from ask.ui.core.render import layout, mount
+from ask.ui.core.tree import mount
+from ask.ui.core.layout import layout
 from ask.ui.core.styles import Colors, Axis
 
 class TestLayout(unittest.TestCase):

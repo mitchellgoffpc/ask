@@ -2,7 +2,8 @@ import unittest
 from unittest.mock import Mock
 
 from ask.ui.core.components import ElementTree, Box
-from ask.ui.core.render import layout, mount, update
+from ask.ui.core.layout import layout
+from ask.ui.core.tree import mount, update
 from ask.ui.core.textbox import TextBox, TextBoxController
 
 def create_tree(textbox: TextBox) -> tuple[ElementTree, Box, TextBoxController]:

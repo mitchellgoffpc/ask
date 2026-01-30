@@ -1,8 +1,10 @@
 import unittest
 
 from ask.ui.core.components import ElementTree, Box, Text
-from ask.ui.core.render import render, layout, mount
+from ask.ui.core.layout import layout
+from ask.ui.core.render import render
 from ask.ui.core.styles import Axis
+from ask.ui.core.tree import mount
 
 class TestRender(unittest.TestCase):
     def test_empty_box(self):
