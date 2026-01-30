@@ -58,10 +58,15 @@ class TestWrapLines(unittest.TestCase):
             ("single character", f"{Colors.RED}A{Colors.END}", 1),
             ("multiple lines", "line1\nline2", 5),
             ("multiple styled lines", f"{Colors.RED}line1{Colors.END}\n{Colors.BLUE}line2{Colors.END}", 5),
+            ("trailing newline", "line1\nline2\n", 5),
         ]
         for description, styled_text, width in test_cases:
             with self.subTest(description=description):
                 self.assertEqual(wrap_lines(styled_text, width), styled_text)
+
+        self.assertEqual(wrap_lines(f"{Colors.RED}line\nline2{Colors.END}", 5), f"{Colors.RED}line{Colors.END}\n{Colors.RED}line2{Colors.END}")
+        self.assertEqual(wrap_lines(f"{Colors.RED}line1\nline2{Colors.END}", 5), f"{Colors.RED}line1{Colors.END}\n{Colors.RED}line2{Colors.END}")
+        self.assertEqual(wrap_lines(f"{Colors.RED}line1\n\nline2{Colors.END}", 5), f"{Colors.RED}line1{Colors.END}\n\n{Colors.RED}line2{Colors.END}")
 
     def test_wrap_lines(self):
         styled_text = f"{Colors.RED}This is a very {Styles.BOLD}long red text{Styles.BOLD_END} that should wrap{Colors.END}"

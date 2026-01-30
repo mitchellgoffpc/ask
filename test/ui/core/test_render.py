@@ -4,7 +4,7 @@ import unittest
 from ask.ui.core.components import Box, Text, Spacing, Side
 from ask.ui.core.layout import layout
 from ask.ui.core.render import render
-from ask.ui.core.styles import Axis, Borders
+from ask.ui.core.styles import Axis, Borders, Colors
 from ask.ui.core.tree import ElementTree, mount
 from test.ui.core.helpers import WideTree, DeepTree
 
@@ -19,6 +19,10 @@ class TestRender(unittest.TestCase):
     def test_empty_box(self):
         box = Box()[Box(), Text("Hello")]
         self.assertEqual(render_once(box), "Hello")
+
+    def test_render_styled_text(self):
+        text = Text(f"{Colors.WHITE}this is one line\nthis is another line{Colors.END}")
+        self.assertEqual(render_once(text), f"{Colors.WHITE}this is one line{Colors.END}    \n{Colors.WHITE}this is another line{Colors.END}")
 
     def test_width_types(self):
         test_cases: list[tuple[str, int | None, list]] = [

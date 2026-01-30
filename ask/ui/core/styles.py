@@ -5,6 +5,7 @@ from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
+from io import StringIO
 
 ANSI_BACKGROUND_OFFSET = 10
 ANSI_256_SUPPORT = '256color' in os.getenv("TERM", '')
@@ -199,25 +200,26 @@ def ansi_slice(string: str, start: int, end: int) -> str:
     return ''.join(result) + reset
 
 def wrap_lines(content: str, max_width: int) -> str:
-    lines = []
+    result = StringIO()
     pos = 0
-    newline_pos = -1
+    wrapped = False
     while line := ansi_slice(content, pos, pos + max_width):
-        line_len = max_width
-        newline_pos = line.find('\n')
-        if newline_pos == 0:
-            pos += 1
-            continue
-        elif newline_pos > 0:
-            first_line = line[:newline_pos]
-            first_line_len = ansi_len(first_line)
-            line = ansi_slice(content, pos, pos + first_line_len)
-            line_len = first_line_len + 1
-        lines.append(line)
-        pos += line_len
-    if newline_pos >= 0:  # If the last line ends in a newline, add an empty line
-        lines.append('')
-    return '\n'.join(lines)
+        plaintext = ansi_strip(line)
+        if leading_newlines := len(plaintext) - len(plaintext.lstrip('\n')):  # leading newlines get inserted directly
+            result.write('\n' * leading_newlines)
+            pos += leading_newlines
+            wrapped = False
+        else:
+            if wrapped:
+                result.write('\n')
+            line_len = max_width
+            if (newline_pos := line.find('\n')) >= 0:
+                line_len = ansi_len(line[:newline_pos])
+                line = ansi_slice(content, pos, pos + line_len)
+            wrapped = newline_pos == -1  # if there are no newlines, we'll wrap on the next line
+            result.write(line)
+            pos += line_len
+    return result.getvalue()
 
 
 class Styles:
@@ -310,11 +312,6 @@ class Colors:
         return apply_style(text, start=rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
 
 
-
-class Axis(Enum):
-    VERTICAL = 'vertical'
-    HORIZONTAL = 'horizontal'
-
 @dataclass
 class BorderStyle:
     top_left: str
@@ -351,3 +348,7 @@ class Theme:
     GRAY = '#AAAAAA'
     DARK_GRAY = '#888888'
     WHITE = '#FFFFFF'
+
+class Axis(Enum):
+    VERTICAL = 'vertical'
+    HORIZONTAL = 'horizontal'
