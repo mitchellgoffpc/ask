@@ -32,7 +32,7 @@ class BaseConfig:
 
     def __setitem__(self, key: str, value: Any) -> None:
         self.data[key] = value
-        with open(CONFIG_PATH, 'w') as f:
+        with open(self._path, 'w') as f:
             json.dump(self.data, f, indent=2)
 
 Config = BaseConfig(CONFIG_PATH, DEFAULT_CONFIG)
