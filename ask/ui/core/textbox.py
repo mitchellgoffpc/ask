@@ -166,10 +166,10 @@ class TextBoxController(BaseController[TextBox]):
                 text, cursor_pos, history_idx = self.change_line(-1)
             elif direction == 'B':  # Down arrow
                 text, cursor_pos, history_idx = self.change_line(1)
-            elif direction == '5~':  # Page Down
-                text, cursor_pos, history_idx = self.change_history_idx(-1)
-            elif direction == '6~':  # Page Up
+            elif direction == '5~':  # Page down
                 text, cursor_pos, history_idx = self.change_history_idx(1)
+            elif direction == '6~':  # Page up
+                text, cursor_pos, history_idx = self.change_history_idx(-1)
         elif ch == '\x7f' and cursor_pos > 0:  # Alt+Backspace, delete word
             pos = cursor_pos - 1
             while pos >= 0 and is_stop_char(text[pos]):
@@ -178,6 +178,13 @@ class TextBoxController(BaseController[TextBox]):
                 pos -= 1
             text = text[:pos + 1] + text[cursor_pos:]
             cursor_pos = pos + 1
+        elif ch == 'd':  # Alt+D, delete word
+            pos = cursor_pos
+            while pos < len(text) and is_stop_char(text[pos]):
+                pos += 1
+            while pos < len(text) and not is_stop_char(text[pos]):
+                pos += 1
+            text = text[:cursor_pos] + text[pos:]
         elif ch == '\r':  # Alt+Enter, newline
             text = text[:cursor_pos] + '\n' + text[cursor_pos:]
             cursor_pos += 1

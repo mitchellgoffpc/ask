@@ -14,7 +14,6 @@ class TestRenderMarkdown(unittest.TestCase):
             ("# Heading", f"{Styles.BOLD}Heading{Styles.BOLD_END}", "heading formatting"),
             ("```\n*hello*\n```", "*hello*", "fenced code block"),
         ]
-
         for input_text, expected, description in test_cases:
             with self.subTest(description=description):
                 result = render_markdown(input_text)
@@ -37,7 +36,6 @@ class TestRenderMarkdown(unittest.TestCase):
             ("`Code with & < >`", f"{Colors.HEX(Theme.BLUE)}Code with & < >{Colors.END}", "special chars in code"),
             ("**Bold & italic**", f"{Styles.BOLD}Bold & italic{Styles.BOLD_END}", "special chars in bold"),
         ]
-
         for input_text, expected, description in test_cases:
             with self.subTest(description=description):
                 result = render_markdown(input_text)

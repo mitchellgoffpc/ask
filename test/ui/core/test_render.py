@@ -31,7 +31,6 @@ class TestRender(unittest.TestCase):
             ("auto width", None, [('Hello', None, 5), ('World', None, 5)]),
             ("mixed width types", 30, [('Fixed', 10, 10), ('Fraction', 0.625, 10), ('Auto', None, 4)]),
         ]
-
         for description, width, _children in test_cases:
             with self.subTest(description=description):
                 box = Box(width=width, flex=Axis.HORIZONTAL)[(Text(text, width=width) for text, width, _ in _children)]

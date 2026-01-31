@@ -7,7 +7,8 @@ class TestAnsiStrip(unittest.TestCase):
         test_cases = [
             ("plain text", "plain text"),
             (f"foo{Colors.RED}bar{Colors.END}baz", "foobarbaz"),
-            (f"{Styles.BOLD}[{Colors.BLUE}hello world{Colors.END}]{Styles.BOLD_END}", "[hello world]")]
+            (f"{Styles.BOLD}[{Colors.BLUE}hello world{Colors.END}]{Styles.BOLD_END}", "[hello world]"),
+        ]
         for input_text, expected in test_cases:
             self.assertEqual(ansi_strip(input_text), expected)
 
@@ -17,7 +18,8 @@ class TestAnsiLen(unittest.TestCase):
         test_cases = [
             ("plain text", 10),
             (f"foo{Colors.RED}bar{Colors.END}baz", 9),
-            (f"{Styles.BOLD}[{Colors.BLUE}hello world{Colors.END}]{Styles.BOLD_END}", 13)]
+            (f"{Styles.BOLD}[{Colors.BLUE}hello world{Colors.END}]{Styles.BOLD_END}", 13),
+        ]
         for input_text, expected in test_cases:
             self.assertEqual(ansi_len(input_text), expected)
 
@@ -56,7 +58,8 @@ class TestWrapLines(unittest.TestCase):
             ("single character", f"{Colors.RED}A{Colors.END}", 1),
             ("multiple lines", "line1\nline2", 5),
             ("multiple styled lines", f"{Colors.RED}line1{Colors.END}\n{Colors.BLUE}line2{Colors.END}", 5),
-            ("trailing newline", "line1\nline2\n", 5)]
+            ("trailing newline", "line1\nline2\n", 5)
+        ]
         for description, styled_text, width in test_cases:
             with self.subTest(description=description):
                 self.assertEqual(wrap_lines(styled_text, width, wrap_words=False), styled_text)
@@ -66,7 +69,8 @@ class TestWrapLines(unittest.TestCase):
         test_cases = [
             ("one character short", f"{Colors.RED}line\nline2{Colors.END}", f"{Colors.RED}line{Colors.END}\n{Colors.RED}line2{Colors.END}", 5),
             ("exact fit", f"{Colors.RED}line1\nline2{Colors.END}", f"{Colors.RED}line1{Colors.END}\n{Colors.RED}line2{Colors.END}", 5),
-            ("with empty line", f"{Colors.RED}line1\n\nline2{Colors.END}", f"{Colors.RED}line1{Colors.END}\n\n{Colors.RED}line2{Colors.END}", 5)]
+            ("with empty line", f"{Colors.RED}line1\n\nline2{Colors.END}", f"{Colors.RED}line1{Colors.END}\n\n{Colors.RED}line2{Colors.END}", 5),
+        ]
         for description, styled_text, expected, width in test_cases:
             with self.subTest(description=description):
                 self.assertEqual(wrap_lines(styled_text, width, wrap_words=False), expected)
@@ -92,7 +96,8 @@ class TestWrapLines(unittest.TestCase):
             ("simple wrap", "This is a very long line", "This is a\nvery long\nline", 10),
             ("long word break", "supercalifragilistic", "supercal\nifragili\nstic", 8),
             ("word exact length", "hello world", "hello\nworld", 5),
-            ("leading whitespace", "test    space\n  a", "test \nspace\n  a", 5),]
+            ("leading whitespace", "test    space\n  a", "test \nspace\n  a", 5),
+        ]
         for description, input_text, expected, width in test_cases:
             with self.subTest(description=description):
                 self.assertEqual(wrap_lines(input_text, width, wrap_words=True), expected)

@@ -44,7 +44,6 @@ class TestLayout(unittest.TestCase):
             ("child text width constraint", (Axis.HORIZONTAL, 20, None), (20, 2), [('This text is longer than twenty chars', None, None)], [(0, 0, 20, 2)]),
             ("child box width constraint", (Axis.HORIZONTAL, 20, None), (20, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 10, 1)]),
         ]
-
         for description, (flex, width, height), (expected_width, expected_height), children, expected_layouts in test_cases:
             with self.subTest(flex=flex, description=description):
                 texts = [Text(text, width=width, height=height) for text, width, height in children]
@@ -73,7 +72,6 @@ class TestLayout(unittest.TestCase):
             ("child width constraint", (20, None), (None, None), ('Wide', 30, None), (20, 1), (20, 1)),
             ("child height constraint", (None, 3), (None, None), ('Tall', None, 5), (4, 3), (4, 3)),
         ]
-
         for description, (outer_w, outer_h), (inner_w, inner_h), (text, w, h), (exp_outer_w, exp_outer_h), (exp_text_w, exp_text_h) in test_cases:
             with self.subTest(description=description):
                 text_elem = Text(text, width=w, height=h)
@@ -109,7 +107,6 @@ class TestLayout(unittest.TestCase):
                 [(0, 0, 13, 13), (0, 13, 1, 1)]),
             ("child chrome, tight packing", Axis.HORIZONTAL, (0, 0, 0), (3, 3), [(Colors.hex('A', '#333333'), 3, None, (1, 0, 0))], [(0, 0, 3, 3)]),
         ]
-
         for description, flex, chrome, (expected_w, expected_h), children, expected_layouts in test_cases:
             with self.subTest(flex=flex, description=description):
                 texts = [Text(text, width=width, height=height, **make_chrome(*chrome)) for text, width, height, chrome in children]
