@@ -199,26 +199,44 @@ def ansi_slice(string: str, start: int, end: int) -> str:
         reset += Styles.RESET
     return ''.join(result) + reset
 
-def wrap_lines(content: str, max_width: int) -> str:
+def wrap_lines(content: str, max_width: int, wrap_words: bool = False) -> str:
     result = StringIO()
     pos = 0
     wrapped = False
-    while line := ansi_slice(content, pos, pos + max_width):
+    while line := ansi_slice(content, pos, pos + max_width + 1):
         plaintext = ansi_strip(line)
-        if leading_newlines := len(plaintext) - len(plaintext.lstrip('\n')):  # leading newlines get inserted directly
-            result.write('\n' * leading_newlines)
+        if leading_newlines := len(plaintext) - len(plaintext.lstrip('\n')):  # leading newlines gets inserted directly
+            result.write(plaintext[:leading_newlines])
             pos += leading_newlines
             wrapped = False
+            continue
+        if wrap_words and (leading_whitespace := len(plaintext) - len(plaintext.lstrip(' \t'))):
+            if not wrapped:
+                result.write(plaintext[:leading_whitespace])
+            pos += leading_whitespace
+            continue
+
+        if wrapped:
+            result.write('\n')
+        # if there's a newline in the next segment, wrap there
+        if (newline_pos := plaintext.find('\n')) >= 0:
+            line_len = newline_pos
+            line = ansi_slice(content, pos, pos + line_len)
+            wrapped = False
+        # if there's no spaces / line is short / space at wrap point, wrap at max width
+        elif not wrap_words or ' ' not in plaintext or len(plaintext) <= max_width or plaintext[max_width] == ' ':
+            line_len = max_width + (0 if not wrap_words or ' ' not in plaintext else 1)
+            line = ansi_slice(content, pos, pos + max_width)
+            wrapped = True
+        # otherwise, find the last whitespace before the wrap point
         else:
-            if wrapped:
-                result.write('\n')
-            line_len = max_width
-            if (newline_pos := line.find('\n')) >= 0:
-                line_len = ansi_len(line[:newline_pos])
-                line = ansi_slice(content, pos, pos + line_len)
-            wrapped = newline_pos == -1  # if there are no newlines, we'll wrap on the next line
-            result.write(line)
-            pos += line_len
+            last_whitespace_idx = plaintext.rfind(' ')
+            line = ansi_slice(content, pos, pos + last_whitespace_idx)
+            line_len = last_whitespace_idx + 1
+            wrapped = True
+        result.write(line)
+        pos += line_len
+
     return result.getvalue()
 
 

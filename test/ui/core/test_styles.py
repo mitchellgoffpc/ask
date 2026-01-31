@@ -87,3 +87,33 @@ class TestWrapLines(unittest.TestCase):
         self.assertEqual(lines[0], f"{Colors.RED}This is:{Colors.END}")
         self.assertEqual(lines[1], f"{Colors.RED}a very long red text{Colors.END}")
         self.assertEqual(lines[2], f"{Colors.RED} that should wrap.{Colors.END}")
+
+
+class TestWordWrapLines(unittest.TestCase):
+    def test_no_wrap(self):
+        test_cases = [
+            ("plain text", "Hello World", 20),
+            ("single character", f"{Colors.RED}A{Colors.END}", 1),
+            ("multiple lines", "line1\nline2", 5),
+            ("multiple styled lines", f"{Colors.RED}line1{Colors.END}\n{Colors.BLUE}line2{Colors.END}", 5),
+            ("trailing newline", "line1\nline2\n", 5),
+        ]
+        for description, styled_text, width in test_cases:
+            with self.subTest(description=description):
+                self.assertEqual(wrap_lines(styled_text, width, wrap_words=True), styled_text)
+
+    def test_wrap_between_words(self):
+        text = "This is a very long line"
+        self.assertEqual(wrap_lines(text, 10, wrap_words=True), "This is a\nvery long\nline")
+    def test_long_word_breaks(self):
+        self.assertEqual(wrap_lines("supercalifragilistic", 8, wrap_words=True), "supercal\nifragili\nstic")
+
+    def test_word_exact_length(self):
+        self.assertEqual(wrap_lines("hello world", 5, wrap_words=True), "hello\nworld")
+
+    def test_multiple_whitespace(self):
+        self.assertEqual(wrap_lines("a  b   c", 4, wrap_words=True), "a  b\nc")
+
+    def test_styled_text(self):
+        styled_text = f"{Colors.RED}hello world{Colors.END}"
+        self.assertEqual(wrap_lines(styled_text, 5, wrap_words=True), f"{Colors.RED}hello{Colors.END}\n{Colors.RED}world{Colors.END}")
