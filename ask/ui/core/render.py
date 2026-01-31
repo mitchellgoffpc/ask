@@ -71,7 +71,7 @@ def _render(tree: ElementTree, element: Element) -> list[str]:
 
     match element:
         case Text():
-            wrapped = element.wrap(content_width)
+            wrapped = element.wrapped(content_width)
             rows = [line + ' ' * (content_width - ansi_len(line)) for line in wrapped.split('\n')]
             rows = rows + [' ' * content_width for _ in range(content_height - len(rows))]
         case Box():

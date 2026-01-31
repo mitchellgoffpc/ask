@@ -65,11 +65,11 @@ def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_l
     else:  # None - flexible, size to content
         if isinstance(element, Text):
             if axis is Axis.HORIZONTAL:
-                wrapped = element.wrap(content_length) if content_length else element.text.replace('\t', ' ' * 8)
+                wrapped = element.wrapped(content_length) if content_length else element.text.replace('\t', ' ' * 8)
                 inner_length = max((ansi_len(line) for line in wrapped.split('\n')), default=0)
             else:  # VERTICAL - heights depend on widths for text wrapping
                 content_width = max(0, tree.widths[element.uuid] - element.chrome(Axis.HORIZONTAL))
-                wrapped = element.wrap(content_width)
+                wrapped = element.wrapped(content_width)
                 inner_length = wrapped.count('\n') + 1 if wrapped else 0
         elif flex is axis:
             inner_length = sum((computed_lengths[c.uuid] for c in collapsed), start=0)

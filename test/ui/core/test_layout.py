@@ -4,7 +4,7 @@ import unittest
 from ask.ui.core.components import Box, Text
 from ask.ui.core.tree import ElementTree, mount
 from ask.ui.core.layout import layout
-from ask.ui.core.styles import Colors, Axis
+from ask.ui.core.styles import Colors, Axis, Wrap
 from test.ui.core.helpers import WideTree, DeepTree
 
 class TestLayout(unittest.TestCase):
@@ -46,7 +46,7 @@ class TestLayout(unittest.TestCase):
         ]
         for description, (flex, width, height), (expected_width, expected_height), children, expected_layouts in test_cases:
             with self.subTest(flex=flex, description=description):
-                texts = [Text(text, width=width, height=height) for text, width, height in children]
+                texts = [Text(text, width=width, height=height, wrap=Wrap.EXACT) for text, width, height in children]
                 box = Box(flex=flex, width=width, height=height)[texts]
                 tree = ElementTree(box)
                 mount(tree, box)

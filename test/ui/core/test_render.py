@@ -39,8 +39,8 @@ class TestRender(unittest.TestCase):
                 self.assertEqual(render_once(box), expected_result)
 
     def test_layout_width_constraint(self):
-        text = Text("Very long text that should be wrapped")
-        self.assertEqual(render_once(text, max_width=10), "Very long \ntext that \nshould be \nwrapped   ")
+        text = Text("Very long text that should be wrapped", width=10)
+        self.assertEqual(render_once(text), "Very long \ntext that \nshould be \nwrapped   ")
 
     def test_parent_width_constraint(self):
         box = Box()[Box(width=10)[Text("Very long text that should be wrapped")]]

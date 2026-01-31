@@ -11,6 +11,54 @@ ANSI_BACKGROUND_OFFSET = 10
 ANSI_256_SUPPORT = '256color' in os.getenv("TERM", '')
 ANSI_16M_SUPPORT = 'truecolor' in os.getenv("COLORTERM", '') or '24bit' in os.getenv("COLORTERM", '')
 
+class Axis(Enum):
+    VERTICAL = 'vertical'
+    HORIZONTAL = 'horizontal'
+
+class Wrap(Enum):
+    EXACT = 'exact'
+    WORDS = 'words'
+
+@dataclass
+class BorderStyle:
+    top_left: str
+    top: str
+    top_right: str
+    right: str
+    bottom_right: str
+    bottom: str
+    bottom_left: str
+    left: str
+
+class Borders:
+    SINGLE = BorderStyle("┌", "─", "┐", "│", "┘", "─", "└", "│")
+    DOUBLE = BorderStyle("╔", "═", "╗", "║", "╝", "═", "╚", "║")
+    ROUND = BorderStyle("╭", "─", "╮", "│", "╯", "─", "╰", "│")
+    BOLD = BorderStyle("┏", "━", "┓", "┃", "┛", "━", "┗", "┃")
+    SINGLE_DOUBLE = BorderStyle("╓", "─", "╖", "║", "╜", "─", "╙", "║")
+    DOUBLE_SINGLE = BorderStyle("╒", "═", "╕", "│", "╛", "═", "╘", "│")
+    CLASSIC = BorderStyle("+", "-", "+", "|", "+", "-", "+", "|")
+
+class Theme:
+    RED = '#FF6B80'
+    DARK_RED = '#7A2936'
+    FADED_RED = '#69484D'
+    LIGHT_ORANGE = '#EB9F7F'
+    ORANGE = '#D77757'
+    GREEN = '#4EBA65'
+    DARK_GREEN = '#225C2B'
+    FADED_GREEN = '#47584A'
+    BLUE = '#B1B9F9'
+    PURPLE = '#A669FF'
+    DARK_PURPLE = '#482F70'
+    PINK = '#FD5DB1'
+    GRAY = '#AAAAAA'
+    DARK_GRAY = '#888888'
+    WHITE = '#FFFFFF'
+
+
+# ANSI escape helpers
+
 def ansi16(code: int, *, offset: int = 0) -> str:
     return f"\u001B[{code + offset}m"
 
@@ -199,7 +247,7 @@ def ansi_slice(string: str, start: int, end: int) -> str:
         reset += Styles.RESET
     return ''.join(result) + reset
 
-def wrap_lines(content: str, max_width: int, wrap_words: bool = False) -> str:
+def wrap_lines(content: str, max_width: int, wrap: Wrap = Wrap.EXACT) -> str:
     if max_width == 0:
         return ''
     result = StringIO()
@@ -212,7 +260,7 @@ def wrap_lines(content: str, max_width: int, wrap_words: bool = False) -> str:
             pos += leading_newlines
             wrapped = False
             continue
-        if wrap_words and (leading_whitespace := len(plaintext) - len(plaintext.lstrip(' \t'))):
+        if wrap is Wrap.WORDS and (leading_whitespace := len(plaintext) - len(plaintext.lstrip(' \t'))):
             if not wrapped:
                 result.write(plaintext[:leading_whitespace])
             pos += leading_whitespace
@@ -226,8 +274,8 @@ def wrap_lines(content: str, max_width: int, wrap_words: bool = False) -> str:
             line = ansi_slice(content, pos, pos + line_len)
             wrapped = False
         # if there's no spaces / line is short / space at wrap point, wrap at max width
-        elif not wrap_words or ' ' not in plaintext or len(plaintext) <= max_width or plaintext[max_width] == ' ':
-            line_len = max_width + (0 if not wrap_words or ' ' not in plaintext else 1)
+        elif wrap is Wrap.EXACT or ' ' not in plaintext or len(plaintext) <= max_width or plaintext[max_width] == ' ':
+            line_len = max_width + (0 if wrap is Wrap.EXACT or ' ' not in plaintext else 1)
             line = ansi_slice(content, pos, pos + max_width)
             wrapped = True
         # otherwise, find the last whitespace before the wrap point
@@ -330,45 +378,3 @@ class Colors:
     @staticmethod
     def bg_rgb(text: str, rgb: tuple[int, int, int]) -> str:
         return apply_style(text, start=rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
-
-
-@dataclass
-class BorderStyle:
-    top_left: str
-    top: str
-    top_right: str
-    right: str
-    bottom_right: str
-    bottom: str
-    bottom_left: str
-    left: str
-
-class Borders:
-    SINGLE = BorderStyle("┌", "─", "┐", "│", "┘", "─", "└", "│")
-    DOUBLE = BorderStyle("╔", "═", "╗", "║", "╝", "═", "╚", "║")
-    ROUND = BorderStyle("╭", "─", "╮", "│", "╯", "─", "╰", "│")
-    BOLD = BorderStyle("┏", "━", "┓", "┃", "┛", "━", "┗", "┃")
-    SINGLE_DOUBLE = BorderStyle("╓", "─", "╖", "║", "╜", "─", "╙", "║")
-    DOUBLE_SINGLE = BorderStyle("╒", "═", "╕", "│", "╛", "═", "╘", "│")
-    CLASSIC = BorderStyle("+", "-", "+", "|", "+", "-", "+", "|")
-
-class Theme:
-    RED = '#FF6B80'
-    DARK_RED = '#7A2936'
-    FADED_RED = '#69484D'
-    LIGHT_ORANGE = '#EB9F7F'
-    ORANGE = '#D77757'
-    GREEN = '#4EBA65'
-    DARK_GREEN = '#225C2B'
-    FADED_GREEN = '#47584A'
-    BLUE = '#B1B9F9'
-    PURPLE = '#A669FF'
-    DARK_PURPLE = '#482F70'
-    PINK = '#FD5DB1'
-    GRAY = '#AAAAAA'
-    DARK_GRAY = '#888888'
-    WHITE = '#FFFFFF'
-
-class Axis(Enum):
-    VERTICAL = 'vertical'
-    HORIZONTAL = 'horizontal'

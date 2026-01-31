@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args, TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from ask.ui.core.styles import Axis, Borders, BorderStyle, wrap_lines
+from ask.ui.core.styles import Axis, Borders, BorderStyle, Wrap, wrap_lines
 if TYPE_CHECKING:
     from ask.ui.core.tree import ElementTree
 
@@ -58,12 +58,13 @@ class Element(Component):
 @dataclass
 class Text(Element):
     text: str
+    wrap: Wrap = field(default=Wrap.WORDS, kw_only=True)
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
 
-    def wrap(self, width: int) -> str:
-        return wrap_lines(self.text.replace('\t', ' ' * 8), width)
+    def wrapped(self, width: int) -> str:
+        return wrap_lines(self.text.replace('\t', ' ' * 8), width, wrap=self.wrap)
 
 @dataclass
 class Box(Element):

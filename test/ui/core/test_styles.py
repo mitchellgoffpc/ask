@@ -1,6 +1,6 @@
 import unittest
 
-from ask.ui.core.styles import Colors, Styles, ansi_strip, ansi_len, ansi_slice, ansi256, ansi16m, wrap_lines
+from ask.ui.core.styles import Colors, Styles, Wrap, ansi_strip, ansi_len, ansi_slice, ansi256, ansi16m, wrap_lines
 
 class TestAnsiStrip(unittest.TestCase):
     def test_ansi_strip(self):
@@ -62,8 +62,8 @@ class TestWrapLines(unittest.TestCase):
         ]
         for description, styled_text, width in test_cases:
             with self.subTest(description=description):
-                self.assertEqual(wrap_lines(styled_text, width, wrap_words=False), styled_text)
-                self.assertEqual(wrap_lines(styled_text, width, wrap_words=True), styled_text)
+                self.assertEqual(wrap_lines(styled_text, width, wrap=Wrap.EXACT), styled_text)
+                self.assertEqual(wrap_lines(styled_text, width, wrap=Wrap.WORDS), styled_text)
 
     def test_wrap_styled_lines(self):
         test_cases = [
@@ -73,23 +73,23 @@ class TestWrapLines(unittest.TestCase):
         ]
         for description, styled_text, expected, width in test_cases:
             with self.subTest(description=description):
-                self.assertEqual(wrap_lines(styled_text, width, wrap_words=False), expected)
-                self.assertEqual(wrap_lines(styled_text, width, wrap_words=True), expected)
+                self.assertEqual(wrap_lines(styled_text, width, wrap=Wrap.EXACT), expected)
+                self.assertEqual(wrap_lines(styled_text, width, wrap=Wrap.WORDS), expected)
 
-    def test_wrap_lines(self):
+    def test_wrap_exact(self):
         styled_text = f"{Colors.RED}This is a very {Styles.BOLD}long red text{Styles.BOLD_END} that should wrap{Colors.END}"
         expected_result = (
             f"{Colors.RED}This is a very {Styles.BOLD}long {Colors.END}{Styles.RESET}\n"
             f"{Styles.BOLD}{Colors.RED}red text{Styles.BOLD_END} that should{Colors.END}\n"
             f"{Colors.RED} wrap{Colors.END}")
-        self.assertEqual(wrap_lines(styled_text, 20, wrap_words=False), expected_result)
+        self.assertEqual(wrap_lines(styled_text, 20, wrap=Wrap.EXACT), expected_result)
 
         styled_text = f"{Colors.RED}This is:\na very long red text that should wrap.{Colors.END}"
         expected_result = (
             f"{Colors.RED}This is:{Colors.END}\n"
             f"{Colors.RED}a very long red text{Colors.END}\n"
             f"{Colors.RED} that should wrap.{Colors.END}")
-        self.assertEqual(wrap_lines(styled_text, 20, wrap_words=False), expected_result)
+        self.assertEqual(wrap_lines(styled_text, 20, wrap=Wrap.EXACT), expected_result)
 
     def test_wrap_words(self):
         test_cases = [
@@ -100,4 +100,4 @@ class TestWrapLines(unittest.TestCase):
         ]
         for description, input_text, expected, width in test_cases:
             with self.subTest(description=description):
-                self.assertEqual(wrap_lines(input_text, width, wrap_words=True), expected)
+                self.assertEqual(wrap_lines(input_text, width, wrap=Wrap.WORDS), expected)

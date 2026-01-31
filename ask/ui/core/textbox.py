@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from ask.ui.core.components import Length, Component, Text, Widget, BaseController
-from ask.ui.core.styles import Axis, Colors, Styles
+from ask.ui.core.styles import Axis, Colors, Styles, Wrap
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 
@@ -295,5 +295,5 @@ class TextBoxController(BaseController[TextBox]):
                 under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
                 styled_text = before + Styles.inverse(under) + after
 
-        self.text_ref = Text(styled_text, width=self.props.width)
+        self.text_ref = Text(styled_text, width=self.props.width, wrap=Wrap.EXACT)
         return [self.text_ref]
