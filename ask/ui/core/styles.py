@@ -200,6 +200,8 @@ def ansi_slice(string: str, start: int, end: int) -> str:
     return ''.join(result) + reset
 
 def wrap_lines(content: str, max_width: int, wrap_words: bool = False) -> str:
+    if max_width == 0:
+        return ''
     result = StringIO()
     pos = 0
     wrapped = False
