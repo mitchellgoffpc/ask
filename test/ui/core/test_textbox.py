@@ -1,8 +1,10 @@
 import unittest
 from unittest.mock import Mock
 
-from ask.ui.core.components import Box
+from ask.ui.core.components import Box, Text
 from ask.ui.core.layout import layout
+from ask.ui.core.render import render
+from ask.ui.core.styles import Styles, Wrap
 from ask.ui.core.tree import ElementTree, mount, update
 from ask.ui.core.textbox import TextBox, TextBoxController
 
@@ -14,31 +16,49 @@ def create_tree(textbox: TextBox) -> tuple[ElementTree, Box, TextBoxController]:
     return tree, root, textbox.controller
 
 class TestTextBoxWrapping(unittest.TestCase):
-    def test_textbox_line_wrapping_methods(self):
-        tree, root, textbox = create_tree(TextBox(width=5))
-        textbox._text = 'Hello World'
-        textbox._cursor_pos = 8
-        update(tree, root)
-        layout(tree, root)
+    def test_textbox_wrapping_rendering(self):
+        test_cases = [
+            ("empty text", "", 0, 10, Wrap.EXACT, Styles.inverse(' ')),
+            ("cursor at start", "Hello", 0, 10, Wrap.EXACT, Styles.inverse('H') + "ello"),
+            ("cursor in middle", "Hello", 2, 10, Wrap.EXACT, "He" + Styles.inverse('l') + "lo"),
+            ("cursor at end", "Hello", 5, 10, Wrap.EXACT, "Hello" + Styles.inverse(' ')),
+            ("exact wrap at width boundary", "12345", 5, 5, Wrap.EXACT, "12345\n" + Styles.inverse(' ')),
+            ("exact wrap cursor at line end", "1234567890", 5, 5, Wrap.EXACT, "12345\n" + Styles.inverse('6') + "7890"),
+            ("exact wrap cursor in second line", "1234567890", 7, 5, Wrap.EXACT, "12345\n67" + Styles.inverse('8') + "90"),
+            ("exact wrap with newline", "123\n456", 4, 10, Wrap.EXACT, "123 \n" + Styles.inverse('4') + "56"),
+            ("word wrap no break needed", "Hello", 2, 10, Wrap.WORDS, "He" + Styles.inverse('l') + "lo"),
+            ("word wrap at space", "Hello World", 6, 6, Wrap.WORDS, "Hello \n" + Styles.inverse('W') + "orld"),
+            ("word wrap at space + cursor, ", "Hello World", 5, 6, Wrap.WORDS, "Hello" + Styles.inverse(' ') + "\nWorld"),
+            ("word wrap at cursor before space", "At the ball", 6, 6, Wrap.WORDS, "At \nthe" + Styles.inverse(' ') + "\nball"),
+            ("word wrap, cursor past end", "Hello    ", 8, 6, Wrap.WORDS, "Hello" + Styles.inverse(' ')),
+            ("word wrap long word breaks", "Supercalifragilistic", 10, 10, Wrap.WORDS, "Supercali\nf" + Styles.inverse('r') + "agilist\nic"),
+            ("cursor right after newline", "Hello\nWorld", 6, 10, Wrap.EXACT, "Hello \n" + Styles.inverse('W') + "orld"),
+            ("exact wrap multiple lines cursor end", "123456789", 9, 5, Wrap.EXACT, "12345\n6789" + Styles.inverse(' ')),
+            ("word wrap trailing spaces", "Hi       World", 5, 6, Wrap.WORDS, "Hi   " + Styles.inverse(' ') + "\nWorld"),
+            ("word wrap trailing spaces, cursor past end", "Hi       World", 7, 6, Wrap.WORDS, "Hi   " + Styles.inverse(' ') + "\nWorld"),
+        ]
 
-        # Test cursor line/col calculation
-        line, col = textbox.get_cursor_line_col()
-        self.assertEqual(line, 1)
-        self.assertEqual(col, 3)
+        for description, text, cursor_pos, width, wrap, expected_text in test_cases:
+            with self.subTest(description=description):
+                textbox = TextBoxController(TextBox(width=width, wrap=wrap))
+                textbox._text = text
+                textbox._cursor_pos = cursor_pos
+                text_elem = textbox.contents()[0]
+                assert isinstance(text_elem, Text)
+                self.assertEqual(text_elem.wrapped(width), expected_text,  f"Failed: {description}\nText: {repr(text)}\nCursor: {cursor_pos}\nWidth: {width}")
 
-        # Test total lines calculation
-        total_lines = textbox.get_total_lines()
-        self.assertGreater(total_lines, 0)
-
-        # Test line start/end position calculation
-        line_start = textbox.get_line_start_position(0)
-        line_end = textbox.get_line_end_position(0)
-        self.assertGreaterEqual(line_end, line_start)
+    def test_textbox_width_limit(self):
+        tree, root, textbox = create_tree(TextBox(width=1.0, wrap=Wrap.WORDS))
+        textbox._text = "123456789     "
+        textbox._cursor_pos = 12
+        update(tree, textbox)
+        layout(tree, root, available_width=10)
+        self.assertEqual(render(tree, root), '123456789' + Styles.inverse(' '))
 
 
 class TestTextBoxInputHandling(unittest.TestCase):
     def test_textbox_basic_text_editing(self):
-        cases = [
+        test_cases = [
             ("insert at end", "", 0, ["A", "B"], "AB", 2),
             ("insert in middle", "AB", 1, ["X"], "AXB", 2),
             ("backspace at end", "Hello", 5, ["\x7f"], "Hell", 4),
@@ -53,7 +73,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
             ("insert newline after cursor (Ctrl+O)", "Hello", 2, ["\x0f"], "He\nllo", 2),
             ("insert newline at cursor (Alt+Enter)", "Hello World", 5, ["\x1b\r"], "Hello\n World", 6),
         ]
-        for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor in cases:
+        for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor in test_cases:
             with self.subTest(description=description):
                 textbox = TextBoxController(TextBox(width=20))
                 textbox._text = initial_text
@@ -64,7 +84,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
                 self.assertEqual(textbox.cursor_pos, expected_cursor)
 
     def test_textbox_navigation_keybindings(self):
-        cases = [
+        test_cases = [
             ("move backward one character (Ctrl+B / left arrow)", "Hello World", 5, ["\x02", "\x1b[D"], 4),
             ("move forward one character (Ctrl+F / right arrow)", "Hello World", 4, ["\x06", "\x1b[C"], 5),
             ("move to next line (Ctrl+N / down arrow)", "Hello\nWorld\nTest", 0, ["\x0e", "\x1b[B"], 6),
@@ -78,7 +98,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
             ("move to start at start no-op", "Hello\nWorld", 0, ["\x01"], 0),
             ("move to end at end no-op", "Hello\nWorld", 11, ["\x05"], 11),
         ]
-        for description, initial_text, initial_cursor, inputs, expected_cursor in cases:
+        for description, initial_text, initial_cursor, inputs, expected_cursor in test_cases:
             for ch in inputs:
                 with self.subTest(description=description, input=ch):
                     tree, root, textbox = create_tree(TextBox(width=20))
@@ -90,7 +110,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
                     self.assertEqual(textbox.cursor_pos, expected_cursor)
 
     def test_textbox_history_paging_keybindings(self):
-        cases = [
+        test_cases = [
             ("move to newer history entry (page down)", "first", 5, ["\x1b[5~", "\x0e", "\x1b[B"], "second", 6, ["first", "second", "third"], 0),
             ("move to older history entry (page up)", "third", 5, ["\x1b[6~", "\x10", "\x1b[A"], "second", 6, ["first", "second", "third"], 2),
             ("page up at oldest entry no-op", "first", 5, ["\x1b[6~"], "first", 5, ["first", "second", "third"], 0),
@@ -98,7 +118,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
             ("move to previous line no page up", "line1\nline2\nline3", 12, ["\x10", "\x1b[A"], "line1\nline2\nline3", 6, ["first", "second"], 1),
             ("move to next line no page down", "line1\nline2\nline3", 0, ["\x0e", "\x1b[B"], "line1\nline2\nline3", 6, ["first", "second"], 0),
         ]
-        for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor, history, history_idx in cases:
+        for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor, history, history_idx in test_cases:
             for ch in inputs:
                 with self.subTest(description=description, input=ch):
                     tree, root, textbox = create_tree(TextBox(width=20))
@@ -112,29 +132,29 @@ class TestTextBoxInputHandling(unittest.TestCase):
                     self.assertEqual(textbox.cursor_pos, expected_cursor)
 
     def test_textbox_kill_yank_and_mark_keybindings(self):
-        cases = [
+        test_cases = [
             ("set mark (Ctrl+Space)", "Hello", 2, "\x00", "Hello", 2, None, 2, None, None),
             ("unset mark (Ctrl+G)", "Hello", 2, "\x07", "Hello", 2, 1, None, None, None),
             ("kill to end of line (Ctrl+K)", "Hello World", 5, "\x0b", "Hello", 5, None, None, None, " World"),
             ("kill region (Ctrl+W)", "Hello", 4, "\x17", "Ho", 1, 1, None, None, "ell"),
             ("yank (Ctrl+Y)", "Ho", 1, "\x19", "Hello", 4, None, None, "ell", None),
         ]
-        for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor, mark, expected_mark, kill_buffer, expected_kill_buffer in cases:
+        for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor, mark, expected_mark, kill_buf, expected_kill_buf in test_cases:
             with self.subTest(description=description):
                 textbox = TextBoxController(TextBox(width=20))
                 textbox._text = initial_text
                 textbox._cursor_pos = initial_cursor
                 if mark is not None:
                     textbox.mark = mark
-                if kill_buffer is not None:
-                    textbox.kill_buffer = kill_buffer
+                if kill_buf is not None:
+                    textbox.kill_buffer = kill_buf
                 textbox.handle_input(inputs)
                 self.assertEqual(textbox.text, expected_text)
                 self.assertEqual(textbox.cursor_pos, expected_cursor)
                 if expected_mark is not None:
                     self.assertEqual(textbox.mark, expected_mark)
-                if expected_kill_buffer is not None:
-                    self.assertEqual(textbox.kill_buffer, expected_kill_buffer)
+                if expected_kill_buf is not None:
+                    self.assertEqual(textbox.kill_buffer, expected_kill_buf)
 
     def test_textbox_change_callback(self):
         handle_change = Mock()

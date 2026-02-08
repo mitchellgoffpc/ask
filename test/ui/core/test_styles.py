@@ -33,7 +33,7 @@ class TestAnsiSlice(unittest.TestCase):
             ("ansi256 colors", f"{ansi256(196)}hello{Colors.END} world", 0, 5, f"{ansi256(196)}hello{Colors.END}"),
             ("ansi16m colors", f"{ansi16m(255, 0, 0)}hello{Colors.END} world", 0, 5, f"{ansi16m(255, 0, 0)}hello{Colors.END}"),
             ("background colors", f"{Colors.BG_RED}hello{Colors.BG_END} world", 0, 5, f"{Colors.BG_RED}hello{Colors.BG_END}"),
-            ("styles", f"{Styles.BOLD}hello{Styles.BOLD_END} world", 0, 5, f"{Styles.BOLD}hello{Styles.RESET}"),
+            ("styles", f"{Styles.BOLD}hello{Styles.BOLD_END} world", 0, 5, f"{Styles.BOLD}hello{Styles.BOLD_END}"),
             ("slice inside styled section", f"{Colors.RED}hello world{Colors.END}", 2, 8, f"{Colors.RED}llo wo{Colors.END}"),
             ("slice across styled sections", f"{Colors.RED}hello{Colors.END} {Colors.BLUE}world{Colors.END}", 3, 8,
                                              f"{Colors.RED}lo{Colors.END} {Colors.BLUE}wo{Colors.END}"),
@@ -41,7 +41,7 @@ class TestAnsiSlice(unittest.TestCase):
             ("empty slice at start", f"{Colors.RED}hello{Colors.END}", 0, 0, ""),
             ("empty slice past end", f"{Colors.RED}hello{Colors.END}", 5, 6, ""),
             ("slice starting with color reset", f"{Colors.END}a{Colors.RED}bcd{Colors.END}", 0, 3, f"a{Colors.RED}bc{Colors.END}"),
-            ("slice starting with style reset", f"{Styles.BOLD_END}a{Styles.BOLD}bcd{Styles.BOLD_END}", 0, 3, f"a{Styles.BOLD}bc{Styles.RESET}"),
+            ("slice starting with style reset", f"{Styles.BOLD_END}a{Styles.BOLD}bcd{Styles.BOLD_END}", 0, 3, f"a{Styles.BOLD}bc{Styles.BOLD_END}"),
             ("slice with empty ansi blocks", f"{Colors.RED}{Colors.END}a{Colors.BLUE}{Colors.END}bc{Styles.BOLD}{Styles.BOLD_END}", 0, 3, "abc"),
         ]
         for description, text, start, end, expected in test_cases:
@@ -79,7 +79,7 @@ class TestWrapLines(unittest.TestCase):
     def test_wrap_exact(self):
         styled_text = f"{Colors.RED}This is a very {Styles.BOLD}long red text{Styles.BOLD_END} that should wrap{Colors.END}"
         expected_result = (
-            f"{Colors.RED}This is a very {Styles.BOLD}long {Colors.END}{Styles.RESET}\n"
+            f"{Colors.RED}This is a very {Styles.BOLD}long {Colors.END}{Styles.BOLD_END}\n"
             f"{Styles.BOLD}{Colors.RED}red text{Styles.BOLD_END} that should{Colors.END}\n"
             f"{Colors.RED} wrap{Colors.END}")
         self.assertEqual(wrap_lines(styled_text, 20, wrap=Wrap.EXACT), expected_result)
@@ -101,3 +101,14 @@ class TestWrapLines(unittest.TestCase):
         for description, input_text, expected, width in test_cases:
             with self.subTest(description=description):
                 self.assertEqual(wrap_lines(input_text, width, wrap=Wrap.WORDS), expected)
+
+    def test_wrap_words_with_cursor(self):
+        test_cases = [
+            ("long word wraps at width-1", "supercalifragilistic", "superca\nlifragi\nlistic", 8),
+            ("exact width lines wrap", "this is a test", "this \nis a \ntest", 7),
+            ("keeps trailing space on wrap boundary", "this is a test", "this is \na test", 8),
+        ]
+        for description, input_text, expected, width in test_cases:
+            with self.subTest(description=description):
+                wrapped = wrap_lines(input_text, width, wrap=Wrap.WORDS_WITH_CURSOR)
+                self.assertEqual(wrapped, expected)

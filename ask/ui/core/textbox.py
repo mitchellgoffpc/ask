@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Iterator
 
 from ask.ui.core.components import Length, Component, Text, Widget, BaseController
 from ask.ui.core.styles import Axis, Colors, Styles, Wrap
@@ -10,11 +10,43 @@ REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
 def is_stop_char(ch: str) -> bool:
     return ch in ' \t\n<>@/|&;(){}[]"\'`'
 
+def wrap_lines(text: str, width: int, wrap: Wrap) -> Iterator[tuple[str, bool]]:
+    if width <= 0:
+        return
+    if not text:
+        yield '', False
+        return
+
+    pos = 0
+    while pos < len(text):
+        newline_pos = text.find('\n', pos)
+
+        if newline_pos != -1 and newline_pos - pos <= width:
+            yield text[pos:newline_pos], True
+            pos = newline_pos + 1
+        elif newline_pos == -1 and len(text) - pos <= width:
+            yield text[pos:], False
+            break
+        else:
+            segment_end = pos + width
+            if wrap is not Wrap.EXACT:
+                space_pos = text.rfind(' ', pos, segment_end + 1)
+                if space_pos > pos:
+                    yield text[pos:space_pos + 1], False
+                    pos = space_pos + 1
+                else:
+                    yield text[pos:segment_end], False
+                    pos = segment_end
+            else:
+                yield text[pos:segment_end], False
+                pos = segment_end
+
 @dataclass
 class TextBox(Widget):
     width: Length = 1.0
     text: str | None = None
     placeholder: str = ""
+    wrap: Wrap = Wrap.WORDS
     history: list[str] | None = None
     handle_input: Callable[[str, int], bool] | None = None
     handle_page: Callable[[int], None] | None = None
@@ -22,7 +54,7 @@ class TextBox(Widget):
     handle_submit: Callable[[str], bool] | None = None
 
 class TextBoxController(BaseController[TextBox]):
-    state = ['text', 'cursor_pos', 'history', 'history_idx', 'mark']
+    state = ['_text', '_cursor_pos', 'history', 'history_idx', 'mark']
     _text = ''
     _cursor_pos = 0
     kill_buffer = ''
@@ -220,54 +252,41 @@ class TextBoxController(BaseController[TextBox]):
 
     def change_line(self, direction: int) -> tuple[str, int, int]:
         current_line, current_col = self.get_cursor_line_col()
+        total_lines = self.get_total_lines()
         if ((direction < 0 and current_line == 0) or
-            (direction > 0 and current_line == self.get_total_lines() - 1)):
+            (direction > 0 and current_line == total_lines - 1)):
             return self.change_history_idx(direction)
 
-        new_line = max(0, min(self.get_total_lines() - 1, current_line + direction))
+        new_line = max(0, min(total_lines - 1, current_line + direction))
         if new_line != current_line:
-            line_start = self.get_line_start_position(new_line)
-            cursor_pos = min(line_start + current_col, self.get_line_end_position(new_line))
+            line_start, line_end = self.get_visual_line_bounds(new_line)
+            cursor_pos = min(line_start + current_col, line_end)
             return self.text, cursor_pos, self.history_idx
         return self.text, self.cursor_pos, self.history_idx
 
     def get_cursor_line_col(self) -> tuple[int, int]:
-        paragraphs = self.text[:self.cursor_pos].split('\n')
-        line = sum(max(1, (len(paragraph) + self.content_width) // self.content_width) for paragraph in paragraphs[:-1])
-        line += len(paragraphs[-1]) // self.content_width
-        col = len(paragraphs[-1]) % self.content_width
-        return line, col
+        text_before_cursor = self.text[:self.cursor_pos]
+        lines = list(wrap_lines(text_before_cursor, self.content_width, self.props.wrap))
+        if not lines:
+            return 0, 0
+        if text_before_cursor and text_before_cursor[-1] == '\n':
+            return len(lines), 0
+        return len(lines) - 1, len(lines[-1][0])
 
     def get_total_lines(self) -> int:
-        return sum(max(1, (len(paragraph) + self.content_width) // self.content_width) for paragraph in self.text.split('\n'))
+        return sum(1 for _ in wrap_lines(self.text, self.content_width, self.props.wrap))
 
-    def get_line_start_position(self, line: int) -> int:
+    def get_visual_line_bounds(self, line: int) -> tuple[int, int]:
         current_line = 0
         position = 0
-
-        for paragraph in self.text.split('\n'):
-            lines_in_paragraph = max(1, (len(paragraph) + self.content_width) // self.content_width)
-            if current_line + lines_in_paragraph > line:
-                return position + (line - current_line) * self.content_width
-            current_line += lines_in_paragraph
-            position += len(paragraph) + 1  # +1 for the newline
-
-        return position
-
-    def get_line_end_position(self, line: int) -> int:
-        current_line = 0
-        position = 0
-
-        for paragraph in self.text.split('\n'):
-            lines_in_paragraph = max(1, (len(paragraph) + self.content_width) // self.content_width)
-            if current_line + lines_in_paragraph > line:  # Found the paragraph containing our target line
-                relative_line = line - current_line
-                end = min((relative_line + 1) * self.content_width, len(paragraph))
-                return position + end
-            current_line += lines_in_paragraph
-            position += len(paragraph) + 1  # +1 for the newline
-
-        return position
+        for line_content, is_hard in wrap_lines(self.text, self.content_width, self.props.wrap):
+            if current_line == line:
+                return position, position + len(line_content)
+            current_line += 1
+            position += len(line_content)
+            if is_hard:
+                position += 1
+        return len(self.text), len(self.text)
 
     def contents(self) -> list[Component | None]:
         if not self.text and self.props.placeholder:
@@ -295,5 +314,5 @@ class TextBoxController(BaseController[TextBox]):
                 under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
                 styled_text = before + Styles.inverse(under) + after
 
-        self.text_ref = Text(styled_text, width=self.props.width, wrap=Wrap.EXACT)
+        self.text_ref = Text(styled_text, width=self.props.width, wrap=Wrap.EXACT if self.props.wrap is Wrap.EXACT else Wrap.WORDS_WITH_CURSOR)
         return [self.text_ref]

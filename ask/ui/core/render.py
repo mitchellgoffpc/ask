@@ -125,6 +125,10 @@ async def render_root(_root: Component) -> None:
                     while (ch := sys.stdin.read(1)):
                         sequence += ch
                 propogate(tree, root, sequence, 'input')
+                if sequence == '\x03':
+                    with open('/tmp/render.ansi', 'w') as f:
+                        f.write('\n'.join(previous_render_lines))
+                    break
 
             # Check for dirty components
             if not tree.dirty:

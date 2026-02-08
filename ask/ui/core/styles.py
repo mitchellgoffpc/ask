@@ -18,6 +18,7 @@ class Axis(Enum):
 class Wrap(Enum):
     EXACT = 'exact'
     WORDS = 'words'
+    WORDS_WITH_CURSOR = 'words_with_cursor'
 
 @dataclass
 class BorderStyle:
@@ -155,6 +156,7 @@ def ansi_strip(text: str) -> str:
 def ansi_slice(string: str, start: int, end: int) -> str:
     style_starts = {v: k for k, v in Styles.__dict__.items() if k.isupper() and not k.endswith('_END')}
     style_stops = {v: k.removesuffix('_END') for k, v in Styles.__dict__.items() if k.endswith('_END')}
+    style_starts_to_stops = {k: Styles.__dict__.get(v + '_END', Styles.RESET) for k, v in style_starts.items()}
 
     ansi_pattern = re.compile(r'\u001B\[([0-9;]+)m')
     chunks = []
@@ -243,11 +245,14 @@ def ansi_slice(string: str, start: int, end: int) -> str:
         reset += Colors.END
     if active_bgcolor[0] and active_bgcolor[1]:
         reset += Colors.BG_END
-    if any(active_styles.values()):
-        reset += Styles.RESET
+    for style, used in active_styles.items():
+        if used:
+            reset += style_starts_to_stops[style]
     return ''.join(result) + reset
 
 def wrap_lines(content: str, max_width: int, wrap: Wrap = Wrap.EXACT) -> str:
+    if wrap is Wrap.WORDS_WITH_CURSOR:
+        max_width -= 1
     if max_width == 0:
         return ''
     result = StringIO()
@@ -260,7 +265,11 @@ def wrap_lines(content: str, max_width: int, wrap: Wrap = Wrap.EXACT) -> str:
             pos += leading_newlines
             wrapped = False
             continue
-        if wrap is Wrap.WORDS and (leading_whitespace := len(plaintext) - len(plaintext.lstrip(' \t'))):
+        if wrap in (Wrap.WORDS, Wrap.WORDS_WITH_CURSOR) and (leading_whitespace := len(plaintext) - len(plaintext.lstrip(' \t'))):
+            # This extremely janky code is to handle a cursor that's off the right side of the textbox boundry, since it needs to be capped at the edge
+            if wrapped and wrap is Wrap.WORDS_WITH_CURSOR and (cursor_pos := len(line) - len(line.lstrip(' \t'))) < leading_whitespace:
+                result.seek(result.tell() - 1)
+                result.write(ansi_slice(line, cursor_pos, cursor_pos + 1))
             if not wrapped:
                 result.write(plaintext[:leading_whitespace])
             pos += leading_whitespace
@@ -273,15 +282,20 @@ def wrap_lines(content: str, max_width: int, wrap: Wrap = Wrap.EXACT) -> str:
             line_len = newline_pos
             line = ansi_slice(content, pos, pos + line_len)
             wrapped = False
-        # if there's no spaces / line is short / space at wrap point, wrap at max width
-        elif wrap is Wrap.EXACT or ' ' not in plaintext or len(plaintext) <= max_width or plaintext[max_width] == ' ':
-            line_len = max_width + (0 if wrap is Wrap.EXACT or ' ' not in plaintext else 1)
+        # if exact wrap / there's no spaces / line is short, wrap at max width
+        elif wrap is Wrap.EXACT or ' ' not in plaintext or len(plaintext) <= max_width:
+            line_len = max_width
             line = ansi_slice(content, pos, pos + max_width)
+            wrapped = True
+        # if there's space at wrap point, wrap at max width + 1
+        elif plaintext[-1] == ' ':
+            line_len = max_width + 1
+            line = ansi_slice(content, pos, pos + max_width + (1 if wrap is Wrap.WORDS_WITH_CURSOR else 0))
             wrapped = True
         # otherwise, find the last whitespace before the wrap point
         else:
             last_whitespace_idx = plaintext.rfind(' ')
-            line = ansi_slice(content, pos, pos + last_whitespace_idx)
+            line = ansi_slice(content, pos, pos + last_whitespace_idx + (1 if wrap is Wrap.WORDS_WITH_CURSOR else 0))
             line_len = last_whitespace_idx + 1
             wrapped = True
         result.write(line)
