@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+import traceback
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -76,8 +77,8 @@ class AppController(UI.Controller[App]):
                 self.head = head
         except asyncio.CancelledError:
             self.head = self.messages.add('user', self.head, Error("Request interrupted by user"))
-        except Exception as e:
-            self.head = self.messages.add('user', self.head, Error(str(e)))
+        except Exception:
+            self.head = self.messages.add('user', self.head, Error(traceback.format_exc()))
 
         self.loading = False
         ticker.cancel()
