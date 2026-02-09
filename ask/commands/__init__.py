@@ -2,6 +2,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 from ask.commands.bash import BashCommand
@@ -39,6 +40,13 @@ class FilesCommand(SlashCommand):
 
     def __post_init__(self) -> None:
         self.output = '\n'.join(get_relative_path(path) for path in self.file_contents.keys())
+
+    def encode(self) -> dict[str, Any]:
+        return {'command': self.command, 'file_contents': {str(k): v for k, v in self.file_contents.items()}}
+
+    @classmethod
+    def decode(cls, data: dict[str, Any]) -> 'FilesCommand':
+        return FilesCommand(command=data['command'], file_contents={Path(k): v for k, v in data['file_contents'].items()})
 
     def render_command(self) -> str:
         return f'Attached {len(self.file_contents)} files'

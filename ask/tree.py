@@ -17,15 +17,21 @@ class MessageEncoder(json.JSONEncoder):
         elif isinstance(obj, UUID):
             return {'__type__': 'UUID', 'uuid': str(obj)}
         elif isinstance(obj, Content):
-            data = obj.__dict__.copy()
-            data['__type__'] = obj.__class__.__name__
-            return data
+            return {'__type__': obj.__class__.__name__, **(obj.encode() if hasattr(obj, 'encode') else obj.__dict__)}
         elif isinstance(obj, ToolCallStatus):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
         return super().default(obj)
 
+def add_subclasses(base_cls: type, content_types: dict[str, type]) -> None:
+    for subclass in base_cls.__subclasses__():
+        content_types[subclass.__name__] = subclass
+        add_subclasses(subclass, content_types)
+
 def message_decoder(obj: Any) -> Any:
-    content_types = {cls.__name__: cls for cls in get_args(Content)}
+    content_types = {}
+    for cls in get_args(Content):
+        content_types[cls.__name__] = cls
+        add_subclasses(cls, content_types)
     if isinstance(obj, dict) and obj.get('__type__') == 'bytes':
         return base64.b64decode(obj['data'])
     if isinstance(obj, dict) and obj.get('__type__') == 'Path':
@@ -33,8 +39,8 @@ def message_decoder(obj: Any) -> Any:
     elif isinstance(obj, dict) and obj.get('__type__') == 'UUID':
         return UUID(obj['uuid'])
     elif isinstance(obj, dict) and obj.get('__type__') in content_types:
-        type_name = obj.pop('__type__')
-        return content_types[type_name](**obj)
+        obj_type = content_types[obj.pop('__type__')]
+        return obj_type.decode(obj) if hasattr(obj_type, 'decode') else obj_type(**obj)
     elif isinstance(obj, dict) and obj.get('__type__') == 'ToolCallStatus':
         return ToolCallStatus(obj['value'])
     return obj

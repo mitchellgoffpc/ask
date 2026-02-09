@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+from ask.commands import DocsCommand, FilesCommand
 from ask.messages import Message, Text, Image, PDF, ToolRequest, ToolResponse, ToolCallStatus
 from ask.tools import TOOL_LIST
 from ask.tree import MessageTree, MessageEncoder, message_decoder
@@ -94,6 +95,16 @@ class TestEncoderDecoder(unittest.TestCase):
                 self.assertEqual(response.call_id, decoded.call_id)
                 self.assertEqual(response.tool, decoded.tool)
                 self.assertEqual(response.status, decoded.status)
+
+    def test_command_encode_decode(self):
+        commands = [
+            FilesCommand(file_contents={Path('test.txt'): Text('file content')}),
+            DocsCommand(file_path=Path('test.txt'), file_contents='file content', prompt_key='some_key'),
+        ]
+        for command in commands:
+            encoded = json.dumps(command, cls=MessageEncoder)
+            decoded = json.loads(encoded, object_hook=message_decoder)
+            self.assertEqual(decoded, command)
 
     def test_message_tree_encode_decode(self):
         tree = MessageTree({})
