@@ -32,6 +32,7 @@ class Element(Component):
     border_style: BorderStyle = field(default_factory=lambda: Borders.ROUND, kw_only=True)
     border_color: str | None = field(default=None, kw_only=True)
     background_color: str | None = field(default=None, kw_only=True)
+    visible: bool = field(default=True, kw_only=True)
 
     def __post_init__(self) -> None:
         self.margins = get_spacing_dict(self.margin)

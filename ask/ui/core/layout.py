@@ -19,7 +19,7 @@ def collapse_children(tree: ElementTree, component: Component | None) -> list[El
     match component:
         case None: return []
         case Widget(): return list(chain.from_iterable(collapse_children(tree, child) for child in tree.children[component.uuid]))
-        case Element(): return [component]
+        case Element(): return [component] if component.visible else []
         case _: raise ValueError(f"Unknown component type: {type(component)}")
 
 def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_length: int | None = None) -> None:

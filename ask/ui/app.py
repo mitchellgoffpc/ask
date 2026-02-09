@@ -124,7 +124,7 @@ class AppController(UI.Controller[App]):
         latest_usage = usage_messages[-1]
         return latest_usage.input + latest_usage.cache_write + latest_usage.cache_read + latest_usage.output
 
-    def textbox(self) -> UI.Component:
+    def dialog(self) -> UI.Component | None:
         if self.exiting:
             return UI.Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY), margin={'top': 1})
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
@@ -135,12 +135,21 @@ class AppController(UI.Controller[App]):
                 UI.Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
             ]
         else:
-            return PromptTextBox(
-                model=get_current_model(self.messages.values(self.head)),
-                approved_tools=self.approved_tools,
-                context_used=self.get_context_used(),
-                handle_submit=self.handle_submit,
-                handle_exit=self.exit)
+            return None
+
+    def textbox(self) -> list[UI.Component | None]:
+        dialog = self.dialog()
+        return [
+            UI.Box(visible=dialog is None)[
+                PromptTextBox(
+                    model=get_current_model(self.messages.values(self.head)),
+                    approved_tools=self.approved_tools,
+                    context_used=self.get_context_used(),
+                    handle_submit=self.handle_submit,
+                    handle_exit=self.exit)
+            ],
+            dialog
+        ]
 
     def contents(self) -> list[UI.Component | None]:
         tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolRequest)}
@@ -181,5 +190,5 @@ class AppController(UI.Controller[App]):
                     ToDos(latest_todos, expanded=True)
                 ] if latest_todos and self.show_todos and not self.pending_approvals else None,
             ],
-            self.textbox(),
+            *self.textbox(),
         ]
