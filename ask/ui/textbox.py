@@ -26,10 +26,11 @@ PREFIXES = {
     Mode.MEMORIZE: '#',
     Mode.PYTHON: '$'}
 SHORTCUTS = {
-    Mode.BASH: '! for bash mode',
-    Mode.MEMORIZE: '# to memorize',
-    Mode.PYTHON: '$ for python mode',
-    Mode.TEXT: '! for bash mode · $ for python · / for commands'}
+    '!': 'Run bash command',
+    '$': 'Run python code',
+    '#': 'Add to memory',
+    '/': 'Run slash command'}
+
 PLACEHOLDERS = {
     Mode.BASH: "Run bash command. Try 'ls -la'",
     Mode.MEMORIZE: "Add to memory. Try 'Always use descriptive variable names'",
@@ -61,13 +62,15 @@ def CommandsList(commands: dict[str, str], selected_idx: int) -> UI.Box:
 class PromptTextBox(UI.Widget):
     model: Model
     approved_tools: set[str]
+    context_used: int
     handle_submit: Callable[[str], bool]
     handle_exit: Callable[[], None]
 
 class PromptTextBoxController(UI.Controller[PromptTextBox]):
-    state = ['text', 'mode', 'show_exit_prompt', 'selected_idx', 'autocomplete_matches']
+    state = ['text', 'mode', 'show_shortcuts', 'show_exit_prompt', 'selected_idx', 'autocomplete_matches']
     text = ''
     mode = Mode.TEXT
+    show_shortcuts = False
     show_exit_prompt = False
     selected_idx = 0
     autocomplete_matches: list[str] = []
@@ -109,19 +112,33 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         except Exception:
             return []
 
-    def get_shortcuts_text(self) -> str:
+    def get_context_percent(self) -> str:
+        max_context = self.props.model.context.max_length
+        context_remaining = max(0, max_context - self.props.context_used)
+        percent_remaining = int(100 * context_remaining / max_context)
+        return Colors.hex(f'{percent_remaining}% context remaining', Theme.GRAY)
+
+    def get_hint_text(self) -> str:
         if self.mode == Mode.TEXT and EDIT_TOOLS & self.props.approved_tools:
-            return Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
-        return Colors.hex(SHORTCUTS[self.mode], COLORS.get(self.mode, Theme.GRAY))
+            return Colors.hex(' · ', Theme.GRAY) + Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
+        if not self.text:
+            return Colors.hex(' · ', Theme.GRAY) + Colors.hex('? for shortcuts', Theme.GRAY)
+        return ''
 
     def handle_input(self, ch: str) -> None:
         if ch == '\x03':  # Ctrl+C
             self.text = ''
+            self.show_shortcuts = False
             asyncio.create_task(self.confirm_exit())
+        elif ch in ('\x1b', '\x7f'):  # Escape, Backspace
+            self.show_shortcuts = False
 
     def handle_textbox_input(self, ch: str, cursor_pos: int) -> bool:
         if cursor_pos == 0 and ch in ('\x7f', '\x1b\x7f'):
             self.mode = Mode.TEXT
+        elif cursor_pos == 0 and ch == '?':
+            self.show_shortcuts = not self.show_shortcuts
+            return False
         elif cursor_pos == 0 and ch == '!':
             self.mode = Mode.BASH
             return False
@@ -187,6 +204,8 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         if value != self.text:
             self.selected_idx = 0
             self.autocomplete_matches = []
+            if value:
+                self.show_shortcuts = False
         self.text = value
 
     def handle_textbox_submit(self, value: str) -> bool:
@@ -237,8 +256,10 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                 if matching_models else
             CommandsList(matching_commands, self.selected_idx)
                 if matching_commands else
+            CommandsList(SHORTCUTS, -1)
+                if self.show_shortcuts else
             UI.Box(flex=Axis.HORIZONTAL)[
-                UI.Text(self.get_shortcuts_text(), width=1.0, margin={'left': 2}),
+                UI.Text(self.get_context_percent() + self.get_hint_text(), width=1.0, margin={'left': 2}),
                 UI.Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
                 UI.Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2})
             ]

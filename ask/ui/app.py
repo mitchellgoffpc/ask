@@ -8,7 +8,7 @@ from uuid import UUID
 
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
 from ask.config import History
-from ask.messages import Message, Text, ToolRequest, ToolResponse, Error
+from ask.messages import Message, Text, ToolRequest, ToolResponse, Error, Usage
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
@@ -117,6 +117,13 @@ class AppController(UI.Controller[App]):
             self.tasks.append(asyncio.create_task(self.query(query)))
         return True
 
+    def get_context_used(self) -> int:
+        usage_messages = [msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, Usage)]
+        if not usage_messages:
+            return 0
+        latest_usage = usage_messages[-1]
+        return latest_usage.input + latest_usage.cache_write + latest_usage.cache_read + latest_usage.output
+
     def textbox(self) -> UI.Component:
         if self.exiting:
             return UI.Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY), margin={'top': 1})
@@ -131,6 +138,7 @@ class AppController(UI.Controller[App]):
             return PromptTextBox(
                 model=get_current_model(self.messages.values(self.head)),
                 approved_tools=self.approved_tools,
+                context_used=self.get_context_used(),
                 handle_submit=self.handle_submit,
                 handle_exit=self.exit)
 
