@@ -1,6 +1,6 @@
 import base64
 import json
-from dataclasses import replace, asdict
+from dataclasses import replace, fields
 from itertools import pairwise
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -17,7 +17,9 @@ class MessageEncoder(json.JSONEncoder):
         elif isinstance(obj, UUID):
             return {'__type__': 'UUID', 'uuid': str(obj)}
         elif isinstance(obj, Content):
-            return {'__type__': obj.__class__.__name__, **(obj.encode() if hasattr(obj, 'encode') else asdict(obj))}
+            field_names = {f.name for f in fields(obj)}
+            encoded = obj.encode() if hasattr(obj, 'encode') else {k: v for k, v in obj.__dict__.items() if k in field_names}
+            return {'__type__': obj.__class__.__name__, **encoded}
         elif isinstance(obj, ToolCallStatus):
             return {'__type__': 'ToolCallStatus', 'value': obj.value}
         return super().default(obj)
