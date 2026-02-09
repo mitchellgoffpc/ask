@@ -55,8 +55,8 @@ class AnthropicAPI(API):
 
     def params(self, model: Model, messages: list[Message], stream: bool) -> dict[str, Any]:
         assert model.capabilities.system_prompt, "Wtf? All anthropic models support system prompts."
-        # reasoning = {'thinking': {"type": "enabled", "budget_tokens": 1024}} if model.capabilities.reasoning else {}
-        return {"model": model.name, "temperature": 1.0, 'max_tokens': 4096, 'stream': stream} | self.render_messages(messages, model)
+        reasoning = {'thinking': {"type": "enabled", "budget_tokens": 4095}} if model.capabilities.reasoning else {}
+        return {"model": model.name, "temperature": 1.0, 'max_tokens': 4096, 'stream': stream} | reasoning | self.render_messages(messages, model)
 
     def result(self, response: dict[str, Any]) -> list[Content]:
         result: list[Content] = []
@@ -83,10 +83,10 @@ class AnthropicAPI(API):
                 return str(line['index']), '', line['delta']['partial_json'], usage
             elif line['delta']['type'] == 'text_delta':
                 return str(line['index']), '', line['delta']['text'], usage
-            elif line['delta']['type'] == 'thinking_delta':
-                return str(line['index']), '/reasoning:encrypted', line['delta']['thinking'] + '\x00', usage
+            # elif line['delta']['type'] == 'thinking_delta':
+            #     return str(line['index']), '/reasoning:encrypted', line['delta']['thinking'], usage
             elif line['delta']['type'] == 'signature_delta':
-                return str(line['index']), '/reasoning:encrypted', '\x00' + line['delta']['signature'], usage
+                return str(line['index']), '/reasoning:encrypted', line['delta']['signature'], usage
         return '', '', '', usage
 
     def decode_usage(self, usage: dict[str, Any]) -> Usage:

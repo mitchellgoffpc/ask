@@ -157,8 +157,6 @@ class API(metaclass=ABCMeta):
         if tool.startswith('/reasoning'):
             _, *tags = tool.split(':')
             summary = ''
-            if '\x00' in data:
-                summary, data = data.split('\x00', 1)
             return '', Reasoning(data=data, summary=summary, encrypted='encrypted' in tags)
         elif tool:
             assert ':' in tool, "Expected tool to be formatted as <name>:<call-id>"
