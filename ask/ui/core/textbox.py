@@ -87,7 +87,7 @@ class TextBoxController(BaseController[TextBox]):
 
     @property
     def text(self) -> str:
-        return self.props.text if self.props.text is not None else self._text
+        return self._text
 
     @text.setter
     def text(self, text: str) -> None:

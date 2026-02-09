@@ -3,7 +3,7 @@ import unittest
 
 from ask.ui.core.components import Box, Text, Spacing, Side
 from ask.ui.core.layout import layout
-from ask.ui.core.render import render
+from ask.ui.core.render import render, split_input_sequence
 from ask.ui.core.styles import Axis, Borders, Colors
 from ask.ui.core.tree import ElementTree, mount
 from test.ui.core.helpers import WideTree, DeepTree
@@ -13,6 +13,23 @@ def render_once(element: Box | Text, max_width: int = 100) -> str:
     mount(tree, element)
     layout(tree, element, max_width)
     return render(tree, element)
+
+class TestInputHandling(unittest.TestCase):
+    def test_split_input_sequence(self):
+        test_cases = [
+            ("hello", ["hello"]),
+            ("ab\x03cd", ["ab", "\x03", "cd"]),
+            ("\x01\x02", ["\x01", "\x02"]),
+            ("\x1b[A", ["\x1b[A"]),
+            ("hi\x1b[5~there", ["hi", "\x1b[5~", "there"]),
+            ("x\x1by", ["x", "\x1by"]),
+            ("a\x1b[12;34Bz", ["a", "\x1b[12;34B", "z"]),
+            ("a\nb", ["a", "\n", "b"]),
+            ("\x7f\x7f\x7f", ["\x7f", "\x7f", "\x7f"]),
+        ]
+        for sequence, expected in test_cases:
+            with self.subTest(sequence=sequence):
+                self.assertEqual(split_input_sequence(sequence), expected)
 
 
 class TestRender(unittest.TestCase):

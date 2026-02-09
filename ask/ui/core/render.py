@@ -1,6 +1,7 @@
 import asyncio
 import fcntl
 import os
+import re
 import select
 import shutil
 import sys
@@ -15,6 +16,21 @@ from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
 from ask.ui.core.layout import layout
 from ask.ui.core.styles import Axis, Colors, BorderStyle, ansi_len
 from ask.ui.core.tree import ElementTree, depth, propogate, mount, update
+
+CONTROL_SEQ_RE = re.compile(r'\x1b\[[0-9;]*[A-Za-z~]?|\x1b.|[\x00-\x1f\x7f]')
+
+# Input parsing
+def split_input_sequence(sequence: str) -> list[str]:
+    chunks: list[str] = []
+    last = 0
+    for match in CONTROL_SEQ_RE.finditer(sequence):
+        if match.start() > last:
+            chunks.append(sequence[last:match.start()])
+        chunks.append(match.group(0))
+        last = match.end()
+    if last < len(sequence):
+        chunks.append(sequence[last:])
+    return chunks
 
 # Context manager to set O_NONBLOCK on a file descriptor
 @contextmanager
@@ -124,11 +140,8 @@ async def render_root(_root: Component) -> None:
                     sequence = ''
                     while (ch := sys.stdin.read(1)):
                         sequence += ch
-                propogate(tree, root, sequence, 'input')
-                if sequence == '\x03':
-                    with open('/tmp/render.ansi', 'w') as f:
-                        f.write('\n'.join(previous_render_lines))
-                    break
+                for chunk in split_input_sequence(sequence):
+                    propogate(tree, root, chunk, 'input')
 
             # Check for dirty components
             if not tree.dirty:
