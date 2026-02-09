@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import difflib
 import json
 import os
 import re
@@ -28,6 +29,57 @@ def _expand_commands(old_messages: list[Message]) -> list[Message]:
             case _: new_messages.append(message)
     return new_messages
 
+def _generate_system_reminder(file_path: Path, expected_content: str, actual_content: str) -> str:
+    expected_lines = expected_content.splitlines(keepends=True)
+    actual_lines = actual_content.splitlines(keepends=True)
+    diff = list(difflib.unified_diff(expected_lines, actual_lines, n=3, lineterm=''))
+
+    changes = []
+    i = 0
+    while i < len(diff):
+        if diff[i].startswith('@@'):
+            i += 1
+            while i < len(diff) and not diff[i].startswith('@@'):
+                if diff[i].startswith('-') or diff[i].startswith('+'):
+                    if line_match := re.search(r'@@ -(\d+)', diff[i-1]):
+                        start_line = int(line_match.group(1))
+                        j = i
+                        while j < len(diff) and not diff[j].startswith('@@'):
+                            if diff[j].startswith(' ') or diff[j].startswith('+'):
+                                changes.append(f"{str(start_line).rjust(6)}→{diff[j][1:]}")
+                                if diff[j].startswith('+'):
+                                    start_line += 1
+                            j += 1
+                        break
+                i += 1
+        else:
+            i += 1
+
+    changes_text = '\n'.join(changes) if changes else actual_content
+    file_modified_prompt = load_prompt_file('tools.toml')['file_modified_prompt']
+    return file_modified_prompt.format(file_path=file_path, changes_text=changes_text)
+
+def _check_modified_files(messages: list[Message]) -> list[Message]:
+    modified_files: dict[Path, dict[str, str]] = {}
+    for message in messages:
+        if isinstance(message.content, ToolRequest):
+            artifacts = message.content._artifacts
+            if 'modified' in artifacts and 'new_content' in artifacts:
+                modified_files[Path(artifacts['modified'])] = artifacts
+
+    reminders = []
+    for file_path, artifacts in modified_files.items():
+        if file_path.exists() and file_path.is_file():
+            try:
+                current_content = file_path.read_text(encoding='utf-8')
+                expected_content = artifacts['new_content']
+                if current_content != expected_content:
+                    reminders.append(Message('user', Text(_generate_system_reminder(file_path, expected_content, current_content))))
+            except (UnicodeDecodeError, PermissionError):
+                pass
+
+    return reminders
+
 async def _execute_tool(request: ToolRequest, approval: ApprovalCallback) -> ToolResponse:
     tool_rejected_message = load_prompt_file('tools.toml')['tool_rejected_prompt']
     try:
@@ -55,6 +107,9 @@ async def query(messages: list[Message], stream: bool) -> AsyncContentIterator:
     headers = api.headers(api_key)
     assert api_key, f"{api.key!r} environment variable isn't set!"
 
+    with open('/tmp/ask.json', 'w') as f:
+        json.dump(params, f, indent=2)
+
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=params) as r:
             if r.status != 200:
@@ -81,7 +136,7 @@ async def query(messages: list[Message], stream: bool) -> AsyncContentIterator:
 # Run agent loop until completion
 
 async def query_agent(messages: list[Message], approval: ApprovalCallback, stream: bool = True) -> AsyncMessageIterator:
-    messages = messages[:]
+    messages = [*messages, *_check_modified_files(messages)]
     while True:
         has_text, has_reasoning, has_tool_requests = False, False, False
         tool_requests: list[ToolRequest] = []

@@ -49,7 +49,7 @@ class EditTool(Tool):
     def artifacts(self, args: dict[str, Any]) -> dict[str, Any]:
         old_content = read_file(Path(args['file_path']))
         new_content = replace(Path(args['file_path']), old_content, args["old_string"], args["new_string"], args.get("replace_all", False))
-        return {'old_content': old_content, 'new_content': new_content}
+        return {'modified': Path(args['file_path']), 'old_content': old_content, 'new_content': new_content}
 
     def process(self, args: dict[str, Any], artifacts: dict[str, Any]) -> dict[str, Any]:
         old_lines = artifacts['old_content'].splitlines(keepends=True)

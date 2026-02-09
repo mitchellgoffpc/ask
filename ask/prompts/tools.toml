@@ -1,3 +1,10 @@
 tool_rejected_prompt = """
 The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.
 """
+
+file_modified_prompt = """
+<system-reminder>
+Note: {file_path} was modified, either by the user or by a linter. This change was intentional, so make sure to take it into account as you proceed (ie. don't revert it unless the user asks you to). Don't tell the user this, since they are already aware. Here are the relevant changes (shown with line numbers):
+{changes_text}
+</system-reminder>
+"""

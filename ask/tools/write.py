@@ -33,7 +33,7 @@ class WriteTool(EditTool):
             except PermissionError as e:
                 raise ToolError(f"Permission denied for file '{file_path}'.") from e
 
-        return {'old_content': old_content, 'new_content': new_content}
+        return {'modified': file_path, 'old_content': old_content, 'new_content': new_content}
 
     async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
         file_path = Path(args['file_path'])

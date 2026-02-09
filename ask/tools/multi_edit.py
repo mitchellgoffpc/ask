@@ -25,7 +25,7 @@ class MultiEditTool(EditTool):
         for i, edit in enumerate(args['edits']):
             replace_all = edit.get("replace_all", False)
             working_content = replace(file_path, working_content, edit['old_string'], edit["new_string"], replace_all, prefix=f"Edit {i+1}: ")
-        return {'old_content': old_content, 'new_content': working_content}
+        return {'modified': file_path, 'old_content': old_content, 'new_content': working_content}
 
     async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:
         file_path = Path(args['file_path'])
