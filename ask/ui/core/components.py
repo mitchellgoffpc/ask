@@ -61,11 +61,17 @@ class Text(Element):
     text: str
     wrap: Wrap = field(default=Wrap.WORDS, kw_only=True)
 
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self._wrap_cache: dict[int, str] = {}
+
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         raise ValueError(f'{self.__class__.__name__} component is a leaf node and cannot have children')
 
     def wrapped(self, width: int) -> str:
-        return wrap_lines(self.text.replace('\t', ' ' * 8), width, wrap=self.wrap)
+        if width not in self._wrap_cache:
+            self._wrap_cache[width] = wrap_lines(self.text.replace('\t', ' ' * 8), width, wrap=self.wrap)
+        return self._wrap_cache[width]
 
 @dataclass
 class Box(Element):
