@@ -79,7 +79,7 @@ class TextBoxController(BaseController[TextBox]):
     def content_width(self) -> int:
         if self.tree and self.text_ref.uuid in self.tree.widths:
             return max(0, self.tree.widths[self.text_ref.uuid] - self.text_ref.chrome(Axis.HORIZONTAL))
-        raise ValueError("TextBoxController: content_width requested before layout")
+        return 0
 
     @property
     def cursor_pos(self) -> int:
