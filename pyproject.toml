@@ -9,13 +9,9 @@ description = "CLI tool for coding and researching with LLMs"
 authors = [
     {name = "Mitchell Goff", email = "mitchellgoffpc@gmail.com"},
 ]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-]
 dependencies = [
     "aiohttp",
     "markdown",
