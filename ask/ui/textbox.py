@@ -1,10 +1,10 @@
 import asyncio
 import glob
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
@@ -250,7 +250,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
             ],
             UI.Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
                 if self.show_exit_prompt else
-            CommandsList({match: '' for match in self.autocomplete_matches}, self.selected_idx)
+            CommandsList(dict.fromkeys(self.autocomplete_matches, ''), self.selected_idx)
                 if self.autocomplete_matches else
             CommandsList({model: MODELS_BY_NAME[model].api.display_name for model in matching_models}, self.selected_idx)
                 if matching_models else

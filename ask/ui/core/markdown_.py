@@ -1,7 +1,7 @@
 import re
 import html
+from collections.abc import Callable
 from io import StringIO
-from typing import Any, Callable, cast
 from markdown import Markdown, Extension
 from markdown.blockprocessors import BlockProcessor
 from markdown.util import AtomicString
@@ -10,6 +10,7 @@ from pygments.lexer import Lexer
 from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, guess_lexer
 from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
 from pygments.util import ClassNotFound
+from typing import Any, cast
 from xml.etree.ElementTree import Element, SubElement
 
 from ask.ui.core.styles import Colors, Styles, ANSI_256_SUPPORT, ANSI_16M_SUPPORT

@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable, Iterator
+from collections.abc import Callable, Iterator
 
 from ask.ui.core.components import Length, Component, Text, Widget, BaseController
 from ask.ui.core.styles import Axis, Colors, Styles, Wrap

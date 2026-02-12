@@ -4,8 +4,8 @@ import difflib
 import json
 import os
 import re
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
-from typing import AsyncIterator, Awaitable, Callable
 from uuid import UUID, uuid4
 
 from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand

@@ -5,7 +5,7 @@ from pathlib import Path
 PROMPT_DIR = Path(__file__).parent
 
 if __name__ == '__main__':
-    with open(sys.argv[1], 'r') as f:
+    with open(sys.argv[1]) as f:
         data = json.load(f)
 
     with open(PROMPT_DIR / "system.toml", "w") as f:

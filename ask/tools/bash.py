@@ -36,7 +36,7 @@ class BashTool(Tool):
             if process.returncode != 0:
                 raise ToolError(output)
             return Text(output)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise ToolError(f"Command timed out after {timeout_seconds} seconds") from None
         finally:
             if process and process.returncode is None:

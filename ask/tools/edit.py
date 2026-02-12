@@ -11,7 +11,7 @@ def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
 
 def read_file(file_path: Path) -> str:
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             return f.read()
     except UnicodeDecodeError as e:
         raise ToolError(f"File '{file_path}' is not a text file or contains invalid Unicode characters.") from e

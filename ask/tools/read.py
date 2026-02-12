@@ -8,7 +8,7 @@ from ask.tools.base import ToolError, Tool, Parameter, ParameterType
 IMAGE_MIME_TYPES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 
 def read_text(file_path: Path, offset: int, max_lines: int | None, max_cols: int | None, add_line_numbers: bool) -> str:
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         for i in range(offset):
             try:
                 next(f)

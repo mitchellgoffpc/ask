@@ -1,10 +1,11 @@
 import base64
 import json
+from collections.abc import Callable
 from dataclasses import replace, fields
 from itertools import pairwise
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Any, Callable, get_args
+from typing import Any, get_args
 
 from ask.messages import ToolCallStatus, Message, Role, Content
 

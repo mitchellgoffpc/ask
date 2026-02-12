@@ -1,8 +1,9 @@
 from __future__ import annotations
 import json
 from abc import ABCMeta, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator
+from typing import Any
 
 from ask.messages import Message, Role, Content, Text, Image, PDF, Reasoning, ToolDescriptor, ToolRequest, ToolResponse, Usage, SystemPrompt
 

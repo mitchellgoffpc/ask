@@ -7,9 +7,9 @@ import shutil
 import sys
 import termios
 import tty
+from collections.abc import Iterator
 from contextlib import contextmanager
 from itertools import zip_longest
-from typing import Iterator
 
 from ask.ui.core.components import Side, Component, Element, Box, Text
 from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up

@@ -1,8 +1,8 @@
 import time
 import unittest
 from collections import deque
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 from ask.ui.core.components import Component, Box, Text, Widget, BaseController
 from ask.ui.core.tree import ElementTree, mount, update

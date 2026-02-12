@@ -1,6 +1,7 @@
 from __future__ import annotations
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Generic, Literal, Iterable, Self, Sequence, TypeVar, get_args, TYPE_CHECKING
+from typing import Any, ClassVar, Generic, Literal, Self, TypeVar, get_args, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Axis, Borders, BorderStyle, Wrap, wrap_lines

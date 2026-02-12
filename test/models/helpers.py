@@ -1,4 +1,5 @@
-from typing import Any, AsyncIterable, Iterable
+from collections.abc import AsyncIterable, Iterable
+from typing import Any
 
 from ask.messages import Message, Text, Image, Reasoning, ToolRequest, ToolResponse, Usage, ToolCallStatus, SystemPrompt, ToolDescriptor
 
