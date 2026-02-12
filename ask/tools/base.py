@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, member, nonmember
 from pathlib import Path
-from typing import Any, ClassVar, Union
+from typing import Any, ClassVar, Union, cast
 
 from ask.messages import Blob
 
@@ -51,7 +51,7 @@ class Tool:
             return {"type": "string", "enum": ptype.values} | description_dict
         elif isinstance(ptype, ParameterType.Array):
             if isinstance(ptype.items, list):
-                items = self.get_parameters_schema(ptype.items)
+                items = self.get_parameters_schema(cast(list[Parameter], ptype.items))
             else:
                 items = self.get_parameter_schema(ptype.items, "")
             return {"type": "array", "minItems": ptype.min_items, "items": items} | description_dict
@@ -98,7 +98,7 @@ class Tool:
                 for i, item in enumerate(value):
                     if not isinstance(item, dict):
                         raise ToolError(f"Parameter '{name}[{i}]' must be an object")
-                    self.check_arguments(item, ptype.items, prefix=f'{name}[{i}].')
+                    self.check_arguments(item, cast(list[Parameter], ptype.items), prefix=f'{name}[{i}].')
             else:
                 for i, item in enumerate(value):
                     self.check_argument(f'{name}[{i}]', item, ptype.items)

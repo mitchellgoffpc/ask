@@ -25,9 +25,10 @@ dependencies = [
 ask = "ask.main:main"
 
 [project.optional-dependencies]
-linting = [
+testing = [
     "ruff",
-    "mypy",
+    "ty",
+    "pytest",
     "pre-commit",
 ]
 
@@ -41,33 +42,11 @@ include-package-data = true
 [tool.ruff]
 line-length = 160
 target-version = "py311"
-exclude = ["lakitu/env/lib/"]
+lint.select = ["E", "F", "I", "N", "W", "B"]
+lint.ignore = ["E701", "I001", "N802", "N812", "N813"]
+# lint.select = ["A", "B", "E", "F", "I", "N", "W", "PIE", "C4", "ISC", "RUF100", "TID251"]
+# lint.ignore = ["E701", "I001", "N802", "N812", "N813"]
 
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B"]
-ignore = ["E701", "I001", "N802", "N812", "N813"]
-
-[tool.mypy]
-python_version = "3.11"
-explicit_package_bases = true
-check_untyped_defs = true
-no_implicit_optional = true
-cache_dir = "/dev/null"
-
-disallow_incomplete_defs = true
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-disallow_untyped_decorators = true
-
-strict_optional = true
-strict_equality = true
-
-warn_return_any = true
-warn_unused_configs = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_redundant_casts = true
-
-[[tool.mypy.overrides]]
-module = "test.*"
-disallow_untyped_defs = false
+[tool.ty]
+src.exclude = ["test"]
+rules.missing-argument = "ignore"

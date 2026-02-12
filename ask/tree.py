@@ -9,20 +9,20 @@ from typing import Any, Callable, get_args
 from ask.messages import ToolCallStatus, Message, Role, Content
 
 class MessageEncoder(json.JSONEncoder):
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, bytes):
-            return {'__type__': 'bytes', 'data': base64.b64encode(obj).decode()}
-        elif isinstance(obj, Path):
-            return {'__type__': 'Path', 'path': str(obj)}
-        elif isinstance(obj, UUID):
-            return {'__type__': 'UUID', 'uuid': str(obj)}
-        elif isinstance(obj, Content):
-            field_names = {f.name for f in fields(obj)}
-            encoded = obj.encode() if hasattr(obj, 'encode') else {k: v for k, v in obj.__dict__.items() if k in field_names}
-            return {'__type__': obj.__class__.__name__, **encoded}
-        elif isinstance(obj, ToolCallStatus):
-            return {'__type__': 'ToolCallStatus', 'value': obj.value}
-        return super().default(obj)
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return {'__type__': 'bytes', 'data': base64.b64encode(o).decode()}
+        elif isinstance(o, Path):
+            return {'__type__': 'Path', 'path': str(o)}
+        elif isinstance(o, UUID):
+            return {'__type__': 'UUID', 'uuid': str(o)}
+        elif isinstance(o, Content):
+            field_names = {f.name for f in fields(o)}
+            encoded = o.encode() if hasattr(o, 'encode') else {k: v for k, v in o.__dict__.items() if k in field_names}
+            return {'__type__': o.__class__.__name__, **encoded}
+        elif isinstance(o, ToolCallStatus):
+            return {'__type__': 'ToolCallStatus', 'value': o.value}
+        return super().default(o)
 
 def add_subclasses(base_cls: type, content_types: dict[str, type]) -> None:
     for subclass in base_cls.__subclasses__():

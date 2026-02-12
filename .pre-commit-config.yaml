@@ -1,21 +1,23 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
+-   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-      - id: trailing-whitespace
-      - id: check-added-large-files
-      - id: check-ast
-      - id: check-json
-      - id: check-toml
-      - id: check-yaml
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    -   id: trailing-whitespace
+    -   id: check-added-large-files
+    -   id: check-ast
+    -   id: check-json
+    -   id: check-toml
+    -   id: check-yaml
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
     hooks:
-      - id: ruff-check
+    -   id: ruff-check
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+-   repo: local  # TODO: replace with official ty pre-commit hook once it's released
     hooks:
-      - id: mypy
-        additional_dependencies: ['types-Markdown', 'types-Pygments']
+    -   id: ty
+        name: ty check
+        entry: uv run ty check .
+        language: python
+        types: [python]
+        pass_filenames: false

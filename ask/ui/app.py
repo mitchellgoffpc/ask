@@ -161,22 +161,22 @@ class AppController(UI.Controller[App]):
         messages = []
         for msg in self.messages.values(self.head):
             match (msg.role, msg.content):
-                case ('user', Text()):
-                    messages.append(PromptMessage(text=msg.content))
-                case ('user', Error()):
-                    messages.append(ErrorMessage(error=msg.content))
-                case ('user', BashCommand()):
-                    messages.append(BashCommandMessage(command=msg.content, elapsed=self.elapsed))
-                case ('user', PythonCommand()):
-                    messages.append(PythonCommandMessage(command=msg.content, elapsed=self.elapsed))
-                case ('user', SlashCommand()):
-                    messages.append(SlashCommandMessage(command=msg.content))
-                case ('assistant', Text()):
-                    messages.append(ResponseMessage(text=msg.content))
-                case ('assistant', ToolRequest()):
-                    if msg.content.tool != ToDoTool.name:  # ToDo tool calls are handled specially
-                        response = tool_responses.get(msg.content.call_id)
-                        messages.append(ToolCallMessage(request=msg.content, response=response, expanded=self.expanded))
+                case ('user', Text() as text):
+                    messages.append(PromptMessage(text=text))
+                case ('user', Error() as error):
+                    messages.append(ErrorMessage(error=error))
+                case ('user', BashCommand() as command):
+                    messages.append(BashCommandMessage(command=command, elapsed=self.elapsed))
+                case ('user', PythonCommand() as command):
+                    messages.append(PythonCommandMessage(command=command, elapsed=self.elapsed))
+                case ('user', SlashCommand() as command):
+                    messages.append(SlashCommandMessage(command=command))
+                case ('assistant', Text() as text):
+                    messages.append(ResponseMessage(text=text))
+                case ('assistant', ToolRequest() as request):
+                    if request.tool != ToDoTool.name:  # ToDo tool calls are handled specially
+                        response = tool_responses.get(request.call_id)
+                        messages.append(ToolCallMessage(request=request, response=response, expanded=self.expanded))
                 case _:
                     pass
 

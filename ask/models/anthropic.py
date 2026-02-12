@@ -47,7 +47,7 @@ class AnthropicAPI(API):
                     case _: content.extend(self.render_content(role, c, model))
             msgs.append({'role': role, 'content': content})
         if msgs:
-            msgs[-1]['content'][-1]['cache_control'] = {'type': 'ephemeral'}  # type: ignore[index]
+            msgs[-1]['content'][-1]['cache_control'] = {'type': 'ephemeral'}
         return {'system': system, 'tools': tools, 'messages': msgs}
 
     def headers(self, api_key: str) -> dict[str, str]:

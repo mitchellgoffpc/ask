@@ -63,6 +63,8 @@ class ToolOutputController(UI.Controller[ToolOutput]):
         elif status is ToolCallStatus.COMPLETED:
             assert self.props.response is not None
             return self.get_completed_output(self.props.response.response)
+        else:
+            raise ValueError(f"Unknown status: {status}")
 
     def contents(self) -> list[UI.Component | None]:
         return [
