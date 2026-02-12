@@ -13,7 +13,7 @@ class ReadToolOutput(ToolOutput):
 
         def get_short_response(self, response: str) -> str:
             line_count = response.count('\n') + 1
-            return f"Read {Styles.bold(line_count)} lines"
+            return f"Read {Styles.bold(str(line_count))} lines"
 
         def get_response(self, response: str) -> str:
             return '\n'.join(line.split('→')[-1] for line in response.split('\n'))

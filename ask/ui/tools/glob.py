@@ -13,4 +13,4 @@ class GlobToolOutput(ToolOutput):
 
         def get_short_response(self, response: str) -> str:
             file_count = len(response.strip().split('\n'))
-            return f"Found {Styles.bold(file_count - 1)} files"
+            return f"Found {Styles.bold(str(file_count - 1))} files"

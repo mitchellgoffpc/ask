@@ -4,7 +4,6 @@ import unicodedata
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
-from functools import partial
 from io import StringIO
 
 ANSI_BACKGROUND_OFFSET = 10
@@ -305,13 +304,20 @@ class Styles:
     HIDDEN_END = "\u001B[28m"
     STRIKETHROUGH_END = "\u001B[29m"
 
-    bold = staticmethod(partial(apply_style, start=BOLD, end=BOLD_END))
-    italic = staticmethod(partial(apply_style, start=ITALIC, end=ITALIC_END))
-    underline = staticmethod(partial(apply_style, start=UNDERLINE, end=UNDERLINE_END))
-    overline = staticmethod(partial(apply_style, start=OVERLINE, end=OVERLINE_END))
-    inverse = staticmethod(partial(apply_style, start=INVERSE, end=INVERSE_END))
-    hidden = staticmethod(partial(apply_style, start=HIDDEN, end=HIDDEN_END))
-    strikethrough = staticmethod(partial(apply_style, start=STRIKETHROUGH, end=STRIKETHROUGH_END))
+    @staticmethod
+    def bold(text: str) -> str: return apply_style(text, start=Styles.BOLD, end=Styles.BOLD_END)
+    @staticmethod
+    def italic(text: str) -> str: return apply_style(text, start=Styles.ITALIC, end=Styles.ITALIC_END)
+    @staticmethod
+    def underline(text: str) -> str: return apply_style(text, start=Styles.UNDERLINE, end=Styles.UNDERLINE_END)
+    @staticmethod
+    def overline(text: str) -> str: return apply_style(text, start=Styles.OVERLINE, end=Styles.OVERLINE_END)
+    @staticmethod
+    def inverse(text: str) -> str: return apply_style(text, start=Styles.INVERSE, end=Styles.INVERSE_END)
+    @staticmethod
+    def hidden(text: str) -> str: return apply_style(text, start=Styles.HIDDEN, end=Styles.HIDDEN_END)
+    @staticmethod
+    def strikethrough(text: str) -> str: return apply_style(text, start=Styles.STRIKETHROUGH, end=Styles.STRIKETHROUGH_END)
 
 
 class Colors:
@@ -351,10 +357,18 @@ class Colors:
     BG_WHITE_BRIGHT = "\u001B[107m"
     BG_END = "\u001B[49m"
 
-    HEX = staticmethod(hex_to_best_ansi)
-    RGB = staticmethod(rgb_to_best_ansi)
-    BG_HEX = staticmethod(partial(hex_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
-    BG_RGB = staticmethod(partial(rgb_to_best_ansi, offset=ANSI_BACKGROUND_OFFSET))
+    @staticmethod
+    def HEX(code: str) -> str:
+        return hex_to_best_ansi(code)
+    @staticmethod
+    def RGB(rgb: tuple[int, int, int]) -> str:
+        return rgb_to_best_ansi(*rgb)
+    @staticmethod
+    def BG_HEX(code: str) -> str:
+        return hex_to_best_ansi(code, offset=ANSI_BACKGROUND_OFFSET)
+    @staticmethod
+    def BG_RGB(rgb: tuple[int, int, int]) -> str:
+        return rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET)
 
     @staticmethod
     def ansi(text: str, code: str) -> str:

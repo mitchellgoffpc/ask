@@ -12,4 +12,4 @@ class ListToolOutput(ToolOutput):
 
         def get_short_response(self, response: str) -> str:
             item_count = response.count('\n') + 1
-            return f"Listed {Styles.bold(item_count)} paths"
+            return f"Listed {Styles.bold(str(item_count))} paths"
