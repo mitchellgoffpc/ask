@@ -1,6 +1,5 @@
 import asyncio
 import glob
-import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -105,9 +104,9 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
             return []
         try:
             if prefix.startswith('~'):
-                prefix = os.path.expanduser(prefix)
+                prefix = str(Path(prefix).expanduser())
             matches = glob.glob(prefix + '*')
-            matches = [os.path.basename(m) if '/' not in prefix else m for m in matches]
+            matches = [Path(m).name if '/' not in prefix else m for m in matches]
             return sorted(matches)[:10]
         except Exception:
             return []

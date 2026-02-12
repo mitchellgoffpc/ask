@@ -11,7 +11,7 @@ def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
 
 def read_file(file_path: Path) -> str:
     try:
-        with open(file_path, encoding='utf-8') as f:
+        with file_path.open(encoding='utf-8') as f:
             return f.read()
     except UnicodeDecodeError as e:
         raise ToolError(f"File '{file_path}' is not a text file or contains invalid Unicode characters.") from e
@@ -62,7 +62,7 @@ class EditTool(Tool):
         new_content = artifacts['new_content']
 
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with file_path.open('w', encoding='utf-8') as f:
                 f.write(new_content)
         except PermissionError as e:
             raise ToolError(f"Permission denied when writing to file '{file_path}'.") from e

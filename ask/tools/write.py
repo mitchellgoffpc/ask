@@ -26,7 +26,7 @@ class WriteTool(EditTool):
             if not file_path.is_file():
                 raise ToolError(f"Path '{file_path}' exists but is not a file.")
             try:
-                with open(file_path, encoding='utf-8') as f:
+                with file_path.open(encoding='utf-8') as f:
                     old_content = f.read()
             except UnicodeDecodeError as e:
                 raise ToolError(f"File '{file_path}' is not a text file or contains invalid Unicode characters.") from e
@@ -42,7 +42,7 @@ class WriteTool(EditTool):
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_exists = file_path.exists()
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with file_path.open('w', encoding='utf-8') as f:
                 f.write(new_content)
             return Text(f"File {'updated' if file_exists else 'created'} successfully at: {file_path}")
         except PermissionError as e:

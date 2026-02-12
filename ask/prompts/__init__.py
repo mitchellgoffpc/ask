@@ -27,7 +27,7 @@ def load_prompt_file(prompt_file: str) -> dict[str, str]:
     prompt_path = Path(__file__).parent / prompt_file
     if not prompt_path.is_file():
         raise FileNotFoundError(f"Prompt file '{prompt_path}' not found.")
-    with open(prompt_path, "rb") as f:
+    with prompt_path.open("rb") as f:
         return tomllib.load(f)
 
 def load_system_prompt() -> str:

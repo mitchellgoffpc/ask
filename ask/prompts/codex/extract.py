@@ -5,15 +5,15 @@ from pathlib import Path
 PROMPT_DIR = Path(__file__).parent
 
 if __name__ == '__main__':
-    with open(sys.argv[1]) as f:
+    with Path(sys.argv[1]).open() as f:
         data = json.load(f)
 
-    with open(PROMPT_DIR / "system.toml", "w") as f:
+    with (PROMPT_DIR / "system.toml").open("w") as f:
         f.write('prompt = """\n')
         f.write(data['instructions'].strip().replace('\\', '\\\\'))
         f.write('\n"""\n')
 
-    with open(PROMPT_DIR / "permissions.toml", "w") as f:
+    with (PROMPT_DIR / "permissions.toml").open("w") as f:
         f.write('prompt = """\n')
         f.write(data['input'][0]['content'][0]['text'].strip().replace(' \n', '\n'))
         f.write('\n"""\n')
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     for tool in data['tools']:
         if 'name' not in tool:
             continue
-        with open(PROMPT_DIR / 'tools' / f"{tool['name']}.toml", "w") as f:
+        with (PROMPT_DIR / 'tools' / f"{tool['name']}.toml").open("w") as f:
             f.write(f'name = "{tool["name"]}"\n')
             f.write(f'description = """\n{tool["description"].strip()}\n"""\n\n')
             if 'parameters' in tool:

@@ -1,4 +1,3 @@
-import glob
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +21,9 @@ class GlobTool(Tool):
         path = Path(args['path'])
         pattern = args['pattern']
         try:
-            matches = glob.glob(str(path / pattern), recursive=True)
-            matches = [m for m in matches if Path(m).is_file()]
-            matches.sort(key=lambda x: Path(x).stat().st_mtime, reverse=True)
+            matches = list(path.glob(pattern))
+            matches = [m for m in matches if m.is_file()]
+            matches.sort(key=lambda x: x.stat().st_mtime, reverse=True)
             return Text(f"Found {len(matches)} files" + ''.join(f'\n- {m}' for m in matches))
         except PermissionError:
             return Text("Found 0 files")

@@ -108,7 +108,7 @@ class GrepTool(Tool):
             total_matches = 0
             for file_path in files_to_search:
                 try:
-                    with open(file_path, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as content:
+                    with file_path.open('rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as content:
                         if output_mode == "content":
                             num_matches, lines = get_content_matches(file_path, content, regex, show_line_nums, before, after)
                             results.extend(lines)

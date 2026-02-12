@@ -106,7 +106,7 @@ async def query(messages: list[Message], stream: bool) -> AsyncContentIterator:
     headers = api.headers(api_key)
     assert api_key, f"{api.key!r} environment variable isn't set!"
 
-    with open('/tmp/ask.json', 'w') as f:
+    with Path('/tmp/ask.json').open('w') as f:
         json.dump(params, f, indent=2)
 
     async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=params) as r:

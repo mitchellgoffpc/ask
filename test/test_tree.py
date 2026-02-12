@@ -72,7 +72,7 @@ class TestEncoderDecoder(unittest.TestCase):
                 'Write': {'file_path': test_file_path, 'content': 'test'}
             }
 
-            with open(test_file_path, 'w') as f:
+            with Path(test_file_path).open('w') as f:
                 f.write('old')
             for tool in TOOL_LIST:
                 with self.subTest(tool=tool.name):

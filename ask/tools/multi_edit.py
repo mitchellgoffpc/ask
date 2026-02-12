@@ -34,7 +34,7 @@ class MultiEditTool(EditTool):
         edits = args['edits']
 
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with file_path.open('w', encoding='utf-8') as f:
                 f.write(new_content)
         except PermissionError as e:
             raise ToolError(f"Permission denied when writing to file '{file_path}'.") from e
