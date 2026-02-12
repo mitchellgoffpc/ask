@@ -16,20 +16,20 @@ class TestMessageTree(unittest.TestCase):
 
     def test_add(self) -> None:
         msg_uuid = self.tree.add('user', None, Text('hello'))
-        self.assertEqual(self.tree[msg_uuid].role, 'user')
-        self.assertEqual(self.tree[msg_uuid].content, Text('hello'))
+        assert self.tree[msg_uuid].role == 'user'
+        assert self.tree[msg_uuid].content == Text('hello')
 
     def test_update(self) -> None:
         msg_uuid = self.tree.add('user', None, Text('original'))
         self.tree.update(msg_uuid, Text('updated'))
-        self.assertEqual(self.tree[msg_uuid].content, Text('updated'))
+        assert self.tree[msg_uuid].content == Text('updated')
 
     def test_clear(self) -> None:
         self.tree.add('user', None, Text('first'))
         self.tree.add('assistant', None, Text('second'))
         self.tree.clear()
-        self.assertEqual(len(self.tree.messages), 0)
-        self.assertEqual(len(self.tree.parents), 0)
+        assert len(self.tree.messages) == 0
+        assert len(self.tree.parents) == 0
 
     def test_keys_values(self) -> None:
         msg1 = self.tree.add('user', None, Text('first'))
@@ -37,11 +37,11 @@ class TestMessageTree(unittest.TestCase):
         msg3 = self.tree.add('user', msg2, Text('third'))
 
         keys = self.tree.keys(msg3)
-        self.assertEqual(keys, [msg1, msg2, msg3])
+        assert keys == [msg1, msg2, msg3]
         values = self.tree.values(msg2)
-        self.assertEqual(values, [Message(role='user', content=Text('first')), Message(role='assistant', content=Text('second'))])
+        assert values == [Message(role='user', content=Text('first')), Message(role='assistant', content=Text('second'))]
         items = self.tree.items(msg2)
-        self.assertEqual(items, [(msg1, Message(role='user', content=Text('first'))), (msg2, Message(role='assistant', content=Text('second')))])
+        assert items == [(msg1, Message(role='user', content=Text('first'))), (msg2, Message(role='assistant', content=Text('second')))]
 
 
 class TestEncoderDecoder(unittest.TestCase):
@@ -49,13 +49,13 @@ class TestEncoderDecoder(unittest.TestCase):
         message = Image(mimetype='image/png', data=b'\x89PNG\r\n\x1a\n')
         encoded = json.dumps(message, cls=MessageEncoder)
         decoded = json.loads(encoded, object_hook=message_decoder)
-        self.assertEqual(decoded.data, message.data)
+        assert decoded.data == message.data
 
     def test_pdf_encode_decode(self) -> None:
         message = PDF(name='test.pdf', data=b'%PDF-1.4')
         encoded = json.dumps(message, cls=MessageEncoder)
         decoded = json.loads(encoded, object_hook=message_decoder)
-        self.assertEqual(decoded.data, message.data)
+        assert decoded.data == message.data
 
     def test_tool_request_encode_decode(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -82,9 +82,9 @@ class TestEncoderDecoder(unittest.TestCase):
                     encoded = json.dumps(request, cls=MessageEncoder)
                     decoded = json.loads(encoded, object_hook=message_decoder)
 
-                    self.assertEqual(decoded.call_id, request.call_id)
-                    self.assertEqual(decoded.tool, request.tool)
-                    self.assertEqual(decoded.artifacts, request.artifacts)
+                    assert decoded.call_id == request.call_id
+                    assert decoded.tool == request.tool
+                    assert decoded.artifacts == request.artifacts
 
     def test_tool_response_encode_decode(self) -> None:
         for tool in TOOL_LIST:
@@ -93,9 +93,9 @@ class TestEncoderDecoder(unittest.TestCase):
                 encoded = json.dumps(response, cls=MessageEncoder)
                 decoded = json.loads(encoded, object_hook=message_decoder)
 
-                self.assertEqual(response.call_id, decoded.call_id)
-                self.assertEqual(response.tool, decoded.tool)
-                self.assertEqual(response.status, decoded.status)
+                assert response.call_id == decoded.call_id
+                assert response.tool == decoded.tool
+                assert response.status == decoded.status
 
     def test_command_encode_decode(self) -> None:
         commands = [
@@ -105,7 +105,7 @@ class TestEncoderDecoder(unittest.TestCase):
         for command in commands:
             encoded = json.dumps(command, cls=MessageEncoder)
             decoded = json.loads(encoded, object_hook=message_decoder)
-            self.assertEqual(decoded, command)
+            assert decoded == command
 
     def test_message_tree_encode_decode(self) -> None:
         tree = MessageTree({})
@@ -119,7 +119,7 @@ class TestEncoderDecoder(unittest.TestCase):
         new_tree = MessageTree({})
         new_tree.load(decoded)
 
-        self.assertEqual(len(new_tree.messages), 3)
-        self.assertEqual(new_tree[msg1].content, Text('first'))
-        self.assertEqual(new_tree[msg2].content, ToolRequest(call_id='call_456', tool='BashShell', arguments={'command': 'echo test'}))
-        self.assertEqual(new_tree[msg3].content, ToolResponse(call_id='call_456', tool='BashShell', response=Text('test'), status=ToolCallStatus.COMPLETED))
+        assert len(new_tree.messages) == 3
+        assert new_tree[msg1].content == Text('first')
+        assert new_tree[msg2].content == ToolRequest(call_id='call_456', tool='BashShell', arguments={'command': 'echo test'})
+        assert new_tree[msg3].content == ToolResponse(call_id='call_456', tool='BashShell', response=Text('test'), status=ToolCallStatus.COMPLETED)

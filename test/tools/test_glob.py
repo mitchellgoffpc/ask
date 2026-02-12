@@ -28,10 +28,10 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             result = await self.run_tool(path=temp_dir, pattern="*.txt")
             lines = result.split('\n')
             results = sorted(lines[1:])
-            self.assertEqual(len(lines), 3)
-            self.assertEqual(lines[0], "Found 2 files")
-            self.assertEqual(results[0], f"- {temp_path / 'file1.txt'}")
-            self.assertEqual(results[1], f"- {temp_path / 'test.txt'}")
+            assert len(lines) == 3
+            assert lines[0] == "Found 2 files"
+            assert results[0] == f"- {temp_path / 'file1.txt'}"
+            assert results[1] == f"- {temp_path / 'test.txt'}"
 
     async def test_recursive_glob(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -42,10 +42,10 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "subdir" / "other.txt").touch()
 
             result = await self.run_tool(path=temp_dir, pattern="**/*.py")
-            self.assertTrue(result.startswith("Found 2 files"))
-            self.assertIn("root.py", result)
-            self.assertIn("sub.py", result)
-            self.assertNotIn("other.txt", result)
+            assert result.startswith("Found 2 files")
+            assert "root.py" in result
+            assert "sub.py" in result
+            assert "other.txt" not in result
 
     async def test_no_matches(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -53,7 +53,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "file.txt").touch()
 
             result = await self.run_tool(path=temp_dir, pattern="*.nonexistent")
-            self.assertEqual(result, "Found 0 files")
+            assert result == "Found 0 files"
 
     async def test_directory_ignored(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -62,6 +62,6 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "somedir").mkdir()
 
             result = await self.run_tool(path=temp_dir, pattern="*")
-            self.assertTrue(result.startswith("Found 1 files"))
-            self.assertIn("file.txt", result)
-            self.assertNotIn("somedir", result)
+            assert result.startswith("Found 1 files")
+            assert "file.txt" in result
+            assert "somedir" not in result

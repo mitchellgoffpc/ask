@@ -30,17 +30,17 @@ class TestInputHandling(unittest.TestCase):
         ]
         for sequence, expected in test_cases:
             with self.subTest(sequence=sequence):
-                self.assertEqual(split_input_sequence(sequence), expected)
+                assert split_input_sequence(sequence) == expected
 
 
 class TestRender(unittest.TestCase):
     def test_empty_box(self) -> None:
         box = Box()[Box(), Text("Hello")]
-        self.assertEqual(render_once(box), "Hello")
+        assert render_once(box) == "Hello"
 
     def test_render_styled_text(self) -> None:
         text = Text(f"{Colors.WHITE}this is one line\nthis is another line{Colors.END}")
-        self.assertEqual(render_once(text), f"{Colors.WHITE}this is one line{Colors.END}    \n{Colors.WHITE}this is another line{Colors.END}")
+        assert render_once(text) == f"{Colors.WHITE}this is one line{Colors.END}    \n{Colors.WHITE}this is another line{Colors.END}"
 
     def test_width_types(self) -> None:
         test_cases: list[tuple[str, int | None, list]] = [
@@ -54,19 +54,19 @@ class TestRender(unittest.TestCase):
                 box = Box(width=width, flex=Axis.HORIZONTAL)[(Text(text, width=width) for text, width, _ in _children)]
                 expected_box_width = width or sum(expected_width for _, _, expected_width in _children)
                 expected_result = ''.join(f'{text:<{expected_width}}' for text, _, expected_width in _children).ljust(expected_box_width)
-                self.assertEqual(render_once(box), expected_result)
+                assert render_once(box) == expected_result
 
     def test_layout_width_constraint(self) -> None:
         text = Text("Very long text that should be wrapped", width=10)
-        self.assertEqual(render_once(text), "Very long \ntext that \nshould be \nwrapped   ")
+        assert render_once(text) == "Very long \ntext that \nshould be \nwrapped   "
 
     def test_parent_width_constraint(self) -> None:
         box = Box()[Box(width=10)[Text("Very long text that should be wrapped")]]
-        self.assertEqual(render_once(box), "Very long \ntext that \nshould be \nwrapped   ")
+        assert render_once(box) == "Very long \ntext that \nshould be \nwrapped   "
 
     def test_mixed_flex_components(self) -> None:
         outer = Box(flex=Axis.HORIZONTAL)[Box(flex=Axis.VERTICAL)[Text("Top"), Text("Bottom")], Text("Side")]
-        self.assertEqual(render_once(outer), "Top   Side\nBottom    ")
+        assert render_once(outer) == "Top   Side\nBottom    "
 
 
 class TestRenderMargin(unittest.TestCase):
@@ -80,7 +80,7 @@ class TestRenderMargin(unittest.TestCase):
         for description, text_content, margin, expected in test_cases:
             with self.subTest(description=description):
                 text = Text(text_content, margin=margin)
-                self.assertEqual(render_once(text), expected)
+                assert render_once(text) == expected
 
 
 class TestRenderBorder(unittest.TestCase):
@@ -94,7 +94,7 @@ class TestRenderBorder(unittest.TestCase):
         for description, text_content, border, margin, expected in test_cases:
             with self.subTest(description=description):
                 text = Text(text_content, margin=margin, border=border, border_style=Borders.SINGLE)
-                self.assertEqual(render_once(text), expected)
+                assert render_once(text) == expected
 
 
 class TestRenderPerformance(unittest.TestCase):
@@ -109,4 +109,4 @@ class TestRenderPerformance(unittest.TestCase):
                 start = time.perf_counter()
                 render(tree, root)
                 elapsed = time.perf_counter() - start
-                self.assertLess(elapsed, 0.01, f"Render for {widget.__name__} took {elapsed*1000:.2f}ms, expected <10ms")
+                assert elapsed < 0.01, f"Render for {widget.__name__} took {elapsed * 1000:.2f}ms, expected <10ms"

@@ -30,7 +30,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
         with patch('ask.query.query', side_effect=[to_async(r) for r in query_responses]):
             results = [msg async for _, msg in query_agent(initial_messages, self.approval, False) if msg is not None]
         for result, exp in zip(results, expected, strict=True):
-            self.assertEqual(result, exp)
+            assert result == exp
 
     async def test_agent_loop_reasoning_only(self) -> None:
         initial_messages = [Message('user', ModelCommand(model='gpt-5')), Message('user', Text('Hello'))]
@@ -44,7 +44,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
         with patch('ask.query.query', side_effect=[to_async(r) for r in query_responses]):
             results = [msg async for _, msg in query_agent(initial_messages, self.approval, False) if msg is not None]
         for result, exp in zip(results, expected, strict=True):
-            self.assertEqual(result, exp)
+            assert result == exp
 
     async def test_agent_loop_with_tool_call(self) -> None:
         initial_messages = [
@@ -72,4 +72,4 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
             results = [msg async for _, msg in query_agent(initial_messages, self.approval, False) if msg is not None]
             mock_execute.assert_called_once()
         for result, exp in zip(results, expected, strict=True):
-            self.assertEqual(result, exp)
+            assert result == exp

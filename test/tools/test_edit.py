@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from ask.messages import Text
 from ask.tools.base import ToolError
 from ask.tools.edit import EditTool
@@ -26,10 +28,10 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
 
             lines = (await self.run_tool(file_path=f.name, old_string="world", new_string="universe", replace_all=False)).split('\n')
             content = Path(f.name).read_text()
-            self.assertEqual(content, "Hello universe\nThis is a test")
-            self.assertIn(f"The file {f.name} has been updated.", lines[0])
-            self.assertEqual(lines[1], "     1→Hello universe")
-            self.assertEqual(lines[2], "     2→This is a test")
+            assert content == "Hello universe\nThis is a test"
+            assert f"The file {f.name} has been updated." in lines[0]
+            assert lines[1] == "     1→Hello universe"
+            assert lines[2] == "     2→This is a test"
 
     async def test_replace_all(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -38,17 +40,17 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(file_path=f.name, old_string="test", new_string="example", replace_all=True)
             content = Path(f.name).read_text()
-            self.assertEqual(content, "example example example\nexample again")
-            self.assertIn("all occurrences of 'test' have been replaced with 'example'", result)
+            assert content == "example example example\nexample again"
+            assert "all occurrences of 'test' have been replaced with 'example'" in result
 
     async def test_multiple_occurrences_without_replace_all(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("foo bar foo")
             f.flush()
 
-            with self.assertRaises(ToolError) as cm:
+            with pytest.raises(ToolError) as cm:
                 await self.run_tool(file_path=f.name, old_string="foo", new_string="baz", replace_all=False)
-            self.assertIn("Found 2 matches", str(cm.exception))
+            assert "Found 2 matches" in str(cm.value)
 
     async def test_response_snippet(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -56,6 +58,6 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
             f.flush()
 
             lines = (await self.run_tool(file_path=f.name, old_string="L\nM\nN", new_string="foo\nbar\nbaz", replace_all=False)).split('\n')
-            self.assertEqual(lines[1], "     7→G")
-            self.assertEqual(lines[6], "    12→foo")
-            self.assertEqual(lines[-1], "    19→S")
+            assert lines[1] == "     7→G"
+            assert lines[6] == "    12→foo"
+            assert lines[-1] == "    19→S"

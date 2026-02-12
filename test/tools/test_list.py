@@ -28,11 +28,11 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(path=temp_dir, ignore=[])
             lines = result.split('\n')
-            self.assertEqual(lines[0], f"- {temp_path}/")
-            self.assertEqual(lines[1], "  - file1.txt")
-            self.assertEqual(lines[2], "  - file2.py")
-            self.assertEqual(lines[3], "  - subdir/")
-            self.assertEqual(lines[4], "    - nested.txt")
+            assert lines[0] == f"- {temp_path}/"
+            assert lines[1] == "  - file1.txt"
+            assert lines[2] == "  - file2.py"
+            assert lines[3] == "  - subdir/"
+            assert lines[4] == "    - nested.txt"
 
     async def test_ignore_patterns(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -42,9 +42,9 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "test.py").touch()
 
             result = await self.run_tool(path=temp_dir, ignore=["*.txt"])
-            self.assertIn("- test.py", result)
-            self.assertNotIn("- keep.txt", result)
-            self.assertNotIn("- ignore.txt", result)
+            assert "- test.py" in result
+            assert "- keep.txt" not in result
+            assert "- ignore.txt" not in result
 
     async def test_ignored_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -57,8 +57,8 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / '.hidden').touch()
 
             result = await self.run_tool(path=temp_dir, ignore=[])
-            self.assertIn("- file.txt", result)
-            self.assertIn("- node_modules/", result)
-            self.assertNotIn("- package.txt", result)
-            self.assertNotIn("- .git/", result)
-            self.assertNotIn("- .hidden", result)
+            assert "- file.txt" in result
+            assert "- node_modules/" in result
+            assert "- package.txt" not in result
+            assert "- .git/" not in result
+            assert "- .hidden" not in result

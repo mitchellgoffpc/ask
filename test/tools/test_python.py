@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from ask.messages import Text
 from ask.tools.base import ToolError
 from ask.tools.python import PythonTool
@@ -19,20 +21,20 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
 
     async def test_basic_execution(self) -> None:
         result = await self.run_tool("print('hello world')")
-        self.assertIn("hello world", result)
+        assert "hello world" in result
 
     async def test_expression_output(self) -> None:
         result = await self.run_tool("2 + 2")
-        self.assertIn("4", result)
+        assert "4" in result
 
     async def test_error_handling(self) -> None:
-        with self.assertRaises(ToolError) as context:
+        with pytest.raises(ToolError) as context:
             await self.run_tool("1 / 0")
-        self.assertIsInstance(context.exception, ToolError)
-        self.assertIn('ZeroDivisionError', str(context.exception))
+        assert isinstance(context.value, ToolError)
+        assert 'ZeroDivisionError' in str(context.value)
 
     async def test_syntax_error(self) -> None:
-        with self.assertRaises(ToolError) as context:
+        with pytest.raises(ToolError) as context:
             await self.run_tool("def invalid_syntax(")
-        self.assertIsInstance(context.exception, ToolError)
-        self.assertIsInstance(context.exception.__cause__, SyntaxError)
+        assert isinstance(context.value, ToolError)
+        assert isinstance(context.value.__cause__, SyntaxError)

@@ -46,7 +46,7 @@ class TestTextBoxWrapping(unittest.TestCase):
                 textbox.cursor_pos = cursor_pos
                 text_elem = textbox.contents()[0]
                 assert isinstance(text_elem, Text)
-                self.assertEqual(text_elem.wrapped(width), expected_text,  f"Failed: {description}\nText: {repr(text)}\nCursor: {cursor_pos}\nWidth: {width}")
+                assert text_elem.wrapped(width) == expected_text, f"Failed: {description}\nText: {repr(text)}\nCursor: {cursor_pos}\nWidth: {width}"
 
     def test_textbox_width_limit(self) -> None:
         tree, root, textbox = create_tree(TextBox(width=1.0, wrap=Wrap.WORDS))
@@ -54,7 +54,7 @@ class TestTextBoxWrapping(unittest.TestCase):
         textbox.cursor_pos = 12
         update(tree, textbox)
         layout(tree, root, available_width=10)
-        self.assertEqual(render(tree, root), '123456789' + Styles.inverse(' '))
+        assert render(tree, root) == '123456789' + Styles.inverse(' ')
 
 
 class TestTextBoxInputHandling(unittest.TestCase):
@@ -81,8 +81,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
                 textbox.cursor_pos = initial_cursor
                 for ch in inputs:
                     textbox.handle_input(ch)
-                self.assertEqual(textbox.text, expected_text)
-                self.assertEqual(textbox.cursor_pos, expected_cursor)
+                assert textbox.text == expected_text
+                assert textbox.cursor_pos == expected_cursor
 
     def test_textbox_navigation_keybindings(self) -> None:
         test_cases = [
@@ -107,8 +107,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
                     textbox.cursor_pos = initial_cursor
                     layout(tree, root)
                     textbox.handle_input(ch)
-                    self.assertEqual(textbox.text, initial_text)
-                    self.assertEqual(textbox.cursor_pos, expected_cursor)
+                    assert textbox.text == initial_text
+                    assert textbox.cursor_pos == expected_cursor
 
     def test_textbox_history_paging_keybindings(self) -> None:
         test_cases = [
@@ -129,8 +129,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
                     textbox.history_idx = history_idx
                     layout(tree, root)
                     textbox.handle_input(ch)
-                    self.assertEqual(textbox.text, expected_text)
-                    self.assertEqual(textbox.cursor_pos, expected_cursor)
+                    assert textbox.text == expected_text
+                    assert textbox.cursor_pos == expected_cursor
 
     def test_textbox_kill_yank_and_mark_keybindings(self) -> None:
         test_cases = [
@@ -150,12 +150,12 @@ class TestTextBoxInputHandling(unittest.TestCase):
                 if kill_buf is not None:
                     textbox.kill_buffer = kill_buf
                 textbox.handle_input(inputs)
-                self.assertEqual(textbox.text, expected_text)
-                self.assertEqual(textbox.cursor_pos, expected_cursor)
+                assert textbox.text == expected_text
+                assert textbox.cursor_pos == expected_cursor
                 if expected_mark is not None:
-                    self.assertEqual(textbox.mark, expected_mark)
+                    assert textbox.mark == expected_mark
                 if expected_kill_buf is not None:
-                    self.assertEqual(textbox.kill_buffer, expected_kill_buf)
+                    assert textbox.kill_buffer == expected_kill_buf
 
     def test_textbox_change_callback(self) -> None:
         handle_change = Mock()
@@ -186,4 +186,4 @@ class TestTextBoxInputHandling(unittest.TestCase):
         # Enter key calls submit handler
         textbox.handle_input('\r')
         handle_submit.assert_called_once_with('Test content')
-        self.assertEqual(textbox.text, 'Test content')
+        assert textbox.text == 'Test content'

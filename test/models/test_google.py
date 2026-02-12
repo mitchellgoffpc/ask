@@ -23,10 +23,10 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
                 {'inline_data': {'mime_type': 'image/png', 'data': image_data}}]}]
 
         result = self.api.params(self.model, INPUT_MESSAGES[:3] + INPUT_MESSAGES[4:], True)
-        self.assertEqual(result['system_instruction'], {'parts': [{'text': 'System prompt'}]})
-        self.assertEqual(len(result['tools'][0]['functionDeclarations']), 1)
+        assert result['system_instruction'] == {'parts': [{'text': 'System prompt'}]}
+        assert len(result['tools'][0]['functionDeclarations']) == 1
         for actual, expected in zip(result['contents'], expected_output, strict=True):
-            self.assertEqual(actual, expected)
+            assert actual == expected
 
     def test_result(self) -> None:
         response = {
@@ -39,7 +39,7 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
         with patch('ask.models.google.uuid4', return_value='c1'):
             result = self.api.result(response)
         for actual, expected in zip(result, RESULT_OUTPUT[1:-1], strict=True):
-            self.assertEqual(actual, expected)
+            assert actual == expected
 
     async def test_decode(self) -> None:
         chunks = [
@@ -51,4 +51,4 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
         with patch('ask.models.google.uuid4', return_value='c1'):
             result = [x async for x in self.api.decode(chunk_data)]
         for actual, expected in zip(result, DECODE_OUTPUT[1:-1], strict=True):
-            self.assertEqual(actual, expected)
+            assert actual == expected

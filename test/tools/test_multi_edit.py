@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from ask.messages import Text
 from ask.tools.base import ToolError
 from ask.tools.multi_edit import MultiEditTool
@@ -31,8 +33,8 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             ]
             result = await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()
-            self.assertEqual(content, "Hi world\nThis is a example\nFarewell world")
-            self.assertIn(f"The file {f.name} has been updated with 3 edits.", result)
+            assert content == "Hi world\nThis is a example\nFarewell world"
+            assert f"The file {f.name} has been updated with 3 edits." in result
 
     async def test_replace_all_in_multiple_edits(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -45,7 +47,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             ]
             await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()
-            self.assertEqual(content, "example baz example\nbar example baz")
+            assert content == "example baz example\nbar example baz"
 
     async def test_sequential_edits(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -58,7 +60,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             ]
             await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()
-            self.assertEqual(content, "final result")
+            assert content == "final result"
 
     async def test_multiple_occurrences_without_replace_all(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -66,6 +68,6 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             f.flush()
 
             edits = [{'old_string': 'foo', 'new_string': 'baz'}]
-            with self.assertRaises(ToolError) as cm:
+            with pytest.raises(ToolError) as cm:
                 await self.run_tool(file_path=f.name, edits=edits)
-            self.assertIn("Found 2 matches", str(cm.exception))
+            assert "Found 2 matches" in str(cm.value)

@@ -24,11 +24,11 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
             {'role': 'user', 'content': [{'type': 'input_image', 'image_url': image_url}]}]
 
         result = self.api.params(self.model, INPUT_MESSAGES, True)
-        self.assertEqual(result['model'], 'test-model')
-        self.assertTrue(result['stream'])
-        self.assertEqual(len(result['tools']), 1)
+        assert result['model'] == 'test-model'
+        assert result['stream']
+        assert len(result['tools']) == 1
         for actual, expected in zip(result['input'], expected_output, strict=True):
-            self.assertEqual(actual, expected)
+            assert actual == expected
 
     def test_result(self) -> None:
         response = {
@@ -40,7 +40,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
 
         result = self.api.result(response)
         for actual, expected in zip(result, RESULT_OUTPUT, strict=True):
-            self.assertEqual(actual, expected)
+            assert actual == expected
 
     async def test_decode(self) -> None:
         chunks = [
@@ -54,4 +54,4 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         chunk_data = ('data: ' + json.dumps(chunk) async for chunk in to_async(chunks))
         result = [x async for x in self.api.decode(chunk_data)]
         for actual, expected in zip(result, DECODE_OUTPUT, strict=True):
-            self.assertEqual(actual, expected)
+            assert actual == expected

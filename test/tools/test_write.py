@@ -24,8 +24,8 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             content = "Hello, world!"
             result = await self.run_tool(file_path=str(file_path), content=content)
 
-            self.assertEqual(file_path.read_text(encoding='utf-8'), content)
-            self.assertIn("File created successfully", result)
+            assert file_path.read_text(encoding='utf-8') == content
+            assert "File created successfully" in result
 
     async def test_overwrite_existing_file(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -34,8 +34,8 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             new_content = "new content"
             result = await self.run_tool(file_path=f.name, content=new_content)
 
-            self.assertEqual(Path(f.name).read_text(encoding='utf-8'), new_content)
-            self.assertIn("File updated successfully", result)
+            assert Path(f.name).read_text(encoding='utf-8') == new_content
+            assert "File updated successfully" in result
 
     async def test_create_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -43,6 +43,6 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             content = "test content"
             result = await self.run_tool(file_path=str(file_path), content=content)
 
-            self.assertTrue(file_path.exists())
-            self.assertEqual(file_path.read_text(encoding='utf-8'), content)
-            self.assertIn("File created successfully", result)
+            assert file_path.exists()
+            assert file_path.read_text(encoding='utf-8') == content
+            assert "File created successfully" in result

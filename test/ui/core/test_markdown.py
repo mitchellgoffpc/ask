@@ -19,15 +19,15 @@ class TestRenderMarkdown(unittest.TestCase):
         for input_text, expected, description in test_cases:
             with self.subTest(description=description):
                 result = render_markdown(input_text)
-                self.assertEqual(result, expected)
+                assert result == expected
 
     def test_nested_formatting(self) -> None:
         result = render_markdown("**bold *italic* text**")
-        self.assertEqual(result, f"{Styles.BOLD}bold {Styles.ITALIC}italic{Styles.ITALIC_END} text{Styles.BOLD_END}")
+        assert result == f"{Styles.BOLD}bold {Styles.ITALIC}italic{Styles.ITALIC_END} text{Styles.BOLD_END}"
 
     def test_nested_lists(self) -> None:
         result = render_markdown("* Item 1\n  * Subitem 1.1\n  Another item\n* Item 2")
-        self.assertEqual(result, "• Item 1\n  • Subitem 1.1\n  Another item\n• Item 2")
+        assert result == "• Item 1\n  • Subitem 1.1\n  Another item\n• Item 2"
 
     def test_html_special_characters(self) -> None:
         test_cases = [
@@ -41,4 +41,4 @@ class TestRenderMarkdown(unittest.TestCase):
         for input_text, expected, description in test_cases:
             with self.subTest(description=description):
                 result = render_markdown(input_text)
-                self.assertEqual(result, expected)
+                assert result == expected

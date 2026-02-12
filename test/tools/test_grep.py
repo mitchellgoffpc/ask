@@ -26,8 +26,8 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='hello', pathspec=str(temp_path))
             lines = result.split('\n')
-            self.assertEqual(lines[0], "Found 1 files")
-            self.assertEqual(lines[1], f"{temp_path}/match.txt")
+            assert lines[0] == "Found 1 files"
+            assert lines[1] == f"{temp_path}/match.txt"
 
     async def test_count_mode(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -36,8 +36,8 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='test', pathspec=str(temp_path), output_mode='count')
             lines = result.split('\n')
-            self.assertEqual(lines[0], "Found 1 files")
-            self.assertEqual(lines[1], f"{temp_path}/test.txt:3")
+            assert lines[0] == "Found 1 files"
+            assert lines[1] == f"{temp_path}/test.txt:3"
 
     async def test_content_mode(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -46,8 +46,8 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='hello', pathspec=str(temp_path), output_mode='content', **{'-n': True})
             lines = result.split('\n')
-            self.assertEqual(lines[0], "Found 1 matches")
-            self.assertEqual(lines[1], f"{temp_path}/test.txt:2:hello world")
+            assert lines[0] == "Found 1 matches"
+            assert lines[1] == f"{temp_path}/test.txt:2:hello world"
 
     async def test_context_lines(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -56,16 +56,16 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='match', pathspec=str(temp_path), output_mode='content', **{'-C': 1})
             lines = result.split('\n')
-            self.assertEqual(len(lines), 9)
-            self.assertEqual(lines[0], "Found 3 matches")
-            self.assertEqual(lines[1], f"{temp_path}/test.txt:before")
-            self.assertEqual(lines[2], f"{temp_path}/test.txt:match")
-            self.assertEqual(lines[3], f"{temp_path}/test.txt:middle")
-            self.assertEqual(lines[4], f"{temp_path}/test.txt:match")
-            self.assertEqual(lines[5], f"{temp_path}/test.txt:after")
-            self.assertEqual(lines[6], "--")
-            self.assertEqual(lines[7], f"{temp_path}/test.txt:")
-            self.assertEqual(lines[8], f"{temp_path}/test.txt:match")
+            assert len(lines) == 9
+            assert lines[0] == "Found 3 matches"
+            assert lines[1] == f"{temp_path}/test.txt:before"
+            assert lines[2] == f"{temp_path}/test.txt:match"
+            assert lines[3] == f"{temp_path}/test.txt:middle"
+            assert lines[4] == f"{temp_path}/test.txt:match"
+            assert lines[5] == f"{temp_path}/test.txt:after"
+            assert lines[6] == "--"
+            assert lines[7] == f"{temp_path}/test.txt:"
+            assert lines[8] == f"{temp_path}/test.txt:match"
 
     async def test_case_insensitive(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -74,8 +74,8 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='hello', pathspec=str(temp_path), **{'-i': True})
             lines = result.split('\n')
-            self.assertEqual(lines[0], "Found 1 files")
-            self.assertEqual(lines[1], f"{temp_path}/test.txt")
+            assert lines[0] == "Found 1 files"
+            assert lines[1] == f"{temp_path}/test.txt"
 
     async def test_glob_filter(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -85,8 +85,8 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='python', pathspec=str(temp_path / '*.py'))
             lines = result.split('\n')
-            self.assertEqual(lines[0], "Found 1 files")
-            self.assertEqual(lines[1], f"{temp_path}/match.py")
+            assert lines[0] == "Found 1 files"
+            assert lines[1] == f"{temp_path}/match.py"
 
     async def test_head_limit(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -96,8 +96,8 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(pattern='match', pathspec=str(temp_path), head_limit=2)
             lines = result.split('\n')
-            self.assertEqual(lines[0], "Found 5 files")
-            self.assertEqual(len(lines) - 1, 2)
+            assert lines[0] == "Found 5 files"
+            assert len(lines) - 1 == 2
 
     async def test_no_matches(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -105,4 +105,4 @@ class TestGrepTool(unittest.IsolatedAsyncioTestCase):
             (temp_path / "test.txt").write_text("hello world")
 
             result = await self.run_tool(pattern='nonexistent', pathspec=str(temp_path))
-            self.assertEqual(result, "No matches found")
+            assert result == "No matches found"

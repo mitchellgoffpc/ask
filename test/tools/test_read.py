@@ -24,11 +24,11 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(file_path=f.name, offset=0, limit=1000)
             lines = result.split('\n')
-            self.assertEqual(len(lines), 4)
-            self.assertEqual(lines[0], "     1→line 1")
-            self.assertEqual(lines[1], "     2→line 2")
-            self.assertEqual(lines[2], "     3→line 3")
-            self.assertEqual(lines[3], "     4→")
+            assert len(lines) == 4
+            assert lines[0] == "     1→line 1"
+            assert lines[1] == "     2→line 2"
+            assert lines[2] == "     3→line 3"
+            assert lines[3] == "     4→"
 
     async def test_offset_and_limit(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -37,10 +37,10 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(file_path=f.name, offset=2, limit=2)
             lines = result.split('\n')
-            self.assertEqual(len(lines), 3)
-            self.assertEqual(lines[0], "     3→line 3")
-            self.assertEqual(lines[1], "     4→line 4")
-            self.assertEqual(lines[2], "... [truncated, file contains more than 4 lines]")
+            assert len(lines) == 3
+            assert lines[0] == "     3→line 3"
+            assert lines[1] == "     4→line 4"
+            assert lines[2] == "... [truncated, file contains more than 4 lines]"
 
     async def test_line_truncation(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
@@ -49,10 +49,10 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
 
             result = await self.run_tool(file_path=f.name, offset=0, limit=1000)
             lines = result.split('\n')
-            self.assertTrue(lines[0].endswith("... [truncated]"))
-            self.assertEqual(lines[1], "     2→short line")
+            assert lines[0].endswith("... [truncated]")
+            assert lines[1] == "     2→short line"
 
     async def test_empty_file(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             result = await self.run_tool(file_path=f.name, offset=0, limit=1000)
-            self.assertEqual(result, "     1→")
+            assert result == "     1→"
