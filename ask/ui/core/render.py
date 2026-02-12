@@ -127,7 +127,9 @@ async def render_root(_root: Component) -> None:
     layout(tree, root, terminal_width)
     initial_render = render(tree, root)
     previous_render_lines = initial_render.split('\n')
-    print('\n\r'.join(previous_render_lines))
+    sys.stdout.write('\n\r'.join(previous_render_lines))
+    sys.stdout.write('\n')
+    sys.stdout.flush()
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)

@@ -36,7 +36,7 @@ if __name__ == "__main__":
         args = json.loads(cli_args.json_args)
         tool.check(args)
         artifacts = tool.process(args, tool.artifacts(args))
-        print(asyncio.run(tool.run(args, artifacts)))
+        print(asyncio.run(tool.run(args, artifacts)))  # noqa: T201
     except json.JSONDecodeError:
-        print(f"Error: Arguments must be valid JSON: {cli_args.json_args}")
+        print(f"Error: Arguments must be valid JSON: {cli_args.json_args}")  # noqa: T201
         sys.exit(1)

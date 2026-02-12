@@ -27,13 +27,13 @@ def main() -> None:
 
     # Sanity checks
     if args.model not in MODEL_SHORTCUTS:
-        print(f"Invalid model {args.model!r}. Valid options are:", file=sys.stderr)
+        sys.stderr.write(f"Invalid model {args.model!r}. Valid options are:\n")
         max_name_length = max(len(model.name) for model in MODELS)
         max_shortcuts_length = max(len(', '.join(model.shortcuts)) for model in MODELS)
         format_string = f"  {{:<{max_name_length}}}  {{:<{max_shortcuts_length}}}"
         for model in MODELS:
-            print(format_string.format(model.name, ', '.join(model.shortcuts)), file=sys.stderr)
-        print("\nUse any model name or shortcut from the list above.", file=sys.stderr)
+            sys.stderr.write(format_string.format(model.name, ', '.join(model.shortcuts)) + "\n")
+        sys.stderr.write("\nUse any model name or shortcut from the list above.\n")
         sys.exit(1)
 
     # Add system and tool descriptor messages

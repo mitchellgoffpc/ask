@@ -106,7 +106,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         try:
             if prefix.startswith('~'):
                 prefix = str(Path(prefix).expanduser())
-            matches = glob.glob(prefix + '*')
+            matches = glob.glob(prefix + '*')  # noqa: PTH207
             matches = [Path(m).name if '/' not in prefix else m for m in matches]
             return sorted(matches)[:10]
         except Exception:

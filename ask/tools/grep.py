@@ -95,7 +95,7 @@ class GrepTool(Tool):
         try:
             # Collect all files to search
             files_to_search = []
-            for path in glob.glob(pathspec, recursive=True):
+            for path in glob.glob(pathspec, recursive=True):  # noqa: PTH207
                 match_path = Path(path)
                 if match_path.is_file():
                     files_to_search.append(match_path)

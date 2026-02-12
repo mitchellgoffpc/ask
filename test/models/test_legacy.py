@@ -28,7 +28,6 @@ class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result['stream'])
         self.assertEqual(len(result['tools']), 1)
         for actual, expected in zip(result['messages'], expected_output, strict=True):
-            print(actual, expected)
             self.assertEqual(actual, expected)
 
     def test_result(self) -> None:
