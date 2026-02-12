@@ -64,7 +64,7 @@ def _check_modified_files(messages: list[Message]) -> list[Message]:
     modified_files: dict[Path, dict[str, str]] = {}
     for message in messages:
         if isinstance(message.content, ToolRequest):
-            artifacts = message.content._artifacts
+            artifacts = message.content.artifacts
             if 'modified' in artifacts and 'new_content' in artifacts:
                 modified_files[Path(artifacts['modified'])] = artifacts
 

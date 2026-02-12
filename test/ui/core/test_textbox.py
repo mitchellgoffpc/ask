@@ -42,16 +42,16 @@ class TestTextBoxWrapping(unittest.TestCase):
         for description, text, cursor_pos, width, wrap, expected_text in test_cases:
             with self.subTest(description=description):
                 textbox = TextBoxController(TextBox(width=width, wrap=wrap))
-                textbox._text = text
-                textbox._cursor_pos = cursor_pos
+                textbox.text = text
+                textbox.cursor_pos = cursor_pos
                 text_elem = textbox.contents()[0]
                 assert isinstance(text_elem, Text)
                 self.assertEqual(text_elem.wrapped(width), expected_text,  f"Failed: {description}\nText: {repr(text)}\nCursor: {cursor_pos}\nWidth: {width}")
 
     def test_textbox_width_limit(self) -> None:
         tree, root, textbox = create_tree(TextBox(width=1.0, wrap=Wrap.WORDS))
-        textbox._text = "123456789     "
-        textbox._cursor_pos = 12
+        textbox.text = "123456789     "
+        textbox.cursor_pos = 12
         update(tree, textbox)
         layout(tree, root, available_width=10)
         self.assertEqual(render(tree, root), '123456789' + Styles.inverse(' '))
@@ -77,8 +77,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
         for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor in test_cases:
             with self.subTest(description=description):
                 textbox = TextBoxController(TextBox(width=20))
-                textbox._text = initial_text
-                textbox._cursor_pos = initial_cursor
+                textbox.text = initial_text
+                textbox.cursor_pos = initial_cursor
                 for ch in inputs:
                     textbox.handle_input(ch)
                 self.assertEqual(textbox.text, expected_text)
@@ -103,8 +103,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
             for ch in inputs:
                 with self.subTest(description=description, input=ch):
                     tree, root, textbox = create_tree(TextBox(width=20))
-                    textbox._text = initial_text
-                    textbox._cursor_pos = initial_cursor
+                    textbox.text = initial_text
+                    textbox.cursor_pos = initial_cursor
                     layout(tree, root)
                     textbox.handle_input(ch)
                     self.assertEqual(textbox.text, initial_text)
@@ -123,8 +123,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
             for ch in inputs:
                 with self.subTest(description=description, input=ch):
                     tree, root, textbox = create_tree(TextBox(width=20))
-                    textbox._text = initial_text
-                    textbox._cursor_pos = initial_cursor
+                    textbox.text = initial_text
+                    textbox.cursor_pos = initial_cursor
                     textbox.history = history
                     textbox.history_idx = history_idx
                     layout(tree, root)
@@ -143,8 +143,8 @@ class TestTextBoxInputHandling(unittest.TestCase):
         for description, initial_text, initial_cursor, inputs, expected_text, expected_cursor, mark, expected_mark, kill_buf, expected_kill_buf in test_cases:
             with self.subTest(description=description):
                 textbox = TextBoxController(TextBox(width=20))
-                textbox._text = initial_text
-                textbox._cursor_pos = initial_cursor
+                textbox.text = initial_text
+                textbox.cursor_pos = initial_cursor
                 if mark is not None:
                     textbox.mark = mark
                 if kill_buf is not None:
@@ -172,15 +172,16 @@ class TestTextBoxInputHandling(unittest.TestCase):
         handle_change.reset_mock()
 
         # Change callback not called when content doesn't change
-        textbox._text = ''
-        textbox._cursor_pos = 0
+        textbox.text = ''
+        textbox.cursor_pos = 0
+        handle_change.reset_mock()
         textbox.handle_input('\x7f')
         handle_change.assert_not_called()
 
     def test_textbox_enter_and_submit_handling(self) -> None:
         handle_submit = Mock()
         textbox = TextBoxController(TextBox(width=20, handle_submit=handle_submit))
-        textbox._text = 'Test content'
+        textbox.text = 'Test content'
 
         # Enter key calls submit handler
         textbox.handle_input('\r')

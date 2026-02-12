@@ -73,10 +73,6 @@ class TextBoxController(BaseController[TextBox]):
         return 0
 
     @property
-    def cursor_pos(self) -> int:
-        return min(self._cursor_pos, len(self.text))
-
-    @property
     def text(self) -> str:
         return self._text
 
@@ -86,6 +82,14 @@ class TextBoxController(BaseController[TextBox]):
         if self.props.handle_change:
             self.props.handle_change(text)
         self.history = [*self.history[:self.history_idx], text, *self.history[self.history_idx + 1:]]
+
+    @property
+    def cursor_pos(self) -> int:
+        return min(self._cursor_pos, len(self.text))
+
+    @cursor_pos.setter
+    def cursor_pos(self, pos: int) -> None:
+        self._cursor_pos = pos
 
     def handle_update(self, new_props: TextBox) -> None:
         if new_props.text is not None and new_props.text != self._text:

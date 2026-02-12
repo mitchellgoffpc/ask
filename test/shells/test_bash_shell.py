@@ -11,7 +11,7 @@ class TestBashShell(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self) -> None:
         if self.shell:
-            self.shell._cleanup()
+            self.shell._cleanup()  # noqa: SLF001
 
     async def test_basic_execution(self) -> None:
         stdout, stderr = await self.shell.execute("echo 'hello world'", 10)
