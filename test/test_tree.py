@@ -69,7 +69,7 @@ class TestEncoderDecoder(unittest.TestCase):
                 'PythonShell': {'code': 'print("test")'},
                 'Read': {'file_path': test_file_path},
                 'ToDo': {'todos': []},
-                'Write': {'file_path': test_file_path, 'content': 'test'}
+                'Write': {'file_path': test_file_path, 'content': 'test'},
             }
 
             with Path(test_file_path).open('w') as f:

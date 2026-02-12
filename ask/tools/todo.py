@@ -13,7 +13,7 @@ class ToDoTool(Tool):
         Parameter("todos", "The updated todo list", ParameterType.Array([
             Parameter("content", "The todo item content", ParameterType.String),
             Parameter("status", "The status of the todo", ParameterType.Enum(["pending", "in_progress", "completed"])),
-        ]))
+        ])),
     ]
 
     async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:

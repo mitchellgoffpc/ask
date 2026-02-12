@@ -148,7 +148,7 @@ class AppController(UI.Controller[App]):
                     handle_submit=self.handle_submit,
                     handle_exit=self.exit)
             ],
-            dialog
+            dialog,
         ]
 
     def contents(self) -> list[UI.Component | None]:
@@ -187,7 +187,7 @@ class AppController(UI.Controller[App]):
                     if self.loading and not self.pending_approvals else None,
                 UI.Box(margin={'top': 1})[
                     UI.Text(Colors.hex("To Do", Theme.GRAY)),
-                    ToDos(latest_todos, expanded=True)
+                    ToDos(latest_todos, expanded=True),
                 ] if latest_todos and self.show_todos and not self.pending_approvals else None,
             ],
             *self.textbox(),

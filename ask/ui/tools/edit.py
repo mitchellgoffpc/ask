@@ -24,7 +24,7 @@ class EditToolOutput(ToolOutput):
                 case ToolCallStatus.CANCELLED:
                     return UI.Box()[
                         UI.Text("  ⎿  " + Colors.hex("Rejected by user", Theme.RED)),
-                        Diff(diff=self.props.request.artifacts['diff'], rejected=True)
+                        Diff(diff=self.props.request.artifacts['diff'], rejected=True),
                     ]
                 case ToolCallStatus.FAILED:
                     assert self.props.response is not None

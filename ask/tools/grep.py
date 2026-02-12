@@ -73,7 +73,7 @@ class GrepTool(Tool):
             'Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries). '
             'When unspecified, shows all results from ripgrep.', ParameterType.Number, required=False),
         Parameter("multiline", 'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.',
-            ParameterType.Boolean, required=False)
+            ParameterType.Boolean, required=False),
     ]
 
     async def run(self, args: dict[str, Any], artifacts: dict[str, Any]) -> Blob:

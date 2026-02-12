@@ -26,7 +26,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             edits = [
                 {'old_string': 'Hello', 'new_string': 'Hi'},
                 {'old_string': 'test', 'new_string': 'example'},
-                {'old_string': 'Goodbye', 'new_string': 'Farewell'}
+                {'old_string': 'Goodbye', 'new_string': 'Farewell'},
             ]
             result = await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()
@@ -40,7 +40,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
 
             edits = [
                 {'old_string': 'test', 'new_string': 'example', 'replace_all': True},
-                {'old_string': 'foo', 'new_string': 'baz', 'replace_all': True}
+                {'old_string': 'foo', 'new_string': 'baz', 'replace_all': True},
             ]
             await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()
@@ -53,7 +53,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
 
             edits = [
                 {'old_string': 'original', 'new_string': 'modified'},
-                {'old_string': 'modified text', 'new_string': 'final result'}
+                {'old_string': 'modified text', 'new_string': 'final result'},
             ]
             await self.run_tool(file_path=f.name, edits=edits)
             content = Path(f.name).read_text()

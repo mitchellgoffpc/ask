@@ -7,7 +7,7 @@ STATUS_COLORS = {
     ToolCallStatus.PENDING: Theme.GRAY,
     ToolCallStatus.COMPLETED: Theme.GREEN,
     ToolCallStatus.CANCELLED: Theme.RED,
-    ToolCallStatus.FAILED: Theme.RED
+    ToolCallStatus.FAILED: Theme.RED,
 }
 
 def abbreviate(text: str, max_lines: int) -> str:
@@ -76,5 +76,5 @@ class ToolOutputController(UI.Controller[ToolOutput]):
             UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text("  ⎿  "),
                 self.get_tool_output(),
-            ]
+            ],
         ]

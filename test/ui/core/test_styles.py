@@ -58,7 +58,7 @@ class TestWrapLines(unittest.TestCase):
             ("single character", f"{Colors.RED}A{Colors.END}", 1),
             ("multiple lines", "line1\nline2", 5),
             ("multiple styled lines", f"{Colors.RED}line1{Colors.END}\n{Colors.BLUE}line2{Colors.END}", 5),
-            ("trailing newline", "line1\nline2\n", 5)
+            ("trailing newline", "line1\nline2\n", 5),
         ]
         for description, styled_text, width in test_cases:
             with self.subTest(description=description):

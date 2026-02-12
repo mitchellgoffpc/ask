@@ -12,7 +12,7 @@ class BashToolOutput(ToolOutput):
             return [
                 *[UI.Box(flex=Axis.HORIZONTAL)[
                     UI.Text(Colors.hex('>>> ' if i == 0 else '... ', Theme.PINK)),
-                    UI.Text(line)
+                    UI.Text(line),
                 ] for i, line in enumerate(lines)],
                 UI.Text(self.props.response.response.text.strip())
                     if self.props.response and isinstance(self.props.response.response, Text) else None,

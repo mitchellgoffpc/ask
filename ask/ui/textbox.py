@@ -53,7 +53,7 @@ def CommandDesc(desc: str, active: bool) -> UI.Text:
 def CommandsList(commands: dict[str, str], selected_idx: int) -> UI.Box:
     return UI.Box(flex=Axis.HORIZONTAL)[
         UI.Box(margin={'left': 2})[(CommandName(cmd, idx == selected_idx) for idx, cmd in enumerate(commands.keys()))],
-        UI.Box(margin={'left': 3})[(CommandDesc(desc, idx == selected_idx) for idx, desc in enumerate(commands.values()))]
+        UI.Box(margin={'left': 3})[(CommandDesc(desc, idx == selected_idx) for idx, desc in enumerate(commands.values()))],
     ]
 
 
@@ -245,7 +245,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                     handle_input=self.handle_textbox_input,
                     handle_page=self.handle_textbox_page,
                     handle_change=self.handle_textbox_change,
-                    handle_submit=self.handle_textbox_submit)
+                    handle_submit=self.handle_textbox_submit),
             ],
             UI.Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
                 if self.show_exit_prompt else
@@ -260,6 +260,6 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
             UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(self.get_context_percent() + self.get_hint_text(), width=1.0, margin={'left': 2}),
                 UI.Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
-                UI.Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2})
-            ]
+                UI.Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2}),
+            ],
         ]

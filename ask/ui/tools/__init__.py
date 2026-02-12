@@ -21,5 +21,5 @@ TOOL_COMPONENTS = {
 
 __all__ = [
     'TOOL_COMPONENTS',
-    'BashToolOutput', 'EditToolOutput', 'GlobToolOutput', 'GrepToolOutput', 'ListToolOutput', 'PythonToolOutput', 'ReadToolOutput'
+    'BashToolOutput', 'EditToolOutput', 'GlobToolOutput', 'GrepToolOutput', 'ListToolOutput', 'PythonToolOutput', 'ReadToolOutput',
 ]

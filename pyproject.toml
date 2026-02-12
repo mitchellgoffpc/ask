@@ -42,5 +42,5 @@ include-package-data = true
 [tool.ruff]
 line-length = 160
 target-version = "py311"
-lint.select = ["A", "B", "E", "F", "I", "N", "S", "W", "ANN", "C4", "FA", "ISC", "PIE", "SIM", "TID", "PTH", "UP", "YTT"]
+lint.select = ["A", "B", "E", "F", "I", "N", "S", "W", "ANN", "C4", "COM", "FA", "ISC", "PIE", "SIM", "TID", "PTH", "UP", "YTT"]
 lint.ignore = ["E701", "I001", "N802", "N812", "N813", "S101", "ANN401", "PTH207"]

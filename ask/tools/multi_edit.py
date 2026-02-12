@@ -15,8 +15,8 @@ class MultiEditTool(EditTool):
         Parameter("edits", "Array of edit operations to perform sequentially on the file", ParameterType.Array(min_items=1, items=[
             Parameter("old_string", "The text to replace", ParameterType.String),
             Parameter("new_string", "The text to replace it with", ParameterType.String),
-            Parameter("replace_all", "Replace all occurences of old_string (default false).", ParameterType.Boolean, required=False)
-        ]))
+            Parameter("replace_all", "Replace all occurences of old_string (default false).", ParameterType.Boolean, required=False),
+        ])),
     ]
 
     def artifacts(self, args: dict[str, Any]) -> dict[str, Any]:

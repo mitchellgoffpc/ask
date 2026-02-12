@@ -21,7 +21,7 @@ def Diff(diff: list[str], rejected: bool = False) -> UI.Component:
             components.append(UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(f'{line_num} '),
                 UI.Text(Colors.bg_hex(Colors.hex('-  ', Theme.WHITE), bg_color)),
-                UI.Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color))
+                UI.Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color)),
             ])
             old_line_num += 1
         elif line.startswith('+'):
@@ -30,7 +30,7 @@ def Diff(diff: list[str], rejected: bool = False) -> UI.Component:
             components.append(UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(f'{line_num} '),
                 UI.Text(Colors.bg_hex(Colors.hex('+  ', Theme.WHITE), bg_color)),
-                UI.Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color))
+                UI.Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color)),
             ])
             new_line_num += 1
         elif line.startswith(' '):

@@ -41,6 +41,6 @@ class SpinnerController(UI.Controller[Spinner]):
             UI.Text(spinner_text, margin={'top': 1}),
             UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text("  ⎿  "),
-                ToDos(self.props.todos, expanded=self.props.expanded)
+                ToDos(self.props.todos, expanded=self.props.expanded),
             ] if self.props.todos else None,
         ]
