@@ -66,15 +66,6 @@ class TextBoxController(BaseController[TextBox]):
         self.history_idx = len(self.history) - 1
         self.undo_stack: deque[tuple[str, int]] = deque(maxlen=1000)
 
-    def __call__(self, props: TextBox) -> None:
-        if props.text is not None and props.text != self._text:
-            self._text = props.text
-            self._cursor_pos = len(props.text)
-        if props.history is not None and props.history != self.props.history:
-            self.history = [*(props.history or []), props.text if props.text is not None else self._text]
-            self.history_idx = len(self.history) - 1
-        super().__call__(props)
-
     @property
     def content_width(self) -> int:
         if self.tree and self.text_ref.uuid in self.tree.widths:
@@ -95,6 +86,15 @@ class TextBoxController(BaseController[TextBox]):
         if self.props.handle_change:
             self.props.handle_change(text)
         self.history = [*self.history[:self.history_idx], text, *self.history[self.history_idx + 1:]]
+
+    def handle_update(self, new_props: TextBox) -> None:
+        if new_props.text is not None and new_props.text != self._text:
+            self._text = new_props.text
+            self._cursor_pos = len(new_props.text)
+        if new_props.history is not None and new_props.history != self.props.history:
+            self.history = [*(new_props.history or []), new_props.text if new_props.text is not None else self._text]
+            self.history_idx = len(self.history) - 1
+        super().handle_update(new_props)
 
     def handle_input(self, ch: str) -> None:
         if self.props.handle_input and not self.props.handle_input(ch, self.cursor_pos):

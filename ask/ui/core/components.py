@@ -99,9 +99,6 @@ class BaseController(Component, Generic[ComponentType]):
         self.props = props
         self.uuid = uuid4()
 
-    def __call__(self, props: ComponentType) -> None:
-        self.props = props
-
     def __setattr__(self, key: str, value: Any) -> None:
         if key in self.state:
             self.set_dirty()
@@ -116,6 +113,9 @@ class BaseController(Component, Generic[ComponentType]):
 
     def handle_unmount(self) -> None:
         self.tree = None
+
+    def handle_update(self, new_props: ComponentType) -> None:
+        self.props = new_props
 
     def handle_input(self, ch: str) -> None:
         pass

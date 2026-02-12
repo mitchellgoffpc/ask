@@ -118,7 +118,7 @@ def update(tree: ElementTree, component: Component) -> None:
                 if old_child == new_child:
                     continue
                 new_child.controller = old_child.controller
-                new_child.controller(new_child)
+                new_child.controller.handle_update(new_child)
             assert tree.parents[old_child.uuid] == uuid
             del tree.nodes[old_child.uuid]
             tree.nodes[new_child.uuid] = new_child
