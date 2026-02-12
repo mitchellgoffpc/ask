@@ -35,7 +35,7 @@ def repl_worker(command_queue: Queue[list[ast.stmt] | None], result_queue: Queue
                         code = compile(ast.Module([node], []), '<stdin>', 'exec')
 
                     try:
-                        exec(code, globals_dict)
+                        exec(code, globals_dict)  # noqa: S102
                     except KeyboardInterrupt:
                         break
                     except SystemExit:
@@ -64,12 +64,10 @@ class PythonShell:
                 os.kill(self.worker_process.pid, signal.SIGINT)
 
     def _cleanup_worker(self) -> None:
-        try:
+        with suppress(Exception):
             if self.worker_process and self.worker_process.is_alive():
                 self.command_queue.put(None)
                 self.worker_process.join(timeout=1.0)
-        except Exception:
-            pass
 
     def parse(self, code: str) -> list[ast.stmt]:
         module = ast.parse(code, '<string>')

@@ -1,5 +1,6 @@
 import unittest
 import asyncio
+import tempfile
 
 from ask.shells.bash import BashShell
 
@@ -46,11 +47,12 @@ class TestBashShell(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(lines[-1], "1000")
 
     async def test_working_directory_persistence(self):
-        await self.shell.execute("mkdir -p /tmp/test_dir")
-        await self.shell.execute("cd /tmp/test_dir")
-        stdout, _ = await self.shell.execute("pwd")
-        self.assertIn("/tmp/test_dir", stdout)
-        await self.shell.execute("cd /tmp && rm -rf test_dir")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            await self.shell.execute(f"mkdir -p {temp_dir}/test_dir")
+            await self.shell.execute(f"cd {temp_dir}/test_dir")
+            stdout, _ = await self.shell.execute("pwd")
+            self.assertIn(f"{temp_dir}/test_dir", stdout)
+            await self.shell.execute(f"cd {temp_dir} && rm -rf test_dir")
 
     async def test_error_handling(self):
         _, stderr = await self.shell.execute("nonexistent_command")
