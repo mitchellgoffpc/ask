@@ -360,8 +360,8 @@ class Colors:
     def ansi(text: str, code: str) -> str:
         return apply_style(text, start=code, end=Colors.END if code else '')
     @staticmethod
-    def hex(text: str, hex: str) -> str:
-        return apply_style(text, start=hex_to_best_ansi(hex), end=Colors.END)
+    def hex(text: str, code: str) -> str:
+        return apply_style(text, start=hex_to_best_ansi(code), end=Colors.END)
     @staticmethod
     def rgb(text: str, rgb: tuple[int, int, int]) -> str:
         return apply_style(text, start=rgb_to_best_ansi(*rgb), end=Colors.END)
@@ -370,8 +370,8 @@ class Colors:
     def bg_ansi(text: str, code: str) -> str:
         return apply_style(text, start=code, end=Colors.BG_END if code else '')
     @staticmethod
-    def bg_hex(text: str, hex: str) -> str:
-        return apply_style(text, start=hex_to_best_ansi(hex, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
+    def bg_hex(text: str, code: str) -> str:
+        return apply_style(text, start=hex_to_best_ansi(code, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
     @staticmethod
     def bg_rgb(text: str, rgb: tuple[int, int, int]) -> str:
         return apply_style(text, start=rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)

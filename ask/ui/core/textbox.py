@@ -5,7 +5,7 @@ from typing import Callable, Iterator
 from ask.ui.core.components import Length, Component, Text, Widget, BaseController
 from ask.ui.core.styles import Axis, Colors, Styles, Wrap
 
-REMOVE_CONTROL_CHARS = dict.fromkeys(range(0, 32)) | {0xa: 0xa, 0xd: 0xa}
+REMOVE_CONTROL_CHARS = dict.fromkeys(range(32)) | {0xa: 0xa, 0xd: 0xa}
 
 def is_stop_char(ch: str) -> bool:
     return ch in ' \t\n<>@/|&;(){}[]"\'`'

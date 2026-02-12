@@ -66,7 +66,7 @@ class FencedCodeBlockProcessor(BlockProcessor):
                 e = SubElement(parent, 'pre')
                 e.set('language', match.group('lang'))
                 e.text = AtomicString('\n\n'.join(blocks[: block_num + 1]))
-                for _ in range(0, block_num + 1):
+                for _ in range(block_num + 1):
                     blocks.pop(0)
                 return True
 

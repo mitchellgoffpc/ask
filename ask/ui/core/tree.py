@@ -22,24 +22,24 @@ class ElementTree:
         self.dirty: set[UUID] = set()
 
     def __str__(self) -> str:
-        return format(self, self.root.uuid)
+        return self.format(self.root.uuid)
+
+    def format(self, uuid: UUID, level: int = 0, verbose: bool = False) -> str:
+        prefix = '  ' * (max(0, level - 1)) + ('└─' if level > 0 else '')
+        match self.nodes[uuid]:
+            case Text(text=text): attrs = {'text': text}
+            case Widget() as widget if is_dataclass(widget): attrs = asdict(widget)
+            case _: attrs = {}
+        uuid_str = f"{str(uuid).split('-')[0]} → " if verbose else ''
+        attrs_str = '('  + ', '.join(f'{k}={v!r}' for k, v in attrs.items()) + ')'
+        result = f"{prefix}{uuid_str}{self.nodes[uuid].__class__.__name__}{attrs_str if attrs else ''}\n"
+        for child in self.children.get(uuid, []):
+            if child:
+                result += self.format(child.uuid, level + 1, verbose=verbose)
+        return result
 
 
 # Utility functions
-
-def format(tree: ElementTree, uuid: UUID, level: int = 0, verbose: bool = False) -> str:
-    prefix = '  ' * (max(0, level - 1)) + ('└─' if level > 0 else '')
-    match tree.nodes[uuid]:
-        case Text(text=text): attrs = {'text': text}
-        case Widget() as widget if is_dataclass(widget): attrs = asdict(widget)
-        case _: attrs = {}
-    uuid_str = f"{str(uuid).split('-')[0]} → " if verbose else ''
-    attrs_str = '('  + ', '.join(f'{k}={v!r}' for k, v in attrs.items()) + ')'
-    result = f"{prefix}{uuid_str}{tree.nodes[uuid].__class__.__name__}{attrs_str if attrs else ''}\n"
-    for child in tree.children.get(uuid, []):
-        if child:
-            result += format(tree, child.uuid, level + 1, verbose=verbose)
-    return result
 
 def depth(tree: ElementTree, node: Component) -> int:
     depth = 0
