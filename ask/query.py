@@ -40,17 +40,16 @@ def _generate_system_reminder(file_path: Path, expected_content: str, actual_con
         if diff[i].startswith('@@'):
             i += 1
             while i < len(diff) and not diff[i].startswith('@@'):
-                if diff[i].startswith('-') or diff[i].startswith('+'):
-                    if line_match := re.search(r'@@ -(\d+)', diff[i-1]):
-                        start_line = int(line_match.group(1))
-                        j = i
-                        while j < len(diff) and not diff[j].startswith('@@'):
-                            if diff[j].startswith(' ') or diff[j].startswith('+'):
-                                changes.append(f"{str(start_line).rjust(6)}→{diff[j][1:]}")
-                                if diff[j].startswith('+'):
-                                    start_line += 1
-                            j += 1
-                        break
+                if diff[i].startswith(('-', '+')) and (line_match := re.search(r'@@ -(\d+)', diff[i-1])):
+                    start_line = int(line_match.group(1))
+                    j = i
+                    while j < len(diff) and not diff[j].startswith('@@'):
+                        if diff[j].startswith(' ') or diff[j].startswith('+'):
+                            changes.append(f"{str(start_line).rjust(6)}→{diff[j][1:]}")
+                            if diff[j].startswith('+'):
+                                start_line += 1
+                        j += 1
+                    break
                 i += 1
         else:
             i += 1
@@ -110,27 +109,26 @@ async def query(messages: list[Message], stream: bool) -> AsyncContentIterator:
     with open('/tmp/ask.json', 'w') as f:
         json.dump(params, f, indent=2)
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, json=params) as r:
-            if r.status != 200:
-                try:
-                    response_json = await r.json()
-                    response_text = json.dumps(response_json, indent=2)
-                except aiohttp.ContentTypeError:
-                    response_text = await r.text()
-                raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}")
+    async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=params) as r:
+        if r.status != 200:
+            try:
+                response_json = await r.json()
+                response_text = json.dumps(response_json, indent=2)
+            except aiohttp.ContentTypeError:
+                response_text = await r.text()
+            raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}")
 
-            if stream:
-                async for delta, content in api.decode(line.decode('utf-8') async for line in r.content):
-                    yield delta, content
-            else:
-                try:
-                    response_json = await r.json()
-                    for item in api.result(response_json):
-                        yield '', item
-                except aiohttp.ContentTypeError:
-                    response_text = await r.text()
-                    raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}") from None
+        if stream:
+            async for delta, content in api.decode(line.decode('utf-8') async for line in r.content):
+                yield delta, content
+        else:
+            try:
+                response_json = await r.json()
+                for item in api.result(response_json):
+                    yield '', item
+            except aiohttp.ContentTypeError:
+                response_text = await r.text()
+                raise RuntimeError(f"Invalid response from API ({r.status})\n{response_text}") from None
 
 
 # Run agent loop until completion

@@ -108,20 +108,19 @@ class GrepTool(Tool):
             total_matches = 0
             for file_path in files_to_search:
                 try:
-                    with open(file_path, 'rb') as f:
-                        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as content:
-                            if output_mode == "content":
-                                num_matches, lines = get_content_matches(file_path, content, regex, show_line_nums, before, after)
-                                results.extend(lines)
-                                total_matches += num_matches
-                            elif output_mode == "count":
-                                if (num_matches := len(regex.findall(content))) > 0:
-                                    results.append(f"{file_path}:{num_matches}")
-                                    total_matches += 1
-                            else:
-                                if regex.search(content):
-                                    results.append(str(file_path))
-                                    total_matches += 1
+                    with open(file_path, 'rb') as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as content:
+                        if output_mode == "content":
+                            num_matches, lines = get_content_matches(file_path, content, regex, show_line_nums, before, after)
+                            results.extend(lines)
+                            total_matches += num_matches
+                        elif output_mode == "count":
+                            if (num_matches := len(regex.findall(content))) > 0:
+                                results.append(f"{file_path}:{num_matches}")
+                                total_matches += 1
+                        else:
+                            if regex.search(content):
+                                results.append(str(file_path))
+                                total_matches += 1
                 except (PermissionError, UnicodeDecodeError, OSError, ValueError):
                     pass
 

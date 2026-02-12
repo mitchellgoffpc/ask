@@ -39,7 +39,7 @@ class FilesCommand(SlashCommand):
     file_contents: dict[Path, Blob] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.output = '\n'.join(get_relative_path(path) for path in self.file_contents.keys())
+        self.output = '\n'.join(get_relative_path(path) for path in self.file_contents)
 
     def encode(self) -> dict[str, Any]:
         return {'command': self.command, 'file_contents': {str(k): v for k, v in self.file_contents.items()}}
@@ -52,7 +52,7 @@ class FilesCommand(SlashCommand):
         return f'Attached {len(self.file_contents)} files'
 
     def messages(self) -> list[Message]:
-        file_list = '\n'.join(f'- {path}' for path in self.file_contents.keys())
+        file_list = '\n'.join(f'- {path}' for path in self.file_contents)
         messages = [Message(role='user', content=Text(f"Take a look at these files:\n{file_list}"))]
         for file_path, file_data in self.file_contents.items():
             call_id = str(uuid4())

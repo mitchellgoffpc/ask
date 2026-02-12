@@ -7,7 +7,7 @@ import os
 import queue
 import signal
 import traceback
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stdout, redirect_stderr, suppress
 from multiprocessing import Queue, Process
 from typing import Any
 
@@ -60,10 +60,8 @@ class PythonShell:
 
     async def _interrupt_worker(self) -> None:
         if self.worker_process and self.worker_process.pid:
-            try:
+            with suppress(ProcessLookupError):
                 os.kill(self.worker_process.pid, signal.SIGINT)
-            except ProcessLookupError:
-                pass
 
     def _cleanup_worker(self) -> None:
         try:

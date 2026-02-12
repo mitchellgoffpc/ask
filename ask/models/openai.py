@@ -88,9 +88,7 @@ class OpenAIAPI(API):
         usage = self.decode_usage(line['response']['usage']) if line.get('response', {}).get('usage') else None
         if line['type'] == 'response.output_item.added' and line.get('item', {}).get('type') == 'function_call':
             return str(line['output_index']), f"{line['item']['name']}:{line['item']['call_id']}", line['item']['arguments'], usage
-        elif line['type'] == 'response.function_call_arguments.delta':
-            return str(line['output_index']), '', line['delta'], usage
-        elif line['type'] == 'response.output_text.delta':
+        elif line['type'] in ('response.function_call_arguments.delta', 'response.output_text.delta'):
             return str(line['output_index']), '', line['delta'], usage
         elif line['type'] == 'response.output_item.done' and line.get('item', {}).get('type') == 'reasoning':
             return str(line['output_index']), '/reasoning:encrypted', line['item']['encrypted_content'], usage

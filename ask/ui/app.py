@@ -154,9 +154,9 @@ class AppController(UI.Controller[App]):
     def contents(self) -> list[UI.Component | None]:
         tool_requests = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolRequest)}
         tool_responses = {msg.content.call_id: msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, ToolResponse)}
-        if latest_todos := next((c.arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None):
-            if not any(todo['status'] in ['pending', 'in_progress'] for todo in latest_todos['todos']):
-                latest_todos = None
+        latest_todos = next((c.arguments for c in reversed(tool_requests.values()) if c.tool == ToDoTool.name), None)
+        if latest_todos and not any(todo['status'] in ['pending', 'in_progress'] for todo in latest_todos['todos']):
+            latest_todos = None
 
         messages = []
         for msg in self.messages.values(self.head):

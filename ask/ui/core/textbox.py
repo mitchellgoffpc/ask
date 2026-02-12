@@ -97,9 +97,8 @@ class TextBoxController(BaseController[TextBox]):
         self.history = [*self.history[:self.history_idx], text, *self.history[self.history_idx + 1:]]
 
     def handle_input(self, ch: str) -> None:
-        if self.props.handle_input:
-            if not self.props.handle_input(ch, self.cursor_pos):
-                return
+        if self.props.handle_input and not self.props.handle_input(ch, self.cursor_pos):
+            return
 
         text = self.text
         cursor_pos = self.cursor_pos
@@ -277,12 +276,10 @@ class TextBoxController(BaseController[TextBox]):
         return sum(1 for _ in wrap_lines(self.text, self.content_width, self.props.wrap))
 
     def get_visual_line_bounds(self, line: int) -> tuple[int, int]:
-        current_line = 0
         position = 0
-        for line_content, is_hard in wrap_lines(self.text, self.content_width, self.props.wrap):
-            if current_line == line:
+        for i, (line_content, is_hard) in enumerate(wrap_lines(self.text, self.content_width, self.props.wrap)):
+            if i == line:
                 return position, position + len(line_content)
-            current_line += 1
             position += len(line_content)
             if is_hard:
                 position += 1
