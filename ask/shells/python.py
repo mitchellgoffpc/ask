@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import ast
 import asyncio
 import atexit
@@ -7,8 +8,8 @@ import os
 import queue
 import signal
 import traceback
-from contextlib import redirect_stdout, redirect_stderr, suppress
-from multiprocessing import Queue, Process
+from contextlib import redirect_stderr, redirect_stdout, suppress
+from multiprocessing import Process, Queue
 from typing import Any
 
 

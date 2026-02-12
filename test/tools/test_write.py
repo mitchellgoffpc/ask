@@ -5,6 +5,7 @@ from pathlib import Path
 from ask.messages import Text
 from ask.tools.write import WriteTool
 
+
 class TestWriteTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.tool = WriteTool()

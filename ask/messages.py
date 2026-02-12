@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import cached_property
 from typing import Any, Literal
+
 
 class ToolCallStatus(Enum):
     PENDING = 'pending'

@@ -1,8 +1,8 @@
 from collections import deque
-from dataclasses import dataclass
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 
-from ask.ui.core.components import Length, Component, Text, Widget, BaseController
+from ask.ui.core.components import BaseController, Component, Length, Text, Widget
 from ask.ui.core.styles import Axis, Colors, Styles, Wrap
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(32)) | {0xa: 0xa, 0xd: 0xa}

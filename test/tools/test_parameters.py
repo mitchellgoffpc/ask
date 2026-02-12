@@ -1,7 +1,8 @@
 import unittest
 from typing import Any
 
-from ask.tools.base import Tool, Parameter, ParameterType, ToolError
+from ask.tools.base import Parameter, ParameterType, Tool, ToolError
+
 
 class DummyTool(Tool):
     def __init__(self, parameters: list[Parameter]) -> None:

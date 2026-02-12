@@ -5,6 +5,7 @@ from uuid import UUID
 
 from ask.ui.core.components import Component, Element, Text, Widget
 
+
 class Offset(NamedTuple):
     x: int
     y: int

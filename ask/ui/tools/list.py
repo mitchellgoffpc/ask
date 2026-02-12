@@ -4,6 +4,7 @@ from ask.prompts import get_relative_path
 from ask.ui.core import Styles
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
+
 @dataclass
 class ListToolOutput(ToolOutput):
     class Controller(ToolOutputController):

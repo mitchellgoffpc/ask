@@ -3,10 +3,11 @@ from asyncio import Task
 from dataclasses import dataclass, replace
 from uuid import UUID
 
-from ask.messages import Message, Text, Command, ToolCallStatus
+from ask.messages import Command, Message, Text, ToolCallStatus
 from ask.prompts import COMMAND_CAVEAT_MESSAGE
 from ask.shells import PYTHON_SHELL
 from ask.tree import MessageTree
+
 
 @dataclass
 class PythonCommand(Command):

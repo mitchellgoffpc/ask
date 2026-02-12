@@ -3,8 +3,9 @@ import unittest
 from pathlib import Path
 
 from ask.messages import Text
-from ask.tools.multi_edit import MultiEditTool
 from ask.tools.base import ToolError
+from ask.tools.multi_edit import MultiEditTool
+
 
 class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

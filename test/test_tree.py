@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from ask.commands import DocsCommand, FilesCommand
-from ask.messages import Message, Text, Image, PDF, ToolRequest, ToolResponse, ToolCallStatus
+from ask.messages import PDF, Image, Message, Text, ToolCallStatus, ToolRequest, ToolResponse
 from ask.tools import TOOL_LIST
-from ask.tree import MessageTree, MessageEncoder, message_decoder
+from ask.tree import MessageEncoder, MessageTree, message_decoder
+
 
 class TestMessageTree(unittest.TestCase):
     def setUp(self) -> None:

@@ -3,7 +3,7 @@ from typing import Any
 from ask.messages import Blob, Text
 from ask.prompts import load_tool_prompt
 from ask.shells import PYTHON_SHELL
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType
+from ask.tools.base import Parameter, ParameterType, Tool, ToolError
 
 
 class PythonTool(Tool):

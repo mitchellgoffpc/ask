@@ -2,8 +2,9 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from ask.ui.core import UI, ElementTree, Axis, Colors, Theme
+from ask.ui.core import UI, Axis, Colors, ElementTree, Theme
 from ask.ui.tools.todo import ToDos
+
 
 @dataclass
 class Spinner(UI.Widget):

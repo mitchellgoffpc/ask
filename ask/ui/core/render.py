@@ -11,11 +11,11 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from itertools import zip_longest
 
-from ask.ui.core.components import Side, Component, Element, Box, Text
-from ask.ui.core.cursor import hide_cursor, show_cursor, erase_line, cursor_up
+from ask.ui.core.components import Box, Component, Element, Side, Text
+from ask.ui.core.cursor import cursor_up, erase_line, hide_cursor, show_cursor
 from ask.ui.core.layout import layout
-from ask.ui.core.styles import Axis, Colors, BorderStyle, ansi_len
-from ask.ui.core.tree import ElementTree, depth, propogate, mount, update
+from ask.ui.core.styles import Axis, BorderStyle, Colors, ansi_len
+from ask.ui.core.tree import ElementTree, depth, mount, propogate, update
 
 CONTROL_SEQ_RE = re.compile(r'\x1b\[[0-9;]*[A-Za-z~]?|\x1b.|[\x00-\x1f\x7f]')
 

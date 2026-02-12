@@ -1,8 +1,9 @@
 import unittest
 
 from ask.messages import Text
-from ask.tools.python import PythonTool
 from ask.tools.base import ToolError
+from ask.tools.python import PythonTool
+
 
 class TestPythonTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

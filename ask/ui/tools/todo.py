@@ -2,6 +2,7 @@ from typing import Any
 
 from ask.ui.core import UI, Colors, Styles, Theme
 
+
 def ToDos(todos: dict[str, Any], expanded: bool) -> UI.Component:
     if expanded:
         lines = []

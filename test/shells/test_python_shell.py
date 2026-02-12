@@ -1,7 +1,8 @@
-import unittest
 import asyncio
+import unittest
 
 from ask.shells import PYTHON_SHELL
+
 
 class TestPythonTool(unittest.IsolatedAsyncioTestCase):
     async def run_command(self, code: str, timeout_seconds: float = 10.) -> tuple[str, str]:

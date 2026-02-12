@@ -4,6 +4,7 @@ import unittest
 from ask.messages import Text
 from ask.tools.read import ReadTool
 
+
 class TestReadTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.tool = ReadTool()

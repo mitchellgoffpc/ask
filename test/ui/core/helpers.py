@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from ask.ui.core.components import Component, Box, Text, Widget, BaseController
+from ask.ui.core.components import BaseController, Box, Component, Text, Widget
+
 
 @dataclass
 class WideTree(Widget):

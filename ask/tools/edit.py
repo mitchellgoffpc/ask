@@ -4,7 +4,8 @@ from typing import Any
 
 from ask.messages import Blob, Text
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType
+from ask.tools.base import Parameter, ParameterType, Tool, ToolError
+
 
 def get_formatted_lines(lines: list[str], start: int, end: int) -> str:
     return '\n'.join(f'{str(i+1).rjust(6)}→{lines[i]}' for i in range(start, end) if 0 <= i < len(lines))

@@ -4,6 +4,7 @@ from ask.messages import Text
 from ask.ui.core import UI, Axis, Colors, Theme, highlight_code
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
+
 @dataclass
 class PythonToolOutput(ToolOutput):
     class Controller(ToolOutputController):

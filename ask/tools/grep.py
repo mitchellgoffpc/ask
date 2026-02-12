@@ -6,7 +6,8 @@ from typing import Any
 
 from ask.messages import Blob, Text
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType
+from ask.tools.base import Parameter, ParameterType, Tool, ToolError
+
 
 def get_content_matches(file_path: Path, content: mmap.mmap, regex: re.Pattern, show_line_nums: bool, before: int, after: int) -> tuple[int, list[str]]:
     if not regex.search(content):

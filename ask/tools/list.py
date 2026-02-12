@@ -3,7 +3,7 @@ from typing import Any
 
 from ask.messages import Blob, Text
 from ask.prompts import load_tool_prompt
-from ask.tools.base import ToolError, Tool, Parameter, ParameterType
+from ask.tools.base import Parameter, ParameterType, Tool, ToolError
 
 IGNORED_PATHS = [
     '.build', '.dart_tool', '.deno', '.env', '.gradle', '.pub-cache', '.tox', '.venv',

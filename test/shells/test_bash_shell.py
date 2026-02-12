@@ -1,8 +1,9 @@
-import unittest
 import asyncio
 import tempfile
+import unittest
 
 from ask.shells.bash import BashShell
+
 
 class TestBashShell(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

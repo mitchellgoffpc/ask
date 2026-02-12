@@ -1,8 +1,8 @@
-from ask.models.base import API, Model, Pricing, Context, Capabilities
-from ask.models.openai import OpenAIAPI
 from ask.models.anthropic import AnthropicAPI
+from ask.models.base import API, Capabilities, Context, Model, Pricing
 from ask.models.google import GoogleAPI
 from ask.models.legacy import LegacyOpenAIAPI
+from ask.models.openai import OpenAIAPI
 
 APIS = {
     'openai': OpenAIAPI(url='https://api.openai.com/v1/responses', key='OPENAI_API_KEY', display_name='OpenAI'),

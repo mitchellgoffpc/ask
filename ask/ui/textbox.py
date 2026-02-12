@@ -10,6 +10,7 @@ from ask.models import MODELS_BY_NAME, Model
 from ask.ui.core import UI, Axis, Colors, Styles, Theme
 from ask.ui.dialogs import EDIT_TOOLS
 
+
 class Mode(Enum):
     TEXT = 'text'
     BASH = 'bash'

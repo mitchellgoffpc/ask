@@ -1,6 +1,7 @@
 import unittest
 
-from ask.ui.core.styles import Colors, Styles, Wrap, ansi_strip, ansi_len, ansi_slice, ansi256, ansi16m, wrap_lines
+from ask.ui.core.styles import Colors, Styles, Wrap, ansi16m, ansi256, ansi_len, ansi_slice, ansi_strip, wrap_lines
+
 
 class TestAnsiStrip(unittest.TestCase):
     def test_ansi_strip(self) -> None:

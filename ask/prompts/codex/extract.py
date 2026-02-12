@@ -1,5 +1,5 @@
-import sys
 import json
+import sys
 from pathlib import Path
 
 PROMPT_DIR = Path(__file__).parent

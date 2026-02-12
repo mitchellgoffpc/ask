@@ -8,10 +8,11 @@ from uuid import UUID, uuid4
 from ask.commands.bash import BashCommand
 from ask.commands.python import PythonCommand
 from ask.config import Config
-from ask.messages import ToolCallStatus, Message, Blob, Text, ToolRequest, ToolResponse, Command, Usage
+from ask.messages import Blob, Command, Message, Text, ToolCallStatus, ToolRequest, ToolResponse, Usage
 from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME, Model
-from ask.prompts import COMMAND_CAVEAT_MESSAGE, load_prompt_file, get_relative_path
-from ask.tree import MessageTree, MessageEncoder, message_decoder
+from ask.prompts import COMMAND_CAVEAT_MESSAGE, get_relative_path, load_prompt_file
+from ask.tree import MessageEncoder, MessageTree, message_decoder
+
 
 @dataclass
 class SlashCommand(Command):

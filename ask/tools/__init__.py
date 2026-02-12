@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ask.tools.base import Tool, ToolError, Parameter
+from ask.tools.base import Parameter, Tool, ToolError
 from ask.tools.bash import BashTool
 from ask.tools.edit import EditTool
 from ask.tools.glob_ import GlobTool
@@ -21,10 +21,10 @@ __all__ = [
 
 
 if __name__ == "__main__":
-    import sys
-    import json
     import argparse
     import asyncio
+    import json
+    import sys
 
     parser = argparse.ArgumentParser(description="Run a specified tool with given arguments.")
     parser.add_argument("tool_name", type=str, choices=TOOLS.keys(), help="The name of the tool to run")

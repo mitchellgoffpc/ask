@@ -1,12 +1,13 @@
 import time
 import unittest
 
-from ask.ui.core.components import Box, Text, Spacing, Side
+from ask.ui.core.components import Box, Side, Spacing, Text
 from ask.ui.core.layout import layout
 from ask.ui.core.render import render, split_input_sequence
 from ask.ui.core.styles import Axis, Borders, Colors
 from ask.ui.core.tree import ElementTree, mount
-from test.ui.core.helpers import WideTree, DeepTree
+from test.ui.core.helpers import DeepTree, WideTree
+
 
 def render_once(element: Box | Text, max_width: int = 100) -> str:
     tree = ElementTree(element)

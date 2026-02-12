@@ -1,5 +1,4 @@
 import asyncio
-import aiohttp
 import difflib
 import json
 import os
@@ -8,9 +7,12 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from ask.commands import SlashCommand, BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand
-from ask.commands import load_messages, save_messages, get_usage, get_current_model
-from ask.messages import Message, Content, Text, Command, ToolRequest, ToolResponse, ToolCallStatus, Reasoning
+import aiohttp
+
+from ask.commands import FilesCommand, InitCommand, ModelCommand, SlashCommand, get_current_model, get_usage, load_messages, save_messages
+from ask.commands.bash import BashCommand
+from ask.commands.python import PythonCommand
+from ask.messages import Command, Content, Message, Reasoning, Text, ToolCallStatus, ToolRequest, ToolResponse
 from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME
 from ask.prompts import load_prompt_file
 from ask.tools import TOOLS, ToolError

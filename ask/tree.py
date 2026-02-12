@@ -1,13 +1,14 @@
 import base64
 import json
 from collections.abc import Callable
-from dataclasses import replace, fields
+from dataclasses import fields, replace
 from itertools import pairwise
 from pathlib import Path
-from uuid import UUID, uuid4
 from typing import Any, get_args
+from uuid import UUID, uuid4
 
-from ask.messages import ToolCallStatus, Message, Role, Content
+from ask.messages import Content, Message, Role, ToolCallStatus
+
 
 class MessageEncoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:

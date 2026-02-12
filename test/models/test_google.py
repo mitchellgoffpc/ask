@@ -3,9 +3,10 @@ import json
 import unittest
 from unittest.mock import patch
 
-from ask.models.base import Model, Context, Capabilities
+from ask.models.base import Capabilities, Context, Model
 from ask.models.google import GoogleAPI
-from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
+from test.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
+
 
 class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

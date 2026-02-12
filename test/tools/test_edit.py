@@ -3,8 +3,9 @@ import unittest
 from pathlib import Path
 
 from ask.messages import Text
-from ask.tools.edit import EditTool
 from ask.tools.base import ToolError
+from ask.tools.edit import EditTool
+
 
 class TestEditTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

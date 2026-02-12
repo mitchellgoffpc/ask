@@ -1,6 +1,6 @@
 import asyncio
-from functools import partial
 from dataclasses import dataclass
+from functools import partial
 
 from ask.messages import ToolRequest
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool

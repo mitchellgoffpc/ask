@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import sys
 import time
@@ -6,18 +7,19 @@ import traceback
 from dataclasses import dataclass
 from uuid import UUID
 
-from ask.commands import BashCommand, PythonCommand, SlashCommand, get_usage, get_current_model
+from ask.commands import BashCommand, PythonCommand, SlashCommand, get_current_model, get_usage
 from ask.config import History
-from ask.messages import Message, Text, ToolRequest, ToolResponse, Error, Usage
+from ask.messages import Error, Message, Text, ToolRequest, ToolResponse, Usage
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
-from ask.ui.core import UI, ElementTree, Colors, Theme
+from ask.ui.commands import BashCommandMessage, ErrorMessage, PromptMessage, PythonCommandMessage, ResponseMessage, SlashCommandMessage, ToolCallMessage
+from ask.ui.core import UI, Colors, ElementTree, Theme
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
-from ask.ui.commands import ErrorMessage, PromptMessage, ResponseMessage, ToolCallMessage, BashCommandMessage, PythonCommandMessage, SlashCommandMessage
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
 from ask.ui.tools.todo import ToDos
+
 
 @dataclass
 class App(UI.Widget):

@@ -5,6 +5,7 @@ from ask.messages import Text
 from ask.tools.base import ToolError
 from ask.tools.bash import BashTool
 
+
 class TestBashTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.tool = BashTool()

@@ -4,9 +4,10 @@ from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from ask.ui.core.components import Component, Box, Text, Widget, BaseController
+from ask.ui.core.components import BaseController, Box, Component, Text, Widget
 from ask.ui.core.tree import ElementTree, mount, update
-from test.ui.core.helpers import WideTree, DeepTree
+from test.ui.core.helpers import DeepTree, WideTree
+
 
 def toposort(tree: ElementTree) -> Iterator[Component]:
     queue = deque([tree.root.uuid])

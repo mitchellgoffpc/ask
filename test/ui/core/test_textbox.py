@@ -5,8 +5,9 @@ from ask.ui.core.components import Box, Text
 from ask.ui.core.layout import layout
 from ask.ui.core.render import render
 from ask.ui.core.styles import Styles, Wrap
-from ask.ui.core.tree import ElementTree, mount, update
 from ask.ui.core.textbox import TextBox, TextBoxController
+from ask.ui.core.tree import ElementTree, mount, update
+
 
 def create_tree(textbox: TextBox) -> tuple[ElementTree, Box, TextBoxController]:
     root = Box()[textbox]

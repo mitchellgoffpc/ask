@@ -5,6 +5,7 @@ from pathlib import Path
 from ask.messages import Text
 from ask.tools.list import ListTool
 
+
 class TestListTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.tool = ListTool()

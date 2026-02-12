@@ -1,8 +1,9 @@
 from itertools import chain
 
-from ask.ui.core.components import Element, Component, Box, Text, Widget
+from ask.ui.core.components import Box, Component, Element, Text, Widget
 from ask.ui.core.styles import Axis, ansi_len
 from ask.ui.core.tree import ElementTree, Offset
+
 
 def layout(tree: ElementTree, element: Element, available_width: int | None = None, available_height: int | None = None) -> None:
     collapse_tree(tree, element)

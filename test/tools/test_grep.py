@@ -6,6 +6,7 @@ from typing import Any
 from ask.messages import Text
 from ask.tools.grep import GrepTool
 
+
 class TestGrepTool(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.tool = GrepTool()

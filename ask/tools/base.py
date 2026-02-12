@@ -5,7 +5,6 @@ from typing import Any, ClassVar, Union, cast
 
 from ask.messages import Blob
 
-
 # Parameter definitions
 
 class ParameterType(Enum):
