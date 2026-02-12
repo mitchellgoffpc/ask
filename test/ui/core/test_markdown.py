@@ -5,7 +5,7 @@ from ask.ui.core.styles import Colors, Styles
 from ask.ui.theme import Theme
 
 class TestRenderMarkdown(unittest.TestCase):
-    def test_basic_formatting(self):
+    def test_basic_formatting(self) -> None:
         test_cases = [
             ('plain text', 'plain text', 'plain text'),
             ("**bold text**", f"{Styles.BOLD}bold text{Styles.BOLD_END}", "bold formatting"),
@@ -20,15 +20,15 @@ class TestRenderMarkdown(unittest.TestCase):
                 result = render_markdown(input_text)
                 self.assertEqual(result, expected)
 
-    def test_nested_formatting(self):
+    def test_nested_formatting(self) -> None:
         result = render_markdown("**bold *italic* text**")
         self.assertEqual(result, f"{Styles.BOLD}bold {Styles.ITALIC}italic{Styles.ITALIC_END} text{Styles.BOLD_END}")
 
-    def test_nested_lists(self):
+    def test_nested_lists(self) -> None:
         result = render_markdown("* Item 1\n  * Subitem 1.1\n  Another item\n* Item 2")
         self.assertEqual(result, "• Item 1\n  • Subitem 1.1\n  Another item\n• Item 2")
 
-    def test_html_special_characters(self):
+    def test_html_special_characters(self) -> None:
         test_cases = [
             ("Text with & ampersand", "Text with & ampersand", "ampersand character"),
             ("Less than < and greater than >", "Less than < and greater than >", "angle brackets"),

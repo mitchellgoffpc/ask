@@ -8,11 +8,11 @@ from ask.models.google import GoogleAPI
 from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.api = GoogleAPI('http://api.test', 'TEST_KEY', 'Test')
         self.model = Model(self.api, 'test-model', [], Context(8192, 4096), None, Capabilities())
 
-    def test_params(self):
+    def test_params(self) -> None:
         image_data = base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'user', 'parts': [{'text': 'Hello'}]},
@@ -27,7 +27,7 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result['contents'], expected_output, strict=True):
             self.assertEqual(actual, expected)
 
-    def test_result(self):
+    def test_result(self) -> None:
         response = {
             'candidates': [{
                 'content': {
@@ -40,7 +40,7 @@ class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result, RESULT_OUTPUT[1:-1], strict=True):
             self.assertEqual(actual, expected)
 
-    async def test_decode(self):
+    async def test_decode(self) -> None:
         chunks = [
             {"candidates": [{"content": {"parts": [{"text": "Hello"}]}}]},
             {"candidates": [{"content": {"parts": [{"text": " world"}]}}]},

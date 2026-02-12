@@ -62,7 +62,7 @@ class Model:
 class API(metaclass=ABCMeta):
     supports_image_tools: bool = False
 
-    def __init__(self, url: str, key: str, display_name: str):
+    def __init__(self, url: str, key: str, display_name: str) -> None:
         self.key = key
         self.base_url = url
         self.display_name = display_name

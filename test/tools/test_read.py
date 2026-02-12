@@ -5,7 +5,7 @@ from ask.messages import Text
 from ask.tools.read import ReadTool
 
 class TestReadTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = ReadTool()
 
     async def run_tool(self, file_path: str, offset: int = 0, limit: int = 1000) -> str:
@@ -16,7 +16,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_basic_read(self):
+    async def test_basic_read(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("line 1\nline 2\nline 3\n")
             f.flush()
@@ -29,7 +29,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lines[2], "     3→line 3")
             self.assertEqual(lines[3], "     4→")
 
-    async def test_offset_and_limit(self):
+    async def test_offset_and_limit(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("line 1\nline 2\nline 3\nline 4\nline 5")
             f.flush()
@@ -41,7 +41,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lines[1], "     4→line 4")
             self.assertEqual(lines[2], "... [truncated, file contains more than 4 lines]")
 
-    async def test_line_truncation(self):
+    async def test_line_truncation(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write(f"{'x' * 2500}\nshort line\n")
             f.flush()
@@ -51,7 +51,7 @@ class TestReadTool(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(lines[0].endswith("... [truncated]"))
             self.assertEqual(lines[1], "     2→short line")
 
-    async def test_empty_file(self):
+    async def test_empty_file(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             result = await self.run_tool(file_path=f.name, offset=0, limit=1000)
             self.assertEqual(result, "     1→")

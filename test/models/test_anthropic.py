@@ -7,11 +7,11 @@ from ask.models.anthropic import AnthropicAPI
 from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.api = AnthropicAPI('http://api.test', 'TEST_KEY', 'Test')
         self.model = Model(self.api, 'test-model', [], Context(8192, 4096), None, Capabilities())
 
-    def test_params(self):
+    def test_params(self) -> None:
         image_data = base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'user', 'content': [{'type': 'text', 'text': 'Hello'}]},
@@ -31,7 +31,7 @@ class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result['messages'], expected_output, strict=True):
             self.assertEqual(actual, expected)
 
-    def test_result(self):
+    def test_result(self) -> None:
         response = {
             'content': [
                 {'type': 'thinking', 'signature': 'encrypted', 'thinking': ''},
@@ -43,7 +43,7 @@ class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result, RESULT_OUTPUT, strict=True):
             self.assertEqual(actual, expected)
 
-    async def test_decode(self):
+    async def test_decode(self) -> None:
         chunks = [
             {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "encrypted"}},
             {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Hello"}},

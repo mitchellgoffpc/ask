@@ -6,7 +6,7 @@ from ask.messages import Text
 from ask.tools.write import WriteTool
 
 class TestWriteTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = WriteTool()
 
     async def run_tool(self, file_path: str, content: str) -> str:
@@ -17,7 +17,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_create_new_file(self):
+    async def test_create_new_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "test_file.txt"
             content = "Hello, world!"
@@ -26,7 +26,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(file_path.read_text(encoding='utf-8'), content)
             self.assertIn("File created successfully", result)
 
-    async def test_overwrite_existing_file(self):
+    async def test_overwrite_existing_file(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("original content")
             f.flush()
@@ -36,7 +36,7 @@ class TestWriteTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(Path(f.name).read_text(encoding='utf-8'), new_content)
             self.assertIn("File updated successfully", result)
 
-    async def test_create_directories(self):
+    async def test_create_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "nested" / "dirs" / "file.txt"
             content = "test content"

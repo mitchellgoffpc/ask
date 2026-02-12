@@ -10,27 +10,27 @@ from ask.tools import TOOL_LIST
 from ask.tree import MessageTree, MessageEncoder, message_decoder
 
 class TestMessageTree(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tree = MessageTree({})
 
-    def test_add(self):
+    def test_add(self) -> None:
         msg_uuid = self.tree.add('user', None, Text('hello'))
         self.assertEqual(self.tree[msg_uuid].role, 'user')
         self.assertEqual(self.tree[msg_uuid].content, Text('hello'))
 
-    def test_update(self):
+    def test_update(self) -> None:
         msg_uuid = self.tree.add('user', None, Text('original'))
         self.tree.update(msg_uuid, Text('updated'))
         self.assertEqual(self.tree[msg_uuid].content, Text('updated'))
 
-    def test_clear(self):
+    def test_clear(self) -> None:
         self.tree.add('user', None, Text('first'))
         self.tree.add('assistant', None, Text('second'))
         self.tree.clear()
         self.assertEqual(len(self.tree.messages), 0)
         self.assertEqual(len(self.tree.parents), 0)
 
-    def test_keys_values(self):
+    def test_keys_values(self) -> None:
         msg1 = self.tree.add('user', None, Text('first'))
         msg2 = self.tree.add('assistant', msg1, Text('second'))
         msg3 = self.tree.add('user', msg2, Text('third'))
@@ -44,19 +44,19 @@ class TestMessageTree(unittest.TestCase):
 
 
 class TestEncoderDecoder(unittest.TestCase):
-    def test_image_encode_decode(self):
+    def test_image_encode_decode(self) -> None:
         message = Image(mimetype='image/png', data=b'\x89PNG\r\n\x1a\n')
         encoded = json.dumps(message, cls=MessageEncoder)
         decoded = json.loads(encoded, object_hook=message_decoder)
         self.assertEqual(decoded.data, message.data)
 
-    def test_pdf_encode_decode(self):
+    def test_pdf_encode_decode(self) -> None:
         message = PDF(name='test.pdf', data=b'%PDF-1.4')
         encoded = json.dumps(message, cls=MessageEncoder)
         decoded = json.loads(encoded, object_hook=message_decoder)
         self.assertEqual(decoded.data, message.data)
 
-    def test_tool_request_encode_decode(self):
+    def test_tool_request_encode_decode(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             test_file_path = str(Path(temp_dir) / 'test.txt')
             dummy_args: dict[str, dict[str, Any]] = {
@@ -85,7 +85,7 @@ class TestEncoderDecoder(unittest.TestCase):
                     self.assertEqual(decoded.tool, request.tool)
                     self.assertEqual(decoded.artifacts, request.artifacts)
 
-    def test_tool_response_encode_decode(self):
+    def test_tool_response_encode_decode(self) -> None:
         for tool in TOOL_LIST:
             with self.subTest(tool=tool.name):
                 response = ToolResponse(call_id='call_123', tool=tool.name, response=Text('result'), status=ToolCallStatus.COMPLETED)
@@ -96,7 +96,7 @@ class TestEncoderDecoder(unittest.TestCase):
                 self.assertEqual(response.tool, decoded.tool)
                 self.assertEqual(response.status, decoded.status)
 
-    def test_command_encode_decode(self):
+    def test_command_encode_decode(self) -> None:
         commands = [
             FilesCommand(file_contents={Path('test.txt'): Text('file content')}),
             DocsCommand(file_path=Path('test.txt'), file_contents='file content', prompt_key='some_key'),
@@ -106,7 +106,7 @@ class TestEncoderDecoder(unittest.TestCase):
             decoded = json.loads(encoded, object_hook=message_decoder)
             self.assertEqual(decoded, command)
 
-    def test_message_tree_encode_decode(self):
+    def test_message_tree_encode_decode(self) -> None:
         tree = MessageTree({})
         msg1 = tree.add('user', None, Text('first'))
         msg2 = tree.add('assistant', msg1, ToolRequest(call_id='call_456', tool='BashShell', arguments={'command': 'echo test'}))

@@ -7,11 +7,11 @@ from ask.models.openai import OpenAIAPI
 from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.api = OpenAIAPI('http://api.test', 'TEST_KEY', 'Test')
         self.model = Model(self.api, 'test-model', [], Context(8192, 4096), None, Capabilities())
 
-    def test_params(self):
+    def test_params(self) -> None:
         image_url = 'data:image/png;base64,' + base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'system', 'content': 'System prompt'},
@@ -29,7 +29,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result['input'], expected_output, strict=True):
             self.assertEqual(actual, expected)
 
-    def test_result(self):
+    def test_result(self) -> None:
         response = {
             'output': [
                 {'type': 'reasoning', 'encrypted_content': 'encrypted'},
@@ -41,7 +41,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result, RESULT_OUTPUT, strict=True):
             self.assertEqual(actual, expected)
 
-    async def test_decode(self):
+    async def test_decode(self) -> None:
         chunks = [
             {"type": "response.output_item.done", "output_index": 0, "item": {"type": "reasoning", "encrypted_content": "encrypted", "summary": []}},
             {"type": "response.output_text.delta", "output_index": 1, "delta": "Hello"},

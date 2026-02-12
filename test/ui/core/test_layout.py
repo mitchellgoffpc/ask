@@ -8,7 +8,7 @@ from ask.ui.core.styles import Colors, Axis, Wrap
 from test.ui.core.helpers import WideTree, DeepTree
 
 class TestLayout(unittest.TestCase):
-    def test_flex_layout(self):
+    def test_flex_layout(self) -> None:
         test_cases: list[tuple[str, tuple, tuple, list[tuple], list[tuple]]] = [
             # description, parent_spec, expected_parent_size, children, expected_layouts (x, y, width, height)
             ("fixed widths", (Axis.HORIZONTAL, None, None), (30, 1), [('A', 10, None), ('B', 20, None)], [(0, 0, 10, 1), (10, 0, 20, 1)]),
@@ -60,7 +60,7 @@ class TestLayout(unittest.TestCase):
                     self.assertEqual(tree.offsets[child.uuid].x, x)
                     self.assertEqual(tree.offsets[child.uuid].y, y)
 
-    def test_nested_flex_layout(self):
+    def test_nested_flex_layout(self) -> None:
         test_cases = [
             # description, outer_box_spec, inner_box_spec, text, expected_outer_size, expected_text_size
             ("fixed width", (None, None), (None, None), ('A', 10, None), (10, 1), (10, 1)),
@@ -85,7 +85,7 @@ class TestLayout(unittest.TestCase):
                 self.assertEqual(tree.widths[text_elem.uuid], exp_text_w)
                 self.assertEqual(tree.heights[text_elem.uuid], exp_text_h)
 
-    def test_chrome_layout(self):
+    def test_chrome_layout(self) -> None:
         def make_chrome(m: int, b: int, p: int) -> dict:
             return {'margin': m, 'border': ('top', 'bottom', 'left', 'right') if b else (), 'padding': p}
 
@@ -125,7 +125,7 @@ class TestLayout(unittest.TestCase):
 
 
 class TestLayoutPerformance(unittest.TestCase):
-    def test_layout_performance(self):
+    def test_layout_performance(self) -> None:
         for widget in (WideTree, DeepTree):
             with self.subTest(widget=widget.__name__):
                 root = Box()[widget()]

@@ -16,12 +16,12 @@ def create_mock_tool(name: str = 'test_tool', description: str = 'A test tool') 
     return tool
 
 class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = create_mock_tool('test_tool', 'A test tool')
         self.tool.check.return_value = {'arg': 'processed_value'}
         self.approval = AsyncMock(return_value=True)
 
-    async def test_agent_loop_simple_response(self):
+    async def test_agent_loop_simple_response(self) -> None:
         initial_messages = [Message('user', ModelCommand(model='gpt-5')), Message('user', Text('Hello'))]
         query_responses = [[('', Text('Hi there'))]]
         expected = [Message('assistant', Text('Hi there'))]
@@ -31,7 +31,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
         for result, exp in zip(results, expected, strict=True):
             self.assertEqual(result, exp)
 
-    async def test_agent_loop_reasoning_only(self):
+    async def test_agent_loop_reasoning_only(self) -> None:
         initial_messages = [Message('user', ModelCommand(model='gpt-5')), Message('user', Text('Hello'))]
         query_responses: list[list[tuple[str, Content]]] = [
             [('', Reasoning(data='thinking', encrypted=True))],
@@ -45,7 +45,7 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
         for result, exp in zip(results, expected, strict=True):
             self.assertEqual(result, exp)
 
-    async def test_agent_loop_with_tool_call(self):
+    async def test_agent_loop_with_tool_call(self) -> None:
         initial_messages = [
             Message('user', ModelCommand(model='gpt-5')),
             Message('user', ToolDescriptor(self.tool.name, self.tool.description, self.tool.get_input_schema())),

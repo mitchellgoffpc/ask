@@ -6,7 +6,7 @@ from ask.tools.base import ToolError
 from ask.tools.bash import BashTool
 
 class TestBashTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = BashTool()
 
     async def run_tool(self, command: str, timeout: int = 10000) -> str:
@@ -17,20 +17,20 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_command_stdout(self):
+    async def test_command_stdout(self) -> None:
         result = await self.run_tool(command="echo hello", timeout=10000)
         self.assertEqual(result, "hello")
 
-    async def test_command_stderr(self):
+    async def test_command_stderr(self) -> None:
         result = await self.run_tool(command="echo error 1>&2", timeout=10000)
         self.assertEqual(result, "error")
 
-    async def test_command_error(self):
+    async def test_command_error(self) -> None:
         with self.assertRaises(ToolError) as context:
             await self.run_tool(command="ls /nonexistant", timeout=10000)
         self.assertIn("No such file or directory", str(context.exception))
 
-    async def test_task_timeout(self):
+    async def test_task_timeout(self) -> None:
         start_time = asyncio.get_event_loop().time()
         with self.assertRaises(ToolError) as context:
             await asyncio.create_task(self.run_tool(command="sleep 10", timeout=100))
@@ -41,7 +41,7 @@ class TestBashTool(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "hello")
         self.assertLess(asyncio.get_event_loop().time() - start_time, 1.0)
 
-    async def test_task_cancellation(self):
+    async def test_task_cancellation(self) -> None:
         start_time = asyncio.get_event_loop().time()
         task = asyncio.create_task(self.run_tool(command="sleep 10", timeout=10000))
         await asyncio.sleep(0.1)

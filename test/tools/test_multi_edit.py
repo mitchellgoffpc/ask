@@ -7,7 +7,7 @@ from ask.tools.multi_edit import MultiEditTool
 from ask.tools.base import ToolError
 
 class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = MultiEditTool()
 
     async def run_tool(self, file_path: str, edits: list[dict]) -> str:
@@ -18,7 +18,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_multiple_edits(self):
+    async def test_multiple_edits(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("Hello world\nThis is a test\nGoodbye world")
             f.flush()
@@ -33,7 +33,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(content, "Hi world\nThis is a example\nFarewell world")
             self.assertIn(f"The file {f.name} has been updated with 3 edits.", result)
 
-    async def test_replace_all_in_multiple_edits(self):
+    async def test_replace_all_in_multiple_edits(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("test foo test\nbar test foo")
             f.flush()
@@ -46,7 +46,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             content = Path(f.name).read_text()
             self.assertEqual(content, "example baz example\nbar example baz")
 
-    async def test_sequential_edits(self):
+    async def test_sequential_edits(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("original text")
             f.flush()
@@ -59,7 +59,7 @@ class TestMultiEditTool(unittest.IsolatedAsyncioTestCase):
             content = Path(f.name).read_text()
             self.assertEqual(content, "final result")
 
-    async def test_multiple_occurrences_without_replace_all(self):
+    async def test_multiple_occurrences_without_replace_all(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("foo bar foo")
             f.flush()

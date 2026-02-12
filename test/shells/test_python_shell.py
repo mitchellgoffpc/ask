@@ -8,35 +8,35 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
         nodes = PYTHON_SHELL.parse(code)
         return await PYTHON_SHELL.execute(nodes=nodes, timeout_seconds=timeout_seconds)
 
-    async def test_basic_execution(self):
+    async def test_basic_execution(self) -> None:
         result, _ = await self.run_command("print('hello world')")
         self.assertIn("hello world", result)
 
-    async def test_expression_output(self):
+    async def test_expression_output(self) -> None:
         result, _ = await self.run_command("2 + 2")
         self.assertIn("4", result)
 
-    async def test_variable_persistence(self):
+    async def test_variable_persistence(self) -> None:
         await self.run_command("x = 42")
         result, _ = await self.run_command("print(x)")
         self.assertIn("42", result)
 
-    async def test_multiline_code(self):
+    async def test_multiline_code(self) -> None:
         code = "for i in range(3):\n  print(f'Count: {i}')"
         result, _ = await self.run_command(code)
         self.assertIn("Count: 0", result)
         self.assertIn("Count: 1", result)
         self.assertIn("Count: 2", result)
 
-    async def test_error_handling(self):
+    async def test_error_handling(self) -> None:
         _, exception = await self.run_command("1 / 0")
         assert 'ZeroDivisionError' in exception
 
-    async def test_syntax_error(self):
+    async def test_syntax_error(self) -> None:
         with self.assertRaises(SyntaxError):
             PYTHON_SHELL.parse("def invalid_syntax(")
 
-    async def test_task_timeout(self):
+    async def test_task_timeout(self) -> None:
         start_time = asyncio.get_event_loop().time()
         with self.assertRaises(TimeoutError) as context:
             await asyncio.create_task(self.run_command("import time; time.sleep(10)", timeout_seconds=0.1))
@@ -47,7 +47,7 @@ class TestPythonTool(unittest.IsolatedAsyncioTestCase):
         self.assertIn("4", result)
         self.assertLess(asyncio.get_event_loop().time() - start_time, 1.0)
 
-    async def test_task_cancellation(self):
+    async def test_task_cancellation(self) -> None:
         task = asyncio.create_task(self.run_command("import time; time.sleep(10)"))
         await asyncio.sleep(0.1)
         task.cancel()

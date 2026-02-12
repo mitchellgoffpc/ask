@@ -51,7 +51,7 @@ class ReadTool(Tool):
             ParameterType.Number, required=False),
         Parameter("limit", "The number of lines to read. Only provide if the file is too large to read at once.", ParameterType.Number, required=False)]
 
-    def __init__(self, add_line_numbers: bool = True):
+    def __init__(self, add_line_numbers: bool = True) -> None:
         self.add_line_numbers = add_line_numbers
 
     def check(self, args: dict[str, Any]) -> None:

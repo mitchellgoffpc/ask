@@ -16,7 +16,7 @@ def create_tree(textbox: TextBox) -> tuple[ElementTree, Box, TextBoxController]:
     return tree, root, textbox.controller
 
 class TestTextBoxWrapping(unittest.TestCase):
-    def test_textbox_wrapping_rendering(self):
+    def test_textbox_wrapping_rendering(self) -> None:
         test_cases = [
             ("empty text", "", 0, 10, Wrap.EXACT, Styles.inverse(' ')),
             ("cursor at start", "Hello", 0, 10, Wrap.EXACT, Styles.inverse('H') + "ello"),
@@ -47,7 +47,7 @@ class TestTextBoxWrapping(unittest.TestCase):
                 assert isinstance(text_elem, Text)
                 self.assertEqual(text_elem.wrapped(width), expected_text,  f"Failed: {description}\nText: {repr(text)}\nCursor: {cursor_pos}\nWidth: {width}")
 
-    def test_textbox_width_limit(self):
+    def test_textbox_width_limit(self) -> None:
         tree, root, textbox = create_tree(TextBox(width=1.0, wrap=Wrap.WORDS))
         textbox._text = "123456789     "
         textbox._cursor_pos = 12
@@ -57,7 +57,7 @@ class TestTextBoxWrapping(unittest.TestCase):
 
 
 class TestTextBoxInputHandling(unittest.TestCase):
-    def test_textbox_basic_text_editing(self):
+    def test_textbox_basic_text_editing(self) -> None:
         test_cases = [
             ("insert at end", "", 0, ["A", "B"], "AB", 2),
             ("insert in middle", "AB", 1, ["X"], "AXB", 2),
@@ -83,7 +83,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
                 self.assertEqual(textbox.text, expected_text)
                 self.assertEqual(textbox.cursor_pos, expected_cursor)
 
-    def test_textbox_navigation_keybindings(self):
+    def test_textbox_navigation_keybindings(self) -> None:
         test_cases = [
             ("move backward one character (Ctrl+B / left arrow)", "Hello World", 5, ["\x02", "\x1b[D"], 4),
             ("move forward one character (Ctrl+F / right arrow)", "Hello World", 4, ["\x06", "\x1b[C"], 5),
@@ -109,7 +109,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
                     self.assertEqual(textbox.text, initial_text)
                     self.assertEqual(textbox.cursor_pos, expected_cursor)
 
-    def test_textbox_history_paging_keybindings(self):
+    def test_textbox_history_paging_keybindings(self) -> None:
         test_cases = [
             ("move to newer history entry (page down)", "first", 5, ["\x1b[5~", "\x0e", "\x1b[B"], "second", 6, ["first", "second", "third"], 0),
             ("move to older history entry (page up)", "third", 5, ["\x1b[6~", "\x10", "\x1b[A"], "second", 6, ["first", "second", "third"], 2),
@@ -131,7 +131,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
                     self.assertEqual(textbox.text, expected_text)
                     self.assertEqual(textbox.cursor_pos, expected_cursor)
 
-    def test_textbox_kill_yank_and_mark_keybindings(self):
+    def test_textbox_kill_yank_and_mark_keybindings(self) -> None:
         test_cases = [
             ("set mark (Ctrl+Space)", "Hello", 2, "\x00", "Hello", 2, None, 2, None, None),
             ("unset mark (Ctrl+G)", "Hello", 2, "\x07", "Hello", 2, 1, None, None, None),
@@ -156,7 +156,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
                 if expected_kill_buf is not None:
                     self.assertEqual(textbox.kill_buffer, expected_kill_buf)
 
-    def test_textbox_change_callback(self):
+    def test_textbox_change_callback(self) -> None:
         handle_change = Mock()
         textbox = TextBoxController(TextBox(width=20, handle_change=handle_change))
 
@@ -176,7 +176,7 @@ class TestTextBoxInputHandling(unittest.TestCase):
         textbox.handle_input('\x7f')
         handle_change.assert_not_called()
 
-    def test_textbox_enter_and_submit_handling(self):
+    def test_textbox_enter_and_submit_handling(self) -> None:
         handle_submit = Mock()
         textbox = TextBoxController(TextBox(width=20, handle_submit=handle_submit))
         textbox._text = 'Test content'

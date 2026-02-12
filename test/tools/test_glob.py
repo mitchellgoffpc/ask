@@ -6,7 +6,7 @@ from ask.messages import Text
 from ask.tools.glob_ import GlobTool
 
 class TestGlobTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = GlobTool()
 
     async def run_tool(self, path: str, pattern: str) -> str:
@@ -17,7 +17,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_basic_glob(self):
+    async def test_basic_glob(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "file1.txt").touch()
@@ -32,7 +32,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(results[0], f"- {temp_path / 'file1.txt'}")
             self.assertEqual(results[1], f"- {temp_path / 'test.txt'}")
 
-    async def test_recursive_glob(self):
+    async def test_recursive_glob(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "root.py").touch()
@@ -46,7 +46,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             self.assertIn("sub.py", result)
             self.assertNotIn("other.txt", result)
 
-    async def test_no_matches(self):
+    async def test_no_matches(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "file.txt").touch()
@@ -54,7 +54,7 @@ class TestGlobTool(unittest.IsolatedAsyncioTestCase):
             result = await self.run_tool(path=temp_dir, pattern="*.nonexistent")
             self.assertEqual(result, "Found 0 files")
 
-    async def test_directory_ignored(self):
+    async def test_directory_ignored(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "file.txt").touch()

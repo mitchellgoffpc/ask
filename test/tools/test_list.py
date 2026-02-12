@@ -6,7 +6,7 @@ from ask.messages import Text
 from ask.tools.list import ListTool
 
 class TestListTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = ListTool()
 
     async def run_tool(self, path: str, ignore: list[str]) -> str:
@@ -17,7 +17,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_basic_listing(self):
+    async def test_basic_listing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "file1.txt").touch()
@@ -33,7 +33,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lines[3], "  - subdir/")
             self.assertEqual(lines[4], "    - nested.txt")
 
-    async def test_ignore_patterns(self):
+    async def test_ignore_patterns(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "keep.txt").touch()
@@ -45,7 +45,7 @@ class TestListTool(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("- keep.txt", result)
             self.assertNotIn("- ignore.txt", result)
 
-    async def test_ignored_paths(self):
+    async def test_ignored_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             (temp_path / "file.txt").touch()

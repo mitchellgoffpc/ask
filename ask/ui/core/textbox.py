@@ -60,7 +60,7 @@ class TextBoxController(BaseController[TextBox]):
     kill_buffer = ''
     mark: int | None = None
 
-    def __init__(self, props: TextBox):
+    def __init__(self, props: TextBox) -> None:
         super().__init__(props)
         self.history = (props.history or []) + [props.text or '']
         self.history_idx = len(self.history) - 1

@@ -7,7 +7,7 @@ from ask.tools.edit import EditTool
 from ask.tools.base import ToolError
 
 class TestEditTool(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tool = EditTool()
 
     async def run_tool(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> str:
@@ -18,7 +18,7 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
         assert isinstance(result, Text)
         return result.text
 
-    async def test_basic_replace(self):
+    async def test_basic_replace(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("Hello world\nThis is a test")
             f.flush()
@@ -30,7 +30,7 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lines[1], "     1→Hello universe")
             self.assertEqual(lines[2], "     2→This is a test")
 
-    async def test_replace_all(self):
+    async def test_replace_all(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("test test test\ntest again")
             f.flush()
@@ -40,7 +40,7 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(content, "example example example\nexample again")
             self.assertIn("all occurrences of 'test' have been replaced with 'example'", result)
 
-    async def test_multiple_occurrences_without_replace_all(self):
+    async def test_multiple_occurrences_without_replace_all(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write("foo bar foo")
             f.flush()
@@ -49,7 +49,7 @@ class TestEditTool(unittest.IsolatedAsyncioTestCase):
                 await self.run_tool(file_path=f.name, old_string="foo", new_string="baz", replace_all=False)
             self.assertIn("Found 2 matches", str(cm.exception))
 
-    async def test_response_snippet(self):
+    async def test_response_snippet(self) -> None:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as f:
             f.write('\n'.join(chr(65+i) for i in range(26)))  # A-Z on separate lines
             f.flush()

@@ -7,11 +7,11 @@ from ask.models.legacy import LegacyOpenAIAPI
 from test.models.helpers import INPUT_MESSAGES, RESULT_OUTPUT, DECODE_OUTPUT, to_async
 
 class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.api = LegacyOpenAIAPI('http://api.test', 'TEST_KEY', 'Test')
         self.model = Model(self.api, 'test-model', [], Context(8192, 4096), None, Capabilities())
 
-    def test_params(self):
+    def test_params(self) -> None:
         image_url = 'data:image/png;base64,' + base64.b64encode(b'fakeimagedata').decode()
         expected_output = [
             {'role': 'system', 'content': 'System prompt'},
@@ -30,7 +30,7 @@ class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
             print(actual, expected)
             self.assertEqual(actual, expected)
 
-    def test_result(self):
+    def test_result(self) -> None:
         response = {
             'choices': [{
                 'message': {
@@ -42,7 +42,7 @@ class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         for actual, expected in zip(result, RESULT_OUTPUT[:-1], strict=True):
             self.assertEqual(actual, expected)
 
-    async def test_decode(self):
+    async def test_decode(self) -> None:
         chunks = [
             {"choices": [{"index": 0, "delta": {"content": "Hello"}}]},
             {"choices": [{"index": 0, "delta": {"content": " world"}}]},

@@ -15,7 +15,7 @@ def render_once(element: Box | Text, max_width: int = 100) -> str:
     return render(tree, element)
 
 class TestInputHandling(unittest.TestCase):
-    def test_split_input_sequence(self):
+    def test_split_input_sequence(self) -> None:
         test_cases = [
             ("hello", ["hello"]),
             ("ab\x03cd", ["ab", "\x03", "cd"]),
@@ -33,15 +33,15 @@ class TestInputHandling(unittest.TestCase):
 
 
 class TestRender(unittest.TestCase):
-    def test_empty_box(self):
+    def test_empty_box(self) -> None:
         box = Box()[Box(), Text("Hello")]
         self.assertEqual(render_once(box), "Hello")
 
-    def test_render_styled_text(self):
+    def test_render_styled_text(self) -> None:
         text = Text(f"{Colors.WHITE}this is one line\nthis is another line{Colors.END}")
         self.assertEqual(render_once(text), f"{Colors.WHITE}this is one line{Colors.END}    \n{Colors.WHITE}this is another line{Colors.END}")
 
-    def test_width_types(self):
+    def test_width_types(self) -> None:
         test_cases: list[tuple[str, int | None, list]] = [
             ("fixed width", 20, [('Left', 8, 8), ('Right', 8, 8)]),
             ("fractional width", 20, [('Left', 0.3, 6), ('Right', 0.7, 14)]),
@@ -55,21 +55,21 @@ class TestRender(unittest.TestCase):
                 expected_result = ''.join(f'{text:<{expected_width}}' for text, _, expected_width in _children).ljust(expected_box_width)
                 self.assertEqual(render_once(box), expected_result)
 
-    def test_layout_width_constraint(self):
+    def test_layout_width_constraint(self) -> None:
         text = Text("Very long text that should be wrapped", width=10)
         self.assertEqual(render_once(text), "Very long \ntext that \nshould be \nwrapped   ")
 
-    def test_parent_width_constraint(self):
+    def test_parent_width_constraint(self) -> None:
         box = Box()[Box(width=10)[Text("Very long text that should be wrapped")]]
         self.assertEqual(render_once(box), "Very long \ntext that \nshould be \nwrapped   ")
 
-    def test_mixed_flex_components(self):
+    def test_mixed_flex_components(self) -> None:
         outer = Box(flex=Axis.HORIZONTAL)[Box(flex=Axis.VERTICAL)[Text("Top"), Text("Bottom")], Text("Side")]
         self.assertEqual(render_once(outer), "Top   Side\nBottom    ")
 
 
 class TestRenderMargin(unittest.TestCase):
-    def test_margin(self):
+    def test_margin(self) -> None:
         test_cases: list[tuple[str, str, Spacing, str]] = [
             ("no margin", "Hello", 0, "Hello"),
             ("uniform margin", "Hello", 1, "       \n Hello \n       "),
@@ -83,7 +83,7 @@ class TestRenderMargin(unittest.TestCase):
 
 
 class TestRenderBorder(unittest.TestCase):
-    def test_border(self):
+    def test_border(self) -> None:
         test_cases: list[tuple[str, str, tuple[Side, ...], int, str]] = [
             ("no border", "Hello", (), 0, "Hello"),
             ("full border", "Hi", ('top', 'bottom', 'left', 'right'), 0, "┌──┐\n│Hi│\n└──┘"),
@@ -97,7 +97,7 @@ class TestRenderBorder(unittest.TestCase):
 
 
 class TestRenderPerformance(unittest.TestCase):
-    def test_render_performance(self):
+    def test_render_performance(self) -> None:
         for widget in (WideTree, DeepTree):
             with self.subTest(widget=widget.__name__):
                 root = Box()[widget()]

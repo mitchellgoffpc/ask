@@ -4,7 +4,7 @@ from typing import Any
 from ask.tools.base import Tool, Parameter, ParameterType, ToolError
 
 class DummyTool(Tool):
-    def __init__(self, parameters: list[Parameter]):
+    def __init__(self, parameters: list[Parameter]) -> None:
         self.name = "test"
         self.description = "test tool"
         self.parameters = parameters
@@ -14,14 +14,14 @@ class DummyTool(Tool):
 
 
 class TestParameterValidation(unittest.TestCase):
-    def test_string_parameter(self):
+    def test_string_parameter(self) -> None:
         tool = DummyTool([Parameter("text", "string param", ParameterType.String)])
         tool.check({"text": "hello"})
         with self.assertRaises(ToolError) as context:
             tool.check({"text": 123})
         self.assertEqual(str(context.exception), "Parameter 'text' must be a string")
 
-    def test_number_parameter(self):
+    def test_number_parameter(self) -> None:
         tool = DummyTool([Parameter("num", "number param", ParameterType.Number)])
         tool.check({"num": 42})
         tool.check({"num": 3.14})
@@ -29,7 +29,7 @@ class TestParameterValidation(unittest.TestCase):
             tool.check({"num": "not a number"})
         self.assertEqual(str(context.exception), "Parameter 'num' must be a number")
 
-    def test_boolean_parameter(self):
+    def test_boolean_parameter(self) -> None:
         tool = DummyTool([Parameter("flag", "boolean param", ParameterType.Boolean)])
         tool.check({"flag": True})
         tool.check({"flag": False})
@@ -37,7 +37,7 @@ class TestParameterValidation(unittest.TestCase):
             tool.check({"flag": "true"})
         self.assertEqual(str(context.exception), "Parameter 'flag' must be a boolean")
 
-    def test_enum_parameter(self):
+    def test_enum_parameter(self) -> None:
         tool = DummyTool([Parameter("color", "enum param", ParameterType.Enum(["red", "green", "blue"]))])
         tool.check({"color": "red"})
         with self.assertRaises(ToolError) as context:
@@ -47,7 +47,7 @@ class TestParameterValidation(unittest.TestCase):
             tool.check({"color": 1})
         self.assertEqual(str(context.exception), "Parameter 'color' must be a string")
 
-    def test_string_array_parameter(self):
+    def test_string_array_parameter(self) -> None:
         tool = DummyTool([Parameter("items", "array param", ParameterType.Array(ParameterType.String, min_items=1))])
         tool.check({"items": ["a", "b"]})
         with self.assertRaises(ToolError) as context:
@@ -60,7 +60,7 @@ class TestParameterValidation(unittest.TestCase):
             tool.check({"items": ["a", 1]})
         self.assertEqual(str(context.exception), "Parameter 'items[1]' must be a string")
 
-    def test_object_array_parameter(self):
+    def test_object_array_parameter(self) -> None:
         tool = DummyTool([Parameter("items", "array param", ParameterType.Array([Parameter("text", "string param", ParameterType.String)]))])
         tool.check({"items": [{"text": "a"}, {"text": "b"}]})
         with self.assertRaises(ToolError) as context:
@@ -76,7 +76,7 @@ class TestParameterValidation(unittest.TestCase):
             tool.check({"items": [{"text": "a", "extra": "extra"}]})
         self.assertEqual(str(context.exception), "Unexpected arguments: items[0].extra")
 
-    def test_mismatched_parameters(self):
+    def test_mismatched_parameters(self) -> None:
         tool = DummyTool([Parameter("required", "required param", ParameterType.String)])
         with self.assertRaises(ToolError) as context:
             tool.check({})

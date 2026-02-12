@@ -33,7 +33,7 @@ class ParentWidget(Widget):
             return [Box()[ChildWidget(self.child_value) if self.child_value is not None else None]]
 
 class TestTree(unittest.TestCase):
-    def test_widget_mount_and_update(self):
+    def test_widget_mount_and_update(self) -> None:
         parent = ParentWidget()
         tree = ElementTree(parent)
         mount(tree, parent)
@@ -76,7 +76,7 @@ class TestTree(unittest.TestCase):
 
 
 class TestUpdatePerformance(unittest.TestCase):
-    def test_update_performance(self):
+    def test_update_performance(self) -> None:
         for widget in (WideTree, DeepTree):
             with self.subTest(widget=widget.__name__):
                 root = Box()[widget()]
