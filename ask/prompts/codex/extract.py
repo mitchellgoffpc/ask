@@ -30,4 +30,4 @@ if __name__ == '__main__':
             elif 'format' in tool:
                 f.write(f'schema = """\n{tool["format"]["definition"].strip()}\n"""\n')
             else:
-                raise Exception()
+                raise Exception

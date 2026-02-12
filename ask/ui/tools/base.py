@@ -30,10 +30,10 @@ class ToolOutputController(UI.Controller[ToolOutput]):
         return self.props.request.tool
 
     def get_args(self) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_short_response(self, response: str) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_full_response(self, response: str) -> str:
         return response

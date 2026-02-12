@@ -21,7 +21,7 @@ class Component:
     uuid: UUID
 
     def contents(self) -> list[Component | None]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 @dataclass
 class Element(Component):
@@ -123,7 +123,7 @@ class BaseController(Component, Generic[ComponentType]):
         return self.tree is not None
 
     def contents(self) -> list[Component | None]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 class Widget(Component):
     Controller: ClassVar[type[BaseController]]

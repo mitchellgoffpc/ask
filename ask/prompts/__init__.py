@@ -1,6 +1,6 @@
 import os
 import tomllib
-from datetime import date
+from datetime import datetime, UTC
 from functools import cache
 from pathlib import Path
 
@@ -36,7 +36,7 @@ def load_system_prompt() -> str:
         is_git_repo="Yes" if is_git_repo() else "No",
         platform=os.uname().sysname,
         os_version=f"{os.uname().sysname.lower()} {os.uname().release}",
-        current_date=date.today().strftime('%Y-%m-%d'))
+        current_date=datetime.now(tz=UTC).strftime('%Y-%m-%d'))
 
 def get_agents_md_path() -> Path | None:
     for parent in (Path.cwd(), *Path.cwd().parents):
