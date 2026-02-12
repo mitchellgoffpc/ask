@@ -36,7 +36,7 @@ class AppController(UI.Controller[App]):
 
     def __init__(self, props: App) -> None:
         super().__init__(props)
-        self.messages = MessageTree(self.props.messages, onchange=lambda: self.set_dirty())
+        self.messages = MessageTree(self.props.messages, onchange=self.set_dirty)
         self.head = list(self.props.messages.keys())[-1]
         self.tasks: list[asyncio.Task] = []
 
@@ -174,7 +174,7 @@ class AppController(UI.Controller[App]):
                 case ('assistant', Text() as text):
                     messages.append(ResponseMessage(text=text))
                 case ('assistant', ToolRequest() as request):
-                    if request.tool != ToDoTool.name:  # ToDo tool calls are handled specially
+                    if request.tool != ToDoTool.name:  # ToDoTool calls are handled specially
                         response = tool_responses.get(request.call_id)
                         messages.append(ToolCallMessage(request=request, response=response, expanded=self.expanded))
                 case _:

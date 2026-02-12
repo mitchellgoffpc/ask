@@ -21,7 +21,7 @@ def read_text(file_path: Path, offset: int, max_lines: int | None, max_cols: int
                 lines = lines[:-1] + [f"... [truncated, file contains more than {offset + max_lines} lines]"]
                 break
             if max_cols and len(line) > max_cols:
-                line = line[:max_cols] + "... [truncated]\n"
+                line = line[:max_cols] + "... [truncated]\n"  # noqa: PLW2901
             lines.append(line)
             if line.endswith('\n') and add_line_numbers:
                 lines.append(f'{str(offset+i+2).rjust(6)}→')

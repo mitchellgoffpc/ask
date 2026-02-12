@@ -140,7 +140,7 @@ class ANSIExtension(Extension):
         self.tab_length = md.tab_length
         md.serializer = self.render_root
         md.stripTopLevelTags = False
-        md.set_output_format = lambda x: x  # type: ignore
+        md.set_output_format = lambda x: x  # type: ignore[invalid-assignment]
 
 
 # Markdown renderer

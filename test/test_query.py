@@ -71,5 +71,4 @@ class TestQueryAgent(unittest.IsolatedAsyncioTestCase):
             results = [msg async for _, msg in query_agent(initial_messages, self.approval, False) if msg is not None]
             mock_execute.assert_called_once()
         for result, exp in zip(results, expected, strict=True):
-            print(result, exp)
             self.assertEqual(result, exp)

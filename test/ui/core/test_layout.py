@@ -54,9 +54,9 @@ class TestLayout(unittest.TestCase):
 
                 self.assertEqual(tree.widths[box.uuid], expected_width)
                 self.assertEqual(tree.heights[box.uuid], expected_height)
-                for child, (x, y, width, height) in zip(texts, expected_layouts, strict=True):
-                    self.assertEqual(tree.widths[child.uuid], width)
-                    self.assertEqual(tree.heights[child.uuid], height)
+                for child, (x, y, w, h) in zip(texts, expected_layouts, strict=True):
+                    self.assertEqual(tree.widths[child.uuid], w)
+                    self.assertEqual(tree.heights[child.uuid], h)
                     self.assertEqual(tree.offsets[child.uuid].x, x)
                     self.assertEqual(tree.offsets[child.uuid].y, y)
 
@@ -117,11 +117,11 @@ class TestLayout(unittest.TestCase):
 
                 self.assertEqual(tree.widths[box.uuid], expected_w)
                 self.assertEqual(tree.heights[box.uuid], expected_h)
-                for child, (x, y, width, height) in zip(texts, expected_layouts, strict=True):
+                for child, (x, y, w, h) in zip(texts, expected_layouts, strict=True):
                     self.assertEqual(tree.offsets[child.uuid].x, x)
                     self.assertEqual(tree.offsets[child.uuid].y, y)
-                    self.assertEqual(tree.widths[child.uuid], width)
-                    self.assertEqual(tree.heights[child.uuid], height)
+                    self.assertEqual(tree.widths[child.uuid], w)
+                    self.assertEqual(tree.heights[child.uuid], h)
 
 
 class TestLayoutPerformance(unittest.TestCase):

@@ -50,7 +50,7 @@ class ToolRequest:
 
     @cached_property
     def artifacts(self) -> dict[str, Any]:
-        from ask.tools import TOOLS
+        from ask.tools import TOOLS  # noqa: PLC0415
         return TOOLS[self.tool].process(self.arguments, self._artifacts)
 
 @dataclass
