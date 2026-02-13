@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,7 +10,7 @@ from ask.config import Config
 from ask.messages import Blob, Command, Message, Text, ToolCallStatus, ToolRequest, ToolResponse, Usage
 from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME, Model
 from ask.prompts import COMMAND_CAVEAT_MESSAGE, get_relative_path, load_prompt_file
-from ask.tree import MessageEncoder, MessageTree, message_decoder
+from ask.tree import MessageTree
 
 
 @dataclass
@@ -85,31 +84,6 @@ class ModelCommand(SlashCommand):
         return []
 
 
-# /save + /load
-
-def save_messages(path: str, messages: MessageTree, head: UUID | None) -> UUID:
-    if path:
-        try:
-            Path(path).write_text(json.dumps({'head': head, 'messages': messages.dump()}, indent=2, cls=MessageEncoder))
-            return messages.add('user', head, SlashCommand(command=f'/save {path}', output=f'Saved messages to {path}'))
-        except Exception as e:
-            return messages.add('user', head, SlashCommand(command=f'/save {path}', error=str(e)))
-    else:
-        return messages.add('user', head, SlashCommand(command='/save', error='No file path supplied'))
-
-def load_messages(path: str, messages: MessageTree, head: UUID | None) -> UUID:
-    if path:
-        try:
-            data = json.loads(Path(path).read_text(), object_hook=message_decoder)
-            messages.load(data['messages'])
-            assert isinstance(data['head'], UUID)
-            return data['head']
-        except Exception as e:
-            return messages.add('user', head, SlashCommand(command=f'/load {path}', error=str(e)))
-    else:
-        return messages.add('user', head, SlashCommand(command='/load', error='No file path supplied'))
-
-
 # /usage
 
 def get_current_model(messages: list[Message]) -> Model:
@@ -166,8 +140,6 @@ __all__ = [
     "ModelCommand",
     "PythonCommand",
     "SlashCommand",
-    "save_messages",
-    "load_messages",
     "get_usage",
     "get_current_model",
 ]

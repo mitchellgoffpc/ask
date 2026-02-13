@@ -4,7 +4,8 @@ from typing import Any
 
 CONFIG_DIR = Path('~/.ask/').expanduser()
 CONFIG_PATH = CONFIG_DIR / 'config.json'
-HISTORY_PATH = CONFIG_DIR / 'history.json'
+HISTORY_PATH = CONFIG_DIR / 'history'
+QUERY_HISTORY_PATH = CONFIG_DIR / 'history.json'
 DEFAULT_CONFIG: dict[str, Any] = {'editor': 'vim', 'default_model': 'sonnet'}
 DEFAULT_HISTORY: dict[str, Any] = {'queries': []}
 
@@ -36,4 +37,4 @@ class BaseConfig:
             json.dump(self.data, f, indent=2)
 
 Config = BaseConfig(CONFIG_PATH, DEFAULT_CONFIG)
-History = BaseConfig(HISTORY_PATH, DEFAULT_HISTORY)
+History = BaseConfig(QUERY_HISTORY_PATH, DEFAULT_HISTORY)

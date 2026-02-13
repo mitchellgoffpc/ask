@@ -49,6 +49,7 @@ def message_decoder(obj: Any) -> Any:
         return ToolCallStatus(obj['value'])
     return obj
 
+
 class MessageTree:
     def __init__(self, messages: dict[UUID, Message], onchange: Callable[[], None] | None = None) -> None:
         self.messages = messages.copy()
@@ -61,6 +62,13 @@ class MessageTree:
     def __setitem__(self, key: UUID, value: Message) -> None:
         self.messages[key] = value
         self.onchange()
+
+    @property
+    def root(self) -> UUID | None:
+        for uuid, parent in self.parents.items():
+            if parent is None:
+                return uuid
+        return None
 
     def clear(self) -> None:
         self.messages.clear()
@@ -82,18 +90,22 @@ class MessageTree:
 
     def add(self, role: Role, head: UUID | None, content: Content, uuid: UUID | None = None) -> UUID:
         message_uuid = uuid or uuid4()
-        self[message_uuid] = Message(role=role, content=content)
+        self.messages[message_uuid] = Message(role=role, content=content)
         self.parents[message_uuid] = head
+        self.onchange()
         return message_uuid
 
     def update(self, uuid: UUID, content: Content) -> None:
         self[uuid] = replace(self[uuid], content=content)
 
-    def dump(self) -> list[dict[str, Any]]:
-        return [{'uuid': uuid, 'parent': self.parents[uuid], 'role': msg.role, 'content': msg.content} for uuid, msg in self.messages.items()]
+    def dump(self, head: UUID | None) -> str:
+        messages = [{'uuid': uuid, 'parent': self.parents[uuid], 'role': msg.role, 'content': msg.content} for uuid, msg in self.messages.items()]
+        return json.dumps({'head': head, 'messages': messages}, indent=2, cls=MessageEncoder)
 
-    def load(self, data: list[dict[str, Any]]) -> None:
+    def load(self, data: str) -> UUID | None:
         self.clear()
-        for message in data:
+        payload = json.loads(data, object_hook=message_decoder)
+        for message in payload['messages']:
             self[message['uuid']] = Message(role=message['role'], content=message['content'])
             self.parents[message['uuid']] = message['parent']
+        return payload['head']

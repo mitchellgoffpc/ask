@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from ask.commands import BashCommand, PythonCommand, SlashCommand, get_current_model, get_usage
-from ask.config import History
+from ask.config import HISTORY_PATH, History
 from ask.messages import Error, Message, Text, ToolRequest, ToolResponse, Usage
 from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
@@ -38,7 +38,7 @@ class AppController(UI.Controller[App]):
 
     def __init__(self, props: App) -> None:
         super().__init__(props)
-        self.messages = MessageTree(self.props.messages, onchange=self.set_dirty)
+        self.messages = MessageTree(self.props.messages, onchange=self.handle_update_messages)
         self.head = list(self.props.messages.keys())[-1]
         self.tasks: list[asyncio.Task] = []
 
@@ -118,6 +118,12 @@ class AppController(UI.Controller[App]):
         else:
             self.tasks.append(asyncio.create_task(self.query(query)))
         return True
+
+    def handle_update_messages(self) -> None:
+        self.set_dirty()
+        if root := self.messages.root:
+            HISTORY_PATH.mkdir(parents=True, exist_ok=True)
+            (HISTORY_PATH / f"{root}.json").write_text(self.messages.dump(self.head))
 
     def get_context_used(self) -> int:
         usage_messages = [msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, Usage)]

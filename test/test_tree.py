@@ -113,13 +113,12 @@ class TestEncoderDecoder(unittest.TestCase):
         msg2 = tree.add('assistant', msg1, ToolRequest(call_id='call_456', tool='BashShell', arguments={'command': 'echo test'}))
         msg3 = tree.add('user', msg2, ToolResponse(call_id='call_456', tool='BashShell', response=Text('test'), status=ToolCallStatus.COMPLETED))
 
-        dumped = tree.dump()
-        encoded = json.dumps(dumped, cls=MessageEncoder)
-        decoded = json.loads(encoded, object_hook=message_decoder)
+        dumped = tree.dump(msg3)
         new_tree = MessageTree({})
-        new_tree.load(decoded)
+        head = new_tree.load(dumped)
 
         assert len(new_tree.messages) == 3
+        assert head == msg3
         assert new_tree[msg1].content == Text('first')
         assert new_tree[msg2].content == ToolRequest(call_id='call_456', tool='BashShell', arguments={'command': 'echo test'})
         assert new_tree[msg3].content == ToolResponse(call_id='call_456', tool='BashShell', response=Text('test'), status=ToolCallStatus.COMPLETED)
