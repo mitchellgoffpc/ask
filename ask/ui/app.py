@@ -82,6 +82,8 @@ class AppController(UI.Controller[App]):
         except Exception:
             self.head = self.messages.add('user', self.head, Error(traceback.format_exc()))
 
+        HISTORY_PATH.mkdir(parents=True, exist_ok=True)
+        (HISTORY_PATH / f"{self.messages.root}.json").write_text(self.messages.dump(self.head))
         self.loading = False
         ticker.cancel()
 
@@ -121,9 +123,6 @@ class AppController(UI.Controller[App]):
 
     def handle_update_messages(self) -> None:
         self.set_dirty()
-        if root := self.messages.root:
-            HISTORY_PATH.mkdir(parents=True, exist_ok=True)
-            (HISTORY_PATH / f"{root}.json").write_text(self.messages.dump(self.head))
 
     def get_context_used(self) -> int:
         usage_messages = [msg.content for msg in self.messages.values(self.head) if isinstance(msg.content, Usage)]

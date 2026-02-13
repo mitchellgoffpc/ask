@@ -114,8 +114,7 @@ class TestEncoderDecoder(unittest.TestCase):
         msg3 = tree.add('user', msg2, ToolResponse(call_id='call_456', tool='BashShell', response=Text('test'), status=ToolCallStatus.COMPLETED))
 
         dumped = tree.dump(msg3)
-        new_tree = MessageTree({})
-        head = new_tree.load(dumped)
+        new_tree, head = MessageTree.load(dumped)
 
         assert len(new_tree.messages) == 3
         assert head == msg3

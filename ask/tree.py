@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import fields, replace
 from itertools import pairwise
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, Self, get_args
 from uuid import UUID, uuid4
 
 from ask.messages import Content, Message, Role, ToolCallStatus
@@ -64,11 +64,11 @@ class MessageTree:
         self.onchange()
 
     @property
-    def root(self) -> UUID | None:
+    def root(self) -> UUID:
         for uuid, parent in self.parents.items():
             if parent is None:
                 return uuid
-        return None
+        raise ValueError("No root found in the message tree")
 
     def clear(self) -> None:
         self.messages.clear()
@@ -102,10 +102,11 @@ class MessageTree:
         messages = [{'uuid': uuid, 'parent': self.parents[uuid], 'role': msg.role, 'content': msg.content} for uuid, msg in self.messages.items()]
         return json.dumps({'head': head, 'messages': messages}, indent=2, cls=MessageEncoder)
 
-    def load(self, data: str) -> UUID | None:
-        self.clear()
+    @classmethod
+    def load(cls, data: str) -> tuple[Self, UUID | None]:
         payload = json.loads(data, object_hook=message_decoder)
+        tree = cls({})
         for message in payload['messages']:
-            self[message['uuid']] = Message(role=message['role'], content=message['content'])
-            self.parents[message['uuid']] = message['parent']
-        return payload['head']
+            tree[message['uuid']] = Message(role=message['role'], content=message['content'])
+            tree.parents[message['uuid']] = message['parent']
+        return tree, payload['head']
