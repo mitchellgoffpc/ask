@@ -51,18 +51,57 @@ def ansi256(code: int, *, offset: int = 0) -> str:
 def ansi16m(red: int, green: int, blue: int, *, offset: int = 0) -> str:
     return f"\u001B[{38 + offset};2;{red};{green};{blue}m"
 
-def rgb_to_ansi256(red: int, green: int, blue: int) -> int:
-    # From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
-    # We use the extended greyscale palette here, with the exception of
-    # black and white. normal palette only has 4 greyscale shades.
-    if red == green and green == blue:
-        if red < 8:
-            return 16
-        if red > 248:
-            return 231
-        return round(((red - 8) / 247) * 24) + 232
+def _srgb_to_linear(value: int) -> float:
+    c = value / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
 
-    return 16 + (36 * round(red / 255 * 5)) + (6 * round(green / 255 * 5)) + round(blue / 255 * 5)
+def _perceptual_distance(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    def rgb_to_xyz(_r: int, _g: int, _b: int) -> tuple[float, float, float]:
+        r = _srgb_to_linear(_r)
+        g = _srgb_to_linear(_g)
+        b = _srgb_to_linear(_b)
+        return (
+            r * 0.4124 + g * 0.3576 + b * 0.1805,
+            r * 0.2126 + g * 0.7152 + b * 0.0722,
+            r * 0.0193 + g * 0.1192 + b * 0.9505,
+        )
+
+    def xyz_to_lab(x: float, y: float, z: float) -> tuple[float, float, float]:
+        xr, yr, zr = x / 0.95047, y / 1.00000, z / 1.08883
+        def f(t: float) -> float:
+            return t ** (1.0 / 3.0) if t > 0.008856 else 7.787 * t + 16.0 / 116.0
+        fx, fy, fz = f(xr), f(yr), f(zr)
+        return 116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)
+
+    x1, y1, z1 = rgb_to_xyz(*a)
+    x2, y2, z2 = rgb_to_xyz(*b)
+    l1, a1, b1 = xyz_to_lab(x1, y1, z1)
+    l2, a2, b2 = xyz_to_lab(x2, y2, z2)
+    dl, da, db = l1 - l2, a1 - a2, b1 - b2
+    return (dl * dl + da * da + db * db) ** 0.5
+
+def _xterm_fixed_colors() -> list[tuple[int, tuple[int, int, int]]]:
+    colors: list[tuple[int, tuple[int, int, int]]] = []
+    levels = [0, 95, 135, 175, 215, 255]
+    for r in range(6):
+        for g in range(6):
+            for b in range(6):
+                colors.append((16 + 36 * r + 6 * g + b, (levels[r], levels[g], levels[b])))
+    for i in range(24):
+        value = 8 + 10 * i
+        colors.append((232 + i, (value, value, value)))
+    return colors
+
+def rgb_to_ansi256(red: int, green: int, blue: int) -> int:
+    target = (red, green, blue)
+    best_i = 0
+    best_distance = float("inf")
+    for i, color in _xterm_fixed_colors():
+        distance = _perceptual_distance(color, target)
+        if distance < best_distance:
+            best_distance = distance
+            best_i = i
+    return best_i
 
 def hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
     matches = re.search(r'[a-f\d]{6}|[a-f\d]{3}', str(hex_str), re.IGNORECASE)
