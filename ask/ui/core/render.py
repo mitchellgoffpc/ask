@@ -190,5 +190,9 @@ async def render_root(_root: Component) -> None:
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         show_cursor()
-        sys.stdout.write('\n')
+
+        first_non_blank = next((i for i, line in enumerate(reversed(previous_render_lines)) if line.strip()), len(previous_render_lines) - 1)
+        if first_non_blank > 0:
+            sys.stdout.write(cursor_up(first_non_blank))
+        sys.stdout.write('\r\n')
         sys.stdout.flush()
