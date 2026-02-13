@@ -10,6 +10,28 @@ ANSI_BACKGROUND_OFFSET = 10
 ANSI_256_SUPPORT = '256color' in os.getenv("TERM", '')
 ANSI_16M_SUPPORT = 'truecolor' in os.getenv("COLORTERM", '') or '24bit' in os.getenv("COLORTERM", '')
 
+ANSI256_FROM_GREY = [
+    16, 16, 16, 16, 16, 232, 232, 232, 232, 232, 232, 232, 232, 232, 233, 233, 233, 233, 233, 233,
+    233, 233, 233, 233, 234, 234, 234, 234, 234, 234, 234, 234, 234, 234, 235, 235, 235, 235, 235,
+    235, 235, 235, 235, 235, 236, 236, 236, 236, 236, 236, 236, 236, 236, 236, 237, 237, 237, 237,
+    237, 237, 237, 237, 237, 237, 238, 238, 238, 238, 238, 238, 238, 238, 238, 238, 239, 239, 239,
+    239, 239, 239, 239, 239, 239, 239, 240, 240, 240, 240, 240, 240, 240, 240, 59, 59, 59, 59, 59,
+    241, 241, 241, 241, 241, 241, 241, 242, 242, 242, 242, 242, 242, 242, 242, 242, 242, 243, 243,
+    243, 243, 243, 243, 243, 243, 243, 244, 244, 244, 244, 244, 244, 244, 244, 244, 102, 102, 102,
+    102, 102, 245, 245, 245, 245, 245, 245, 246, 246, 246, 246, 246, 246, 246, 246, 246, 246, 247,
+    247, 247, 247, 247, 247, 247, 247, 247, 247, 248, 248, 248, 248, 248, 248, 248, 248, 248, 145,
+    145, 145, 145, 145, 249, 249, 249, 249, 249, 249, 250, 250, 250, 250, 250, 250, 250, 250, 250,
+    250, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 252, 252, 252, 252, 252, 252, 252, 252,
+    252, 188, 188, 188, 188, 188, 253, 253, 253, 253, 253, 253, 254, 254, 254, 254, 254, 254, 254,
+    254, 254, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 231, 231,
+    231, 231, 231, 231, 231, 231, 231,
+]
+
+SYSTEM_COLOURS = (
+    0x000000, 0xCD0000, 0x00CD00, 0xCDCD00, 0x0000EE, 0xCD00CD, 0x00CDCD, 0xE5E5E5,
+    0x7F7F7F, 0xFF0000, 0x00FF00, 0xFFFF00, 0x5C5CFF, 0xFF00FF, 0x00FFFF, 0xFFFFFF,
+)
+
 class Axis(Enum):
     VERTICAL = 'vertical'
     HORIZONTAL = 'horizontal'
@@ -52,17 +74,77 @@ def ansi16m(red: int, green: int, blue: int, *, offset: int = 0) -> str:
     return f"\u001B[{38 + offset};2;{red};{green};{blue}m"
 
 def rgb_to_ansi256(red: int, green: int, blue: int) -> int:
-    # From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
-    # We use the extended greyscale palette here, with the exception of
-    # black and white. normal palette only has 4 greyscale shades.
+    rgb = (red << 16) + (green << 8) + blue
     if red == green and green == blue:
-        if red < 8:
-            return 16
-        if red > 248:
-            return 231
-        return round(((red - 8) / 247) * 24) + 232
+        return ANSI256_FROM_GREY[rgb & 0xFF]
 
-    return 16 + (36 * round(red / 255 * 5)) + (6 * round(green / 255 * 5)) + round(blue / 255 * 5)
+    grey_index = ANSI256_FROM_GREY[_luminance(rgb)]
+    grey_distance = _distance(rgb, _rgb_from_ansi256(grey_index))
+
+    cube = _cube_index_red(red) + _cube_index_green(green) + _cube_index_blue(blue)
+    return (cube >> 24) if _distance(rgb, cube) < grey_distance else grey_index
+
+def _luminance(rgb: int) -> int:
+    v = 3567664 * ((rgb >> 16) & 0xFF) + 11998547 * ((rgb >> 8) & 0xFF) + 1211005 * (rgb & 0xFF)
+    return (v + (1 << 23)) >> 24
+
+def _rgb_from_ansi256(index: int) -> int:
+    if index < 16:
+        return SYSTEM_COLOURS[index]
+    if index < 232:
+        index -= 16
+        return (_cube_value(index // 36) << 16) | (_cube_value((index // 6) % 6) << 8) | _cube_value(index % 6)
+    index = (index - 232) * 10 + 8
+    return index * 0x010101
+
+def _cube_value(idx: int) -> int:
+    return (0, 95, 135, 175, 215, 255)[idx]
+
+def _distance(x: int, y: int) -> int:
+    r_sum = ((x >> 16) & 0xFF) + ((y >> 16) & 0xFF)
+    r = ((x >> 16) & 0xFF) - ((y >> 16) & 0xFF)
+    g = ((x >> 8) & 0xFF) - ((y >> 8) & 0xFF)
+    b = (x & 0xFF) - (y & 0xFF)
+    return (1024 + r_sum) * r * r + 2048 * g * g + (1534 - r_sum) * b * b
+
+def _cube_index_red(v: int) -> int:
+    if v < 38:
+        return (16 << 24)
+    if v < 115:
+        return ((1 * 36 + 16) << 24) | (95 << 16)
+    if v < 155:
+        return ((2 * 36 + 16) << 24) | (135 << 16)
+    if v < 196:
+        return ((3 * 36 + 16) << 24) | (175 << 16)
+    if v < 235:
+        return ((4 * 36 + 16) << 24) | (215 << 16)
+    return ((5 * 36 + 16) << 24) | (255 << 16)
+
+def _cube_index_green(v: int) -> int:
+    if v < 36:
+        return (0 << 24)
+    if v < 116:
+        return ((1 * 6) << 24) | (95 << 8)
+    if v < 154:
+        return ((2 * 6) << 24) | (135 << 8)
+    if v < 195:
+        return ((3 * 6) << 24) | (175 << 8)
+    if v < 235:
+        return ((4 * 6) << 24) | (215 << 8)
+    return ((5 * 6) << 24) | (255 << 8)
+
+def _cube_index_blue(v: int) -> int:
+    if v < 35:
+        return (0 << 24)
+    if v < 115:
+        return (1 << 24) | 95
+    if v < 155:
+        return (2 << 24) | 135
+    if v < 195:
+        return (3 << 24) | 175
+    if v < 235:
+        return (4 << 24) | 215
+    return (5 << 24) | 255
 
 def hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
     matches = re.search(r'[a-f\d]{6}|[a-f\d]{3}', str(hex_str), re.IGNORECASE)
