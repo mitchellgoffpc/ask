@@ -7,8 +7,9 @@ from pathlib import Path
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
-from ask.ui.core import UI, Axis, Colors, Styles, Theme
+from ask.ui.core import UI, Axis, Colors, Styles, Theme, terminal_bg_color
 from ask.ui.dialogs import EDIT_TOOLS
+from ask.ui.theme import is_light
 
 
 class Mode(Enum):
@@ -233,10 +234,13 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
     def contents(self) -> list[UI.Component | None]:
         matching_commands = self.get_matching_commands()
         matching_models = self.get_matching_models()
-        border_color = Colors.HEX(COLORS.get(self.mode, Theme.DARK_GRAY))
+        background_color = None
+        if terminal_bg := terminal_bg_color():
+            top, alpha = ((0, 0, 0), 0.04) if is_light(terminal_bg) else ((255, 255, 255), 0.12)
+            background_color = Colors.BG_RGB(Colors.blend(top, terminal_bg, alpha))
 
         return [
-            UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, border=('top', 'bottom'), border_color=border_color)[
+            UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=background_color)[
                 UI.Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 UI.TextBox(
                     width=1.0,

@@ -389,3 +389,10 @@ class Colors:
     @staticmethod
     def bg_rgb(text: str, rgb: tuple[int, int, int]) -> str:
         return apply_style(text, start=rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
+
+    @staticmethod
+    def blend(a: tuple[int, int, int], b: tuple[int, int, int], alpha: float) -> tuple[int, int, int]:
+        red = int(a[0] * alpha + b[0] * (1.0 - alpha))
+        green = int(a[1] * alpha + b[1] * (1.0 - alpha))
+        blue = int(a[2] * alpha + b[2] * (1.0 - alpha))
+        return red, green, blue

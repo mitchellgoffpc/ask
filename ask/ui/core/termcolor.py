@@ -29,36 +29,24 @@ XTERM_16 = [
     (255, 255, 255),
 ]
 
+def terminal_fg_color(timeout: float = 0.05) -> tuple[int, int, int] | None:
+    if spec := _query_osc_color(10, timeout=timeout) or _colorfgbg()[0]:
+        return _parse_color_spec(spec)
+    return None
 
-def terminal_background_hex(timeout: float = 0.05) -> str | None:
-    if not (spec := _query_osc_color(11, timeout=timeout) or _colorfgbg_bg()):
-        return None
-    rgb = _parse_color_spec(spec)
-    return rgb_to_hex(rgb) if rgb else None
-
-def is_light(rgb: tuple[int, int, int]) -> bool:
-    red, green, blue = rgb
-    luma = 0.299 * red + 0.587 * green + 0.114 * blue
-    return luma > 128.0
-
-def blend(fg: tuple[int, int, int], bg: tuple[int, int, int], alpha: float) -> tuple[int, int, int]:
-    red = int(fg[0] * alpha + bg[0] * (1.0 - alpha))
-    green = int(fg[1] * alpha + bg[1] * (1.0 - alpha))
-    blue = int(fg[2] * alpha + bg[2] * (1.0 - alpha))
-    return red, green, blue
-
-def rgb_to_hex(rgb: tuple[int, int, int]) -> str:
-    return f"#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
+def terminal_bg_color(timeout: float = 0.05) -> tuple[int, int, int] | None:
+    if spec := _query_osc_color(11, timeout=timeout) or _colorfgbg()[1]:
+        return _parse_color_spec(spec)
+    return None
 
 
 # Helper functions
 
-def _colorfgbg_bg() -> str | None:
-    value = os.getenv("COLORFGBG", "")
-    if not value:
-        return None
-    parts = [p for p in value.split(";") if p]
-    return parts[-1] if parts else None
+def _colorfgbg() -> tuple[str | None, str | None]:
+    value = os.getenv("COLORFGBG", "").split(';')
+    fg = value[0]
+    bg = value[-1] if len(value) > 1 else None
+    return fg or None, bg or None
 
 def _query_osc_color(code: int, *, timeout: float) -> str | None:
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
@@ -74,8 +62,9 @@ def _query_osc_color(code: int, *, timeout: float) -> str | None:
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
-    match = re.search(r"\x1b\]" + str(code) + r";([^\x07\x1b]+)", response)
-    return match.group(1) if match else None
+    if match := re.search(r"\x1b\]" + str(code) + r";([^\x07\x1b]+)", response):
+        return match.group(1)
+    return None
 
 def _read_osc_response(fd: int, timeout: float) -> str:
     deadline = time.time() + timeout
@@ -83,9 +72,7 @@ def _read_osc_response(fd: int, timeout: float) -> str:
     while time.time() < deadline:
         remaining = max(0.0, deadline - time.time())
         ready, _, _ = select.select([fd], [], [], remaining)
-        if not ready:
-            break
-        if not (chunk := os.read(fd, 256)):
+        if not ready or not (chunk := os.read(fd, 256)):
             break
         buf += chunk
         if BEL.encode() in buf or ST.encode() in buf:

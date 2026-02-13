@@ -1,3 +1,8 @@
+def is_light(rgb: tuple[int, int, int]) -> bool:
+    red, green, blue = rgb
+    luma = 0.299 * red + 0.587 * green + 0.114 * blue
+    return luma > 128.0
+
 class Theme:
     RED = '#FF6B80'
     DARK_RED = '#7A2936'
