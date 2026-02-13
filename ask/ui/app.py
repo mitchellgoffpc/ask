@@ -133,7 +133,11 @@ class AppController(UI.Controller[App]):
 
     def dialog(self) -> UI.Component | None:
         if self.exiting:
-            return UI.Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY), margin={'top': 1})
+            return UI.Box(margin={'top': 1})[
+                UI.Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY)),
+                UI.Text(Colors.hex("To continue this session, run ", Theme.GRAY) + Colors.hex(f'ask --resume {self.messages.root}', Theme.BLUE))
+                    if (HISTORY_PATH / f"{self.messages.root}.json").exists() else None,
+            ]
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
             tool_call, future = self.pending_approvals[tool_call_id]
             return ApprovalDialog(tool_call=tool_call, future=future)
