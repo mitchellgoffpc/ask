@@ -11,7 +11,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "aiohttp",
     "markdown",
@@ -41,7 +41,7 @@ include-package-data = true
 
 [tool.ruff]
 line-length = 160
-target-version = "py311"
+target-version = "py312"
 
 lint.select = ["ALL"]
 lint.ignore = [

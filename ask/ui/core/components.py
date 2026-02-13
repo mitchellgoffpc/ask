@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, Self, TypeVar, get_args
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, get_args
 from uuid import UUID, uuid4
 
 from ask.ui.core.styles import Axis, Borders, BorderStyle, Wrap, wrap_lines
@@ -19,8 +19,9 @@ def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
 
 
+@dataclass
 class Component:
-    uuid: UUID
+    uuid: UUID = field(default_factory=uuid4, compare=False, kw_only=True)
 
     def contents(self) -> list[Component | None]:
         raise NotImplementedError
@@ -42,7 +43,6 @@ class Element(Component):
         self.paddings = get_spacing_dict(self.padding)
         self.borders = {side: int(side in self.border) for side in get_args(Side)}
         self.children: list[Component | None] = []
-        self.uuid = uuid4()
 
     def __getitem__(self, args: Component | Iterable[Component | None] | None) -> Self:
         self.children = [args] if isinstance(args, Component) else list(args) if args else []
@@ -80,10 +80,25 @@ class Text(Element):
 class Box(Element):
     flex: Axis = Axis.VERTICAL
 
+@dataclass
+class Widget(Component):
+    Controller: ClassVar[type[BaseController]]
+    _controller: BaseController | None = field(default=None, kw_only=True, compare=False)
 
-ComponentType = TypeVar('ComponentType')
+    @property
+    def controller(self) -> BaseController:
+        assert self._controller is not None, "Widget's controller instance is not initialized"
+        return self._controller
 
-class BaseController(Component, Generic[ComponentType]):
+    @controller.setter
+    def controller(self, value: BaseController | None) -> None:
+        self._controller = value
+
+    def contents(self) -> list[Component | None]:
+        return self.controller.contents()
+
+
+class BaseController[ComponentType: Widget]:
     state: list[str] = []
     tree: ElementTree | None = None
 
@@ -97,16 +112,19 @@ class BaseController(Component, Generic[ComponentType]):
 
     def __init__(self, props: ComponentType) -> None:
         self.props = props
-        self.uuid = uuid4()
 
     def __setattr__(self, key: str, value: Any) -> None:
         if key in self.state:
             self.set_dirty()
         super().__setattr__(key, value)
 
+    @property
+    def mounted(self) -> bool:
+        return self.tree is not None
+
     def set_dirty(self) -> None:
         if self.tree:
-            self.tree.dirty.add(self.uuid)
+            self.tree.dirty.add(self.props.uuid)
 
     def handle_mount(self, tree: ElementTree) -> None:
         self.tree = tree
@@ -120,33 +138,5 @@ class BaseController(Component, Generic[ComponentType]):
     def handle_input(self, ch: str) -> None:
         pass
 
-    @property
-    def mounted(self) -> bool:
-        return self.tree is not None
-
     def contents(self) -> list[Component | None]:
         raise NotImplementedError
-
-class Widget(Component):
-    Controller: ClassVar[type[BaseController]]
-    _controller: BaseController | None = None
-
-    @property
-    def controller(self) -> BaseController:
-        assert self._controller is not None, "Widget's controller instance is not initialized"
-        return self._controller
-
-    @controller.setter
-    def controller(self, value: BaseController | None) -> None:
-        self._controller = value
-
-    @property
-    def uuid(self) -> UUID:
-        return self.controller.uuid
-
-    @uuid.setter
-    def uuid(self, value: UUID) -> None:
-        self.controller.uuid = value
-
-    def contents(self) -> list[Component | None]:
-        return self.controller.contents()

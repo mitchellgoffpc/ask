@@ -1,5 +1,3 @@
-from typing import TypeAlias
-
 from ask.ui.core.components import BaseController, Box, Component, Element, Text, Widget
 from ask.ui.core.markdown_ import highlight_code, render_markdown
 from ask.ui.core.render import render_root
@@ -10,13 +8,13 @@ from ask.ui.theme import Theme
 
 
 class UI:
-    Component: TypeAlias = Component
-    Element: TypeAlias = Element
-    Text: TypeAlias = Text
-    Box: TypeAlias = Box
-    Widget: TypeAlias = Widget
-    Controller: TypeAlias = BaseController
-    TextBox: TypeAlias = TextBox
+    Component = Component
+    Element = Element
+    Text = Text
+    Box = Box
+    Widget = Widget
+    Controller = BaseController
+    TextBox = TextBox
 
 __all__ = [
     'UI', 'ElementTree', 'Component', 'Element', 'Text', 'Box', 'Widget', 'Controller', 'TextBox',

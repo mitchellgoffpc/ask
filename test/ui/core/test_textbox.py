@@ -52,7 +52,7 @@ class TestTextBoxWrapping(unittest.TestCase):
         tree, root, textbox = create_tree(TextBox(width=1.0, wrap=Wrap.WORDS))
         textbox.text = "123456789     "
         textbox.cursor_pos = 12
-        update(tree, textbox)
+        update(tree, textbox.props)
         layout(tree, root, available_width=10)
         assert render(tree, root) == '123456789' + Styles.inverse(' ')
 

@@ -53,7 +53,7 @@ class TestTree(unittest.TestCase):
         _, box2, child2, text2 = toposort(tree)
         assert isinstance(text2, Text)
         assert box2.uuid != box.uuid
-        assert child2.uuid == child.uuid
+        assert child2.uuid != child.uuid
         assert text2.uuid != text.uuid
         assert tree.parents == {box2.uuid: parent.uuid, child2.uuid: box2.uuid, text2.uuid: child2.uuid}
         assert tree.children == {parent.uuid: [box2], box2.uuid: [child2], child2.uuid: [text2], text2.uuid: []}
