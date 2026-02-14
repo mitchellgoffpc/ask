@@ -46,5 +46,5 @@ target-version = "py312"
 lint.select = ["ALL"]
 lint.ignore = [
     "ARG", "ASYNC", "BLE", "C", "D", "EM", "ERA", "FBT", "PERF", "PLR", "Q", "RET", "RUF", "TC", "TD", "TRY",
-    "ANN401", "E701", "N802", "PT018", "S101",
+    "ANN401", "E701", "FIX002", "N802", "PT018", "S101",
 ]

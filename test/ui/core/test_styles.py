@@ -108,6 +108,8 @@ class TestWrapLines(unittest.TestCase):
             ("long word wraps at width-1", "supercalifragilistic", "superca\nlifragi\nlistic", 8),
             ("exact width lines wrap", "this is a test", "this \nis a \ntest", 7),
             ("keeps trailing space on wrap boundary", "this is a test", "this is \na test", 8),
+            ("cursor past wrap point is clamped", "x    " + Styles.inverse(' ') + " t", "x " + Styles.inverse(' ') + "\nt", 3),
+            ("cursor appears on second line", '\n' + Styles.inverse(' '), '\n' + Styles.inverse(' '), 10),
         ]
         for description, input_text, expected, width in test_cases:
             with self.subTest(description=description):

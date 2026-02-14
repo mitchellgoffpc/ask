@@ -10,17 +10,15 @@ REMOVE_CONTROL_CHARS = dict.fromkeys(range(32)) | {0xa: 0xa, 0xd: 0xa}
 def is_stop_char(ch: str) -> bool:
     return ch in ' \t\n<>@/|&;(){}[]"\'`'
 
+# TODO: Feels silly to have two different wrap_lines implementations, can we replace this one with the 'real' one in styles.py?
 def wrap_lines(text: str, width: int, wrap: Wrap) -> Iterator[tuple[str, bool]]:
     if width <= 0:
         return
-    if not text:
-        yield '', False
-        return
 
     pos = 0
+    newline_pos = -1
     while pos < len(text):
         newline_pos = text.find('\n', pos)
-
         if newline_pos != -1 and newline_pos - pos <= width:
             yield text[pos:newline_pos], True
             pos = newline_pos + 1
@@ -30,6 +28,9 @@ def wrap_lines(text: str, width: int, wrap: Wrap) -> Iterator[tuple[str, bool]]:
         else:
             segment_end = pos + width
             if wrap is not Wrap.EXACT:
+                yield text[pos:segment_end], False
+                pos = segment_end
+            else:
                 space_pos = text.rfind(' ', pos, segment_end + 1)
                 if space_pos > pos:
                     yield text[pos:space_pos + 1], False
@@ -37,9 +38,8 @@ def wrap_lines(text: str, width: int, wrap: Wrap) -> Iterator[tuple[str, bool]]:
                 else:
                     yield text[pos:segment_end], False
                     pos = segment_end
-            else:
-                yield text[pos:segment_end], False
-                pos = segment_end
+    yield '', False
+
 
 @dataclass
 class TextBox(Widget):
@@ -272,8 +272,6 @@ class TextBoxController(BaseController[TextBox]):
         lines = list(wrap_lines(text_before_cursor, self.content_width, self.props.wrap))
         if not lines:
             return 0, 0
-        if text_before_cursor and text_before_cursor[-1] == '\n':
-            return len(lines), 0
         return len(lines) - 1, len(lines[-1][0])
 
     def get_total_lines(self) -> int:

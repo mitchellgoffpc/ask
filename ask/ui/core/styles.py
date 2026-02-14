@@ -253,7 +253,7 @@ def wrap_lines(content: str, max_width: int, wrap: Wrap = Wrap.EXACT) -> str:
                 result.seek(result.tell() - 1)
                 result.write(ansi_slice(line, cursor_pos, cursor_pos + 1))
             if not wrapped:
-                result.write(plaintext[:leading_whitespace])
+                result.write(ansi_slice(line, 0, leading_whitespace))
             pos += leading_whitespace
             continue
 
