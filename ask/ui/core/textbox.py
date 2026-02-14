@@ -38,7 +38,8 @@ def wrap_lines(text: str, width: int, wrap: Wrap) -> Iterator[tuple[str, bool]]:
                 else:
                     yield text[pos:segment_end], False
                     pos = segment_end
-    yield '', False
+    if newline_pos != -1:
+        yield '', False
 
 
 @dataclass
