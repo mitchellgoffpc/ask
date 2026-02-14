@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, get_args
 from uuid import UUID, uuid4
 
-from ask.ui.core.styles import Axis, Borders, BorderStyle, Wrap, wrap_lines
+from ask.ui.core.styles import ANSI_BACKGROUND_OFFSET, Axis, Borders, BorderStyle, Wrap, hex_to_best_ansi, rgb_to_best_ansi, wrap_lines
 
 if TYPE_CHECKING:
     from ask.ui.core.tree import ElementTree
@@ -13,10 +13,19 @@ if TYPE_CHECKING:
 Side = Literal['top', 'bottom', 'left', 'right']
 Spacing = int | dict[Side, int]
 Length = int | float | None
+Color = str | tuple[int, int, int]
 
 def get_spacing_dict(spacing: Spacing) -> dict[Side, int]:
     assert isinstance(spacing, (int, dict)), "Spacing must be an int or a dict with side keys"
     return {side: spacing if isinstance(spacing, int) else spacing.get(side, 0) for side in get_args(Side)}
+
+def color_to_ansi(color: Color | None, *, background: bool) -> str:
+    offset = ANSI_BACKGROUND_OFFSET if background else 0
+    match color:
+        case None: return ''
+        case (int(r), int(g), int(b)): return rgb_to_best_ansi(r, g, b, offset=offset)
+        case str() as hex_color: return hex_to_best_ansi(hex_color, offset=offset)
+        case _: raise ValueError(f"Invalid color value: {color}")
 
 
 @dataclass
@@ -34,8 +43,8 @@ class Element(Component):
     padding: Spacing = field(default=0, kw_only=True)
     border: Sequence[Side] = field(default=(), kw_only=True)
     border_style: BorderStyle = field(default_factory=lambda: Borders.ROUND, kw_only=True)
-    border_color: str | None = field(default=None, kw_only=True)
-    background_color: str | None = field(default=None, kw_only=True)
+    border_color: Color | None = field(default=None, kw_only=True)
+    background_color: Color | None = field(default=None, kw_only=True)
     visible: bool = field(default=True, kw_only=True)
 
     def __post_init__(self) -> None:

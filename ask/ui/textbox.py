@@ -237,7 +237,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         background_color = None
         if terminal_bg := terminal_bg_color():
             top, alpha = ((0, 0, 0), 0.04) if is_light(terminal_bg) else ((255, 255, 255), 0.12)
-            background_color = Colors.BG_RGB(Colors.blend(top, terminal_bg, alpha))
+            background_color = Colors.blend(top, terminal_bg, alpha)
 
         return [
             UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=background_color)[

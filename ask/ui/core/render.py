@@ -11,7 +11,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from itertools import zip_longest
 
-from ask.ui.core.components import Box, Component, Element, Side, Text
+from ask.ui.core.components import Box, Color, Component, Element, Side, Text, color_to_ansi
 from ask.ui.core.cursor import cursor_up, erase_line, hide_cursor, show_cursor
 from ask.ui.core.layout import layout
 from ask.ui.core.styles import Axis, BorderStyle, Colors, ansi_len
@@ -51,10 +51,10 @@ def apply_spacing(rows: list[str], width: int, spacing: dict[Side, int]) -> list
     vertical = ' ' * (width + spacing['left'] + spacing['right'])
     return [vertical] * spacing['top'] + [left + row + right for row in rows] + [vertical] * spacing['bottom']
 
-def apply_borders(rows: list[str], width: int, borders: set[Side], border_style: BorderStyle, border_color: str | None) -> list[str]:
+def apply_borders(rows: list[str], width: int, borders: set[Side], border_style: BorderStyle, border_color: Color | None) -> list[str]:
     if not borders:
         return rows
-    color_code = border_color or ''
+    color_code = color_to_ansi(border_color, background=False)
     top_left = border_style.top_left if borders >= {'top', 'left'} else ''
     top_right = border_style.top_right if borders >= {'top', 'right'} else ''
     bottom_left = border_style.bottom_left if borders >= {'bottom', 'left'} else ''
@@ -76,7 +76,8 @@ def apply_chrome(rows: list[str], content_width: int, element: Element) -> list[
     bordered_width = padded_width + element.borders['left'] + element.borders['right']
     rows = apply_spacing(rows, content_width, element.paddings)
     if element.background_color:
-        rows = [element.background_color + row + Colors.BG_END for row in rows]
+        color_code = color_to_ansi(element.background_color, background=True)
+        rows = [color_code + row + Colors.BG_END for row in rows] if color_code else rows
     rows = apply_borders(rows, padded_width, {k for k, v in element.borders.items() if v}, element.border_style, element.border_color)
     rows = apply_spacing(rows, bordered_width, element.margins)
     return rows
