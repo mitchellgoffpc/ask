@@ -1,7 +1,18 @@
+from ask.ui.core.styles import Colors
+from ask.ui.core.termcolor import terminal_bg_color
+
+
 def is_light(rgb: tuple[int, int, int]) -> bool:
     red, green, blue = rgb
     luma = 0.299 * red + 0.587 * green + 0.114 * blue
     return luma > 128.0
+
+def textbox_background_color() -> tuple[int, int, int] | None:
+    if terminal_bg := terminal_bg_color():
+        top, alpha = ((0, 0, 0), 0.04) if is_light(terminal_bg) else ((255, 255, 255), 0.12)
+        return Colors.blend(top, terminal_bg, alpha)
+    else:
+        return None
 
 class Theme:
     RED = '#FF6B80'
