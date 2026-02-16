@@ -56,7 +56,8 @@ def compute_lengths(tree: ElementTree, element: Element, axis: Axis, available_l
             if isinstance(child_length, float):
                 scaled_length = min(remaining_length, int(child_length * scale))
                 compute_lengths(tree, child, axis, scaled_length)
-                remaining_length = max(0, remaining_length - computed_lengths[child.uuid])
+                if flex is axis:
+                    remaining_length = max(0, remaining_length - computed_lengths[child.uuid])
 
     # Compute this element's length based on its length specification
     if isinstance(element_length, int):

@@ -7,9 +7,9 @@ from pathlib import Path
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
-from ask.ui.core import UI, Axis, Colors, Styles, Theme
+from ask.ui.core import UI, Axis, Colors, Styles
 from ask.ui.dialogs import EDIT_TOOLS
-from ask.ui.theme import textbox_background_color
+from ask.ui.theme import Theme
 
 
 class Mode(Enum):
@@ -234,10 +234,9 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
     def contents(self) -> list[UI.Component | None]:
         matching_commands = self.get_matching_commands()
         matching_models = self.get_matching_models()
-        background_color = textbox_background_color()
 
         return [
-            UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=background_color)[
+            UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
                 UI.Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
                 UI.TextBox(
                     width=1.0,

@@ -4,7 +4,8 @@ from functools import partial
 
 from ask.messages import ToolRequest
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
-from ask.ui.core import UI, Colors, Theme
+from ask.ui.core import UI, Colors
+from ask.ui.theme import Theme
 
 EDIT_TOOLS = {EditTool.name, MultiEditTool.name, WriteTool.name}
 

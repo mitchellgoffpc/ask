@@ -26,18 +26,24 @@ class ElementTree:
         return self.format(self.root.uuid)
 
     def format(self, uuid: UUID, level: int = 0, verbose: bool = False) -> str:
+        def truncate(s: str, n: int) -> str: return s if len(s) <= n else s[:n-3] + '...'
         prefix = '  ' * (max(0, level - 1)) + ('└─' if level > 0 else '')
         match self.nodes[uuid]:
             case Text(text=text): attrs = {'text': text}
             case Widget() as widget if is_dataclass(widget): attrs = asdict(widget)
             case _: attrs = {}
+        if uuid in self.offsets and uuid in self.widths and uuid in self.heights:
+            attrs = {'w': self.widths[uuid], 'h': self.heights[uuid], 'x': self.offsets[uuid].x, 'y': self.offsets[uuid].y} | attrs
         uuid_str = f"{str(uuid).split('-')[0]} → " if verbose else ''
-        attrs_str = '('  + ', '.join(f'{k}={v!r}' for k, v in attrs.items() if not k.startswith('_')) + ')'
+        attrs_str = '('  + ', '.join(f'{k}={truncate(repr(v), 100)}' for k, v in attrs.items() if not k.startswith('_')) + ')'
         result = f"{prefix}{uuid_str}{self.nodes[uuid].__class__.__name__}{attrs_str if attrs else ''}\n"
         for child in self.children.get(uuid, []):
             if child:
                 result += self.format(child.uuid, level + 1, verbose=verbose)
         return result
+
+    def layout(self, uuid: UUID) -> tuple[int, int, int, int]:
+        return self.widths[uuid], self.heights[uuid], self.offsets[uuid].x, self.offsets[uuid].y
 
 
 # Utility functions

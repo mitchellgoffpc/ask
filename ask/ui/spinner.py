@@ -2,7 +2,8 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from ask.ui.core import UI, Axis, Colors, ElementTree, Theme
+from ask.ui.core import UI, Axis, Colors, ElementTree
+from ask.ui.theme import Theme
 from ask.ui.tools.todo import ToDos
 
 

@@ -1,7 +1,7 @@
 from ask.commands import BashCommand, PythonCommand, SlashCommand
 from ask.messages import Error, Text, ToolCallStatus, ToolRequest, ToolResponse
-from ask.ui.core import UI, Axis, Colors, Theme, render_markdown
-from ask.ui.theme import textbox_background_color
+from ask.ui.core import UI, Axis, Colors, render_markdown
+from ask.ui.theme import Theme
 from ask.ui.tools import TOOL_COMPONENTS
 
 NUM_PREVIEW_LINES = 5
@@ -29,7 +29,7 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
 # Components
 
 def PromptMessage(text: Text) -> UI.Component | None:
-    return UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=textbox_background_color())[
+    return UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
         UI.Text(Colors.hex(">", Theme.GRAY), margin={'left': 1, 'right': 1}, width=3),
         UI.Text(text.text),
     ] if text.text.strip() else None

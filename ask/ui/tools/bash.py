@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
 from ask.messages import Text
-from ask.ui.core import UI, Axis, Colors, Theme, highlight_code
+from ask.ui.core import UI, Axis, Colors, highlight_code
+from ask.ui.theme import Theme
 from ask.ui.tools.base import ToolOutput, ToolOutputController
 
 

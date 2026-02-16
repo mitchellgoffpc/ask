@@ -14,10 +14,11 @@ from ask.query import query_agent_with_commands
 from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
 from ask.ui.commands import BashCommandMessage, ErrorMessage, PromptMessage, PythonCommandMessage, ResponseMessage, SlashCommandMessage, ToolCallMessage
-from ask.ui.core import UI, Colors, ElementTree, Theme
+from ask.ui.core import UI, Colors, ElementTree
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.spinner import Spinner
 from ask.ui.textbox import PromptTextBox
+from ask.ui.theme import Theme
 from ask.ui.tools.todo import ToDos
 
 

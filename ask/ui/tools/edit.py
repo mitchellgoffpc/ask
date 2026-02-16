@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from ask.messages import Text, ToolCallStatus
 from ask.prompts import get_relative_path
-from ask.ui.core import UI, Axis, Colors, Styles, Theme
+from ask.ui.core import UI, Axis, Colors, Styles
+from ask.ui.theme import Theme
 from ask.ui.tools.base import STATUS_COLORS, ToolOutput, ToolOutputController
 from ask.ui.tools.diff import Diff
 

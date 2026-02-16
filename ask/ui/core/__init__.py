@@ -5,7 +5,6 @@ from ask.ui.core.styles import Axis, Borders, Colors, Styles, ansi_len, ansi_sli
 from ask.ui.core.termcolor import terminal_bg_color, terminal_fg_color
 from ask.ui.core.textbox import TextBox
 from ask.ui.core.tree import ElementTree
-from ask.ui.theme import Theme
 
 
 class UI:
@@ -19,7 +18,7 @@ class UI:
 
 __all__ = [
     'UI', 'ElementTree', 'Component', 'Element', 'Text', 'Box', 'Widget', 'Controller', 'TextBox',
-    'Axis', 'Borders', 'Colors', 'Styles', 'Theme', 'ansi_len', 'ansi_slice', 'wrap_lines',
+    'Axis', 'Borders', 'Colors', 'Styles', 'ansi_len', 'ansi_slice', 'wrap_lines',
     'terminal_bg_color', 'terminal_fg_color',
     'render_markdown', 'highlight_code',
     'render_root',
