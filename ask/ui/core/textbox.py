@@ -1,9 +1,10 @@
 from collections import deque
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from functools import partial
 
 from ask.ui.core.components import BaseController, Component, Length, Text, Widget
-from ask.ui.core.styles import Axis, Colors, Styles, Wrap
+from ask.ui.core.styles import Axis, Color, Colors, Styles, Wrap
 
 REMOVE_CONTROL_CHARS = dict.fromkeys(range(32)) | {0xa: 0xa, 0xd: 0xa}
 
@@ -48,6 +49,9 @@ class TextBox(Widget):
     text: str | None = None
     placeholder: str = ""
     wrap: Wrap = Wrap.WORDS
+    color: Color | None = None
+    placeholder_color: Color | None = None
+    highlight_color: Color | None = None
     history: list[str] | None = None
     handle_input: Callable[[str, int], bool] | None = None
     handle_page: Callable[[int], None] | None = None
@@ -290,7 +294,8 @@ class TextBoxController(BaseController[TextBox]):
 
     def contents(self) -> list[Component | None]:
         if not self.text and self.props.placeholder:
-            styled_text = Styles.inverse(self.props.placeholder[0]) + Colors.hex(self.props.placeholder[1:], '#999999')
+            color_fn = partial(Colors.apply, color=self.props.placeholder_color) if self.props.placeholder_color else Styles.dim
+            styled_text = Styles.inverse(self.props.placeholder[0]) + color_fn(self.props.placeholder[1:])
         else:
             cursor_pos = self.cursor_pos + self.text.count('\n', 0, self.cursor_pos)
             text = self.text.replace('\n', ' \n')
@@ -304,15 +309,15 @@ class TextBoxController(BaseController[TextBox]):
                 after = text[end + 1:]
                 under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
                 if cursor_pos == end:
-                    region = Colors.bg_hex(text[start:end], '#333333') + Styles.inverse(under)
+                    region = Colors.apply_bg(text[start:end], self.props.highlight_color) + Styles.inverse(under)
                 else:
-                    region = Styles.inverse(under) + Colors.bg_hex(text[start+1:end], '#333333')
-                styled_text = before + region + after
+                    region = Styles.inverse(under) + Colors.apply_bg(text[start+1:end], self.props.highlight_color)
+                styled_text = Colors.apply(before + region + after, self.props.color)
             else:
                 before = text[:cursor_pos]
                 after = text[cursor_pos + 1:]
                 under = text[cursor_pos:cursor_pos + 1] if cursor_pos < len(text) else ' '
-                styled_text = before + Styles.inverse(under) + after
+                styled_text = Colors.apply(before + Styles.inverse(under) + after, self.props.color)
 
         self.text_ref = Text(styled_text, width=self.props.width, wrap=Wrap.EXACT if self.props.wrap is Wrap.EXACT else Wrap.WORDS_WITH_CURSOR)
         return [self.text_ref]

@@ -1,7 +1,7 @@
 import os
 import re
 import unicodedata
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
@@ -9,6 +9,8 @@ from io import StringIO
 ANSI_BACKGROUND_OFFSET = 10
 ANSI_256_SUPPORT = '256color' in os.getenv("TERM", '')
 ANSI_16M_SUPPORT = 'truecolor' in os.getenv("COLORTERM", '') or '24bit' in os.getenv("COLORTERM", '')
+
+Color = str | tuple[int, int, int]
 
 class Axis(Enum):
     VERTICAL = 'vertical'
@@ -42,6 +44,7 @@ class Borders:
 class Styles:
     RESET = "\u001B[0m"
     BOLD = "\u001B[1m"
+    DIM = "\u001B[2m"
     ITALIC = "\u001B[3m"
     UNDERLINE = "\u001B[4m"
     OVERLINE = "\u001B[53m"
@@ -50,6 +53,7 @@ class Styles:
     STRIKETHROUGH = "\u001B[9m"
 
     BOLD_END = "\u001B[22m"
+    DIM_END = "\u001B[22m"
     ITALIC_END = "\u001B[23m"
     UNDERLINE_END = "\u001B[24m"
     OVERLINE_END = "\u001B[55m"
@@ -59,6 +63,8 @@ class Styles:
 
     @staticmethod
     def bold(text: str) -> str: return apply_style(text, start=Styles.BOLD, end=Styles.BOLD_END)
+    @staticmethod
+    def dim(text: str) -> str: return apply_style(text, start=Styles.DIM, end=Styles.DIM_END)
     @staticmethod
     def italic(text: str) -> str: return apply_style(text, start=Styles.ITALIC, end=Styles.ITALIC_END)
     @staticmethod
@@ -124,7 +130,7 @@ class Colors:
 
     @staticmethod
     def ansi(text: str, code: str) -> str:
-        return apply_style(text, start=code, end=Colors.END if code else '')
+        return apply_style(text, start=code, end=Colors.END)
     @staticmethod
     def hex(text: str, code: str) -> str:
         return apply_style(text, start=hex_to_best_ansi(code), end=Colors.END)
@@ -134,13 +140,20 @@ class Colors:
 
     @staticmethod
     def bg_ansi(text: str, code: str) -> str:
-        return apply_style(text, start=code, end=Colors.BG_END if code else '')
+        return apply_style(text, start=code, end=Colors.BG_END) if code else text
     @staticmethod
     def bg_hex(text: str, code: str) -> str:
         return apply_style(text, start=hex_to_best_ansi(code, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
     @staticmethod
     def bg_rgb(text: str, rgb: tuple[int, int, int]) -> str:
         return apply_style(text, start=rgb_to_best_ansi(*rgb, offset=ANSI_BACKGROUND_OFFSET), end=Colors.BG_END)
+
+    @staticmethod
+    def apply(text: str, color: Color | None) -> str:
+        return apply_style(text, start=color_to_ansi(color, background=False), end=Colors.END)
+    @staticmethod
+    def apply_bg(text: str, color: Color | None) -> str:
+        return apply_style(text, start=color_to_ansi(color, background=True), end=Colors.BG_END)
 
     @staticmethod
     def blend(a: tuple[int, int, int], b: tuple[int, int, int], alpha: float) -> tuple[int, int, int]:
@@ -238,11 +251,19 @@ def hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
 def hex_to_best_ansi(hex_str: str, *, offset: int = 0) -> str:
     return rgb_to_best_ansi(*hex_to_rgb(hex_str), offset=offset)
 
+def color_to_ansi(color: Color | None, *, background: bool) -> str:
+    offset = ANSI_BACKGROUND_OFFSET if background else 0
+    match color:
+        case None: return ''
+        case (int(r), int(g), int(b)): return rgb_to_best_ansi(r, g, b, offset=offset)
+        case str() as hex_color: return hex_to_best_ansi(hex_color, offset=offset)
+        case _: raise ValueError(f"Invalid color value: {color}")
+
 
 # ANSI escape helpers
 
 def apply_style(text: str, start: str, end: str) -> str:
-    return f"{start}{text}{end}"
+    return f"{start}{text}{end}" if start else text
 
 def ansi16(code: int, *, offset: int = 0) -> str:
     return f"\u001B[{code + offset}m"
@@ -260,9 +281,14 @@ def ansi_strip(text: str) -> str:
     return re.sub(r'\u001B\[[0-9;]+m', '', text)
 
 def ansi_slice(string: str, start: int, end: int) -> str:
-    style_starts = {v: k for k, v in Styles.__dict__.items() if k.isupper() and not k.endswith('_END')}
-    style_stops = {v: k.removesuffix('_END') for k, v in Styles.__dict__.items() if k.endswith('_END')}
-    style_starts_to_stops = {k: Styles.__dict__.get(v + '_END', Styles.RESET) for k, v in style_starts.items()}
+    style_starts_to_stops = {}
+    style_stops_to_starts = defaultdict(list)
+    for attr_name, attr_value in Styles.__dict__.items():
+        if attr_name.endswith('_END'):
+            start_code = Styles.__dict__[attr_name.removesuffix('_END')]
+            style_stops_to_starts[attr_value].append(start_code)
+        else:
+            style_starts_to_stops[attr_value] = Styles.__dict__.get(attr_name + '_END', Styles.RESET)
 
     ansi_pattern = re.compile(r'\u001B\[([0-9;]+)m')
     chunks = []
@@ -312,13 +338,13 @@ def ansi_slice(string: str, start: int, end: int) -> str:
                     if active_bgcolor[1]:
                         result.append(Colors.BG_END)
                     active_bgcolor = ('', False)
-                elif ansi_code in style_starts:
+                elif ansi_code in style_starts_to_stops:
                     active_styles[ansi_code] = False
-                elif ansi_code in style_stops:
-                    style_start = Styles.__dict__[style_stops[ansi_code]]
-                    if active_styles.get(style_start, False):
+                elif ansi_code in style_stops_to_starts:
+                    if any(active_styles.get(style, False) for style in style_stops_to_starts[ansi_code]):
                         result.append(ansi_code)
-                    active_styles.pop(style_start, None)
+                    for style in style_stops_to_starts[ansi_code]:
+                        active_styles.pop(style, None)
 
         else:
             chunk_end = current_pos + len(chunk)

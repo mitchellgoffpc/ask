@@ -11,10 +11,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from itertools import zip_longest
 
-from ask.ui.core.components import Box, Color, Component, Element, Side, Text, color_to_ansi
+from ask.ui.core.components import Box, Component, Element, Side, Text
 from ask.ui.core.cursor import cursor_up, erase_line, hide_cursor, show_cursor
 from ask.ui.core.layout import layout
-from ask.ui.core.styles import Axis, BorderStyle, Colors, ansi_len
+from ask.ui.core.styles import Axis, BorderStyle, Color, Colors, ansi_len, color_to_ansi
 from ask.ui.core.tree import ElementTree, depth, mount, propogate, update
 
 CONTROL_SEQ_RE = re.compile(r'\x1b\[[0-9;]*[A-Za-z~]?|\x1b.|[\x00-\x1f\x7f]')
@@ -77,7 +77,7 @@ def apply_chrome(rows: list[str], content_width: int, element: Element) -> list[
     rows = apply_spacing(rows, content_width, element.paddings)
     if element.background_color:
         color_code = color_to_ansi(element.background_color, background=True)
-        rows = [color_code + row + Colors.BG_END for row in rows] if color_code else rows
+        rows = [color_code + row + Colors.BG_END for row in rows]
     rows = apply_borders(rows, padded_width, {k for k, v in element.borders.items() if v}, element.border_style, element.border_color)
     rows = apply_spacing(rows, bordered_width, element.margins)
     return rows

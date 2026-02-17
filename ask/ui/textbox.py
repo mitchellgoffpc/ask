@@ -241,8 +241,9 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                 UI.TextBox(
                     width=1.0,
                     text=self.text,
-                    history=History['queries'],
                     placeholder=PLACEHOLDERS[self.mode],
+                    highlight_color='#333333',
+                    history=History['queries'],
                     handle_input=self.handle_textbox_input,
                     handle_page=self.handle_textbox_page,
                     handle_change=self.handle_textbox_change,
