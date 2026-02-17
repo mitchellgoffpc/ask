@@ -135,8 +135,8 @@ class AppController(UI.Controller[App]):
     def dialog(self) -> UI.Component | None:
         if self.exiting:
             return UI.Box(margin={'top': 1})[
-                UI.Text(Colors.hex(get_usage(self.messages, self.head), Theme.GRAY)),
-                UI.Text(Colors.hex("To continue this session, run ", Theme.GRAY) + Colors.hex(f'ask --resume {self.messages.root}', Theme.BLUE))
+                UI.Text(get_usage(self.messages, self.head)),
+                UI.Text("To continue this session, run " + Colors.hex(f'ask --resume {self.messages.root}', Theme.BLUE))
                     if (HISTORY_PATH / f"{self.messages.root}.json").exists() else None,
             ]
         elif tool_call_id := next(iter(self.pending_approvals.keys()), None):
@@ -144,7 +144,7 @@ class AppController(UI.Controller[App]):
             return ApprovalDialog(tool_call=tool_call, future=future)
         elif self.expanded:
             return UI.Box(width=1.0, margin={'top': 1}, border=['top'])[
-                UI.Text(Colors.hex('  Showing detailed transcript · Ctrl+R to toggle', Theme.GRAY))
+                UI.Text('  Showing detailed transcript · Ctrl+R to toggle')
             ]
         else:
             return None
@@ -198,7 +198,7 @@ class AppController(UI.Controller[App]):
                 Spinner(todos=latest_todos, expanded=self.show_todos)
                     if self.loading and not self.pending_approvals else None,
                 UI.Box(margin={'top': 1})[
-                    UI.Text(Colors.hex("To Do", Theme.GRAY)),
+                    UI.Text("To Do"),
                     ToDos(latest_todos, expanded=True),
                 ] if latest_todos and self.show_todos and not self.pending_approvals else None,
             ],

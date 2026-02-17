@@ -47,10 +47,10 @@ COMMANDS = {
     '/quit': 'Exit the REPL'}
 
 def CommandName(name: str, active: bool) -> UI.Text:
-    return UI.Text(Styles.bold(Colors.hex(name, Theme.BLUE if active else Theme.GRAY)))
+    return UI.Text(Styles.bold(Colors.hex(name, Theme.BLUE) if active else Styles.bold(name)))
 
 def CommandDesc(desc: str, active: bool) -> UI.Text:
-    return UI.Text(Colors.hex(desc, Theme.BLUE if active else Theme.GRAY))
+    return UI.Text(Colors.hex(desc, Theme.BLUE) if active else desc)
 
 def CommandsList(commands: dict[str, str], selected_idx: int) -> UI.Box:
     return UI.Box(flex=Axis.HORIZONTAL)[
@@ -117,13 +117,13 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         max_context = self.props.model.context.max_length
         context_remaining = max(0, max_context - self.props.context_used)
         percent_remaining = int(100 * context_remaining / max_context)
-        return Colors.hex(f'{percent_remaining}% context remaining', Theme.GRAY)
+        return f'{percent_remaining}% context remaining'
 
     def get_hint_text(self) -> str:
         if self.mode == Mode.TEXT and EDIT_TOOLS & self.props.approved_tools:
-            return Colors.hex(' · ', Theme.GRAY) + Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
+            return ' · ' + Colors.hex('⏵⏵ accept edits on ', Theme.PURPLE) + Colors.hex('(shift+tab to disable)', Theme.DARK_PURPLE)
         if not self.text:
-            return Colors.hex(' · ', Theme.GRAY) + Colors.hex('? for shortcuts', Theme.GRAY)
+            return ' · ' + '? for shortcuts'
         return ''
 
     def handle_input(self, ch: str) -> None:
@@ -237,7 +237,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
 
         return [
             UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
-                UI.Text(Colors.hex(PREFIXES.get(self.mode, '>'), COLORS.get(self.mode, Theme.GRAY)), margin={'left': 1, 'right': 1}, width=3),
+                UI.Text(PREFIXES.get(self.mode, '>'), margin={'left': 1, 'right': 1}, width=3),
                 UI.TextBox(
                     width=1.0,
                     text=self.text,
@@ -248,7 +248,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                     handle_change=self.handle_textbox_change,
                     handle_submit=self.handle_textbox_submit),
             ],
-            UI.Text(Colors.hex('Press Ctrl+C again to exit', Theme.GRAY), margin={'left': 2})
+            UI.Text('Press Ctrl+C again to exit', margin={'left': 2})
                 if self.show_exit_prompt else
             CommandsList(dict.fromkeys(self.autocomplete_matches, ''), self.selected_idx)
                 if self.autocomplete_matches else
@@ -260,7 +260,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                 if self.show_shortcuts else
             UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(self.get_context_percent() + self.get_hint_text(), width=1.0, margin={'left': 2}),
-                UI.Text(Colors.hex(self.props.model.api.display_name, Theme.WHITE)),
-                UI.Text(Colors.hex(self.props.model.name, Theme.GRAY), margin={'left': 2, 'right': 2}),
+                UI.Text(self.props.model.api.display_name),
+                UI.Text(self.props.model.name, margin={'left': 2, 'right': 2}),
             ],
         ]

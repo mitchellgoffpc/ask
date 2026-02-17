@@ -19,7 +19,7 @@ def Option(option: str, idx: int, active: bool, keybinding: str | None = None) -
     if active:
         return UI.Text(Colors.hex(f'❯ {idx+1}. {option}' + (f' ({keybinding})' if keybinding else ''), Theme.BLUE))
     else:
-        return UI.Text(f'  {Colors.hex(f"{idx+1}.", Theme.GRAY)} {option}' + (f' ({Colors.hex(keybinding, Theme.GRAY)})' if keybinding else ''))
+        return UI.Text(f'  {idx+1}. {option}' + (f' ({keybinding})' if keybinding else ''))
 
 def OptionsList(options: dict[str, str | None], selected_idx: int) -> UI.Box:
     return UI.Box()[(Option(option, idx, idx == selected_idx, keybinding) for idx, (option, keybinding) in enumerate(options.items()))]

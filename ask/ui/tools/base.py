@@ -5,7 +5,7 @@ from ask.ui.core import UI, Axis, Colors, Styles
 from ask.ui.theme import Theme
 
 STATUS_COLORS = {
-    ToolCallStatus.PENDING: Theme.GRAY,
+    ToolCallStatus.PENDING: None,
     ToolCallStatus.COMPLETED: Theme.GREEN,
     ToolCallStatus.CANCELLED: Theme.RED,
     ToolCallStatus.FAILED: Theme.RED,
@@ -16,7 +16,7 @@ def abbreviate(text: str, max_lines: int) -> str:
     if len(lines) <= max_lines:
         return text.strip()
     abbreviated = '\n'.join(lines[:max_lines])
-    expand_text = Colors.hex(f"… +{len(lines) - max_lines} lines (ctrl+r to expand)", Theme.GRAY)
+    expand_text = f"… +{len(lines) - max_lines} lines (ctrl+r to expand)"
     return f"{abbreviated}\n{expand_text}"
 
 
@@ -45,7 +45,7 @@ class ToolOutputController(UI.Controller[ToolOutput]):
     def get_completed_output(self, response: Blob) -> UI.Component:
         assert isinstance(response, Text)
         if not response.text.strip():
-            return UI.Text(Colors.hex("(No content)", Theme.GRAY))
+            return UI.Text("(No content)")
         elif self.props.expanded:
             return UI.Text(self.get_full_response(response.text))
         else:
@@ -54,7 +54,7 @@ class ToolOutputController(UI.Controller[ToolOutput]):
     def get_tool_output(self) -> UI.Component:
         status = self.props.response.status if self.props.response else ToolCallStatus.PENDING
         if status is ToolCallStatus.PENDING:
-            return UI.Text(Colors.hex("Running…", Theme.GRAY))
+            return UI.Text("Running…")
         elif status is ToolCallStatus.CANCELLED:
             return UI.Text(Colors.hex("Interrupted", Theme.RED))
         elif status is ToolCallStatus.FAILED:
@@ -68,9 +68,10 @@ class ToolOutputController(UI.Controller[ToolOutput]):
             raise ValueError(f"Unknown status: {status}")
 
     def contents(self) -> list[UI.Component | None]:
+        color = STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING]
         return [
             UI.Box(flex=Axis.HORIZONTAL)[
-                UI.Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
+                UI.Text(Colors.hex("● ", color) if color else "● "),
                 UI.Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
 
             ],

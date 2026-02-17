@@ -22,9 +22,6 @@ class Theme:
     PURPLE = '#A669FF'
     DARK_PURPLE = '#482F70'
     PINK = '#FD5DB1'
-    GRAY = '#AAAAAA'
-    DARK_GRAY = '#888888'
-    WHITE = '#FFFFFF'
 
     @cache
     @staticmethod

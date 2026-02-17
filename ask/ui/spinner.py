@@ -38,7 +38,7 @@ class SpinnerController(UI.Controller[Spinner]):
         after = self.text[min(len(self.text), highlight_pos + 3):]
 
         highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
-        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Colors.hex('(esc to interrupt)', Theme.GRAY)}"
+        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} (esc to interrupt)"
         return [
             UI.Text(spinner_text, margin={'top': 1}),
             UI.Box(flex=Axis.HORIZONTAL)[

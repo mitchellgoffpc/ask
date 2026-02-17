@@ -15,28 +15,28 @@ def Diff(diff: list[str], rejected: bool = False) -> UI.Component:
                 old_line_num = int(old_range[0])
                 new_line_num = int(new_range[0])
             if components:
-                components.append(UI.Text(f"{Colors.hex(' ... ', Theme.GRAY)}"))
+                components.append(UI.Text(" ... "))
         elif line.startswith('-'):
-            line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
+            line_num = f"{old_line_num:>4}"
             bg_color = Theme.FADED_RED if rejected else Theme.DARK_RED
             components.append(UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(f'{line_num} '),
-                UI.Text(Colors.bg_hex(Colors.hex('-  ', Theme.WHITE), bg_color)),
-                UI.Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color)),
+                UI.Text(Colors.bg_hex('-  ', bg_color)),
+                UI.Text(Colors.bg_hex(delta, bg_color)),
             ])
             old_line_num += 1
         elif line.startswith('+'):
-            line_num = Colors.hex(f"{new_line_num:>4}", Theme.GRAY)
+            line_num = f"{new_line_num:>4}"
             bg_color = Theme.FADED_GREEN if rejected else Theme.DARK_GREEN
             components.append(UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(f'{line_num} '),
-                UI.Text(Colors.bg_hex(Colors.hex('+  ', Theme.WHITE), bg_color)),
-                UI.Text(Colors.bg_hex(Colors.hex(delta, Theme.WHITE), bg_color)),
+                UI.Text(Colors.bg_hex('+  ', bg_color)),
+                UI.Text(Colors.bg_hex(delta, bg_color)),
             ])
             new_line_num += 1
         elif line.startswith(' '):
-            line_num = Colors.hex(f"{old_line_num:>4}", Theme.GRAY)
-            delta = Colors.hex(f'   {delta}', Theme.WHITE)
+            line_num = f"{old_line_num:>4}"
+            delta = f'   {delta}'
             components.append(UI.Box(flex=Axis.HORIZONTAL)[UI.Text(f'{line_num} '), UI.Text(delta)])
             old_line_num += 1
             new_line_num += 1

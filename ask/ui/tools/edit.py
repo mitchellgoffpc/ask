@@ -39,9 +39,10 @@ class EditToolOutput(ToolOutput):
                     return UI.Text("  ⎿  ")
 
         def contents(self) -> list[UI.Component | None]:
+            color = STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING]
             return [
                 UI.Box(flex=Axis.HORIZONTAL)[
-                    UI.Text(Colors.hex("● ", STATUS_COLORS[self.props.response.status if self.props.response else ToolCallStatus.PENDING])),
+                    UI.Text(Colors.hex("● ", color) if color else "● "),
                     UI.Text(f"{Styles.bold(self.get_name())} {self.get_args()}"),
                 ],
                 self.get_tool_output(),

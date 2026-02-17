@@ -6,14 +6,14 @@ from ask.ui.tools import TOOL_COMPONENTS
 
 NUM_PREVIEW_LINES = 5
 STATUS_COLORS = {
-    ToolCallStatus.PENDING: Theme.GRAY,
+    ToolCallStatus.PENDING: '',
     ToolCallStatus.COMPLETED: Theme.GREEN,
     ToolCallStatus.CANCELLED: Theme.RED,
     ToolCallStatus.FAILED: Theme.RED}
 
 def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float) -> tuple[str, str]:
     if status is ToolCallStatus.PENDING:
-        return Colors.hex("Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), Theme.GRAY), ''
+        return "Running…" + (f" ({int(elapsed)}s)" if elapsed >= 1 else ""), ''
     elif status is ToolCallStatus.CANCELLED:
         return stdout, "Interrupted"
     elif status is ToolCallStatus.FAILED:
@@ -21,7 +21,7 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
     elif status is ToolCallStatus.COMPLETED:
         result = stdout + stderr
         if not result.strip():
-            return Colors.hex("(No content)", Theme.GRAY), ''
+            return "(No content)", ''
         else:
             return result, ''
 
@@ -30,7 +30,7 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
 
 def PromptMessage(text: Text) -> UI.Component | None:
     return UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
-        UI.Text(Colors.hex(">", Theme.GRAY), margin={'left': 1, 'right': 1}, width=3),
+        UI.Text(">", margin={'left': 1, 'right': 1}, width=3),
         UI.Text(text.text),
     ] if text.text.strip() else None
 
@@ -42,7 +42,7 @@ def ResponseMessage(text: Text) -> UI.Component:
 
 def ErrorMessage(error: Error) -> UI.Component:
     return UI.Box(flex=Axis.HORIZONTAL)[
-        UI.Text(Colors.hex("  ⎿  ", Theme.GRAY)),
+        UI.Text("  ⎿  "),
         UI.Text(Colors.hex(error.text, Theme.RED)),
     ]
 
@@ -55,8 +55,8 @@ def SlashCommandMessage(command: SlashCommand) -> UI.Component:
     return UI.Box()[
         PromptMessage(Text(command.render_command())),
         UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text(Colors.hex("  ⎿  ", Theme.GRAY)),
-            UI.Text(Colors.hex(command.output, Theme.GRAY)),
+            UI.Text("  ⎿  "),
+            UI.Text(command.output),
         ] if command.output else None,
         UI.Box(flex=Axis.HORIZONTAL)[
             UI.Text("  ⎿  "),
@@ -69,7 +69,7 @@ def BashCommandMessage(command: BashCommand, elapsed: float) -> UI.Component:
     return UI.Box(margin={'top': 1})[
         UI.Box(flex=Axis.HORIZONTAL)[
             UI.Text(Colors.hex("! ", Theme.PINK)),
-            UI.Text(Colors.hex(command.command, Theme.GRAY)),
+            UI.Text(command.command),
         ],
         UI.Box(flex=Axis.HORIZONTAL)[
             UI.Text("  ⎿  "),
@@ -86,7 +86,7 @@ def PythonCommandMessage(command: PythonCommand, elapsed: float) -> UI.Component
     return UI.Box(margin={'top': 1})[
         UI.Box(flex=Axis.HORIZONTAL)[
             UI.Text(Colors.hex(">>> ", Theme.GREEN)),
-            UI.Text(Colors.hex(command.command, Theme.GRAY)),
+            UI.Text(command.command),
         ],
         UI.Box(flex=Axis.HORIZONTAL)[
             UI.Text("  ⎿  "),
