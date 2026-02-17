@@ -18,20 +18,20 @@ def Diff(diff: list[str], rejected: bool = False) -> UI.Component:
                 components.append(UI.Text(" ... "))
         elif line.startswith('-'):
             line_num = f"{old_line_num:>4}"
-            bg_color = Theme.FADED_RED if rejected else Theme.DARK_RED
+            fg_color = Theme.FADED_RED if rejected else Theme.RED
             components.append(UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(f'{line_num} '),
-                UI.Text(Colors.bg_hex('-  ', bg_color)),
-                UI.Text(Colors.bg_hex(delta, bg_color)),
+                UI.Text(Colors.hex('-  ', fg_color)),
+                UI.Text(Colors.hex(delta, fg_color)),
             ])
             old_line_num += 1
         elif line.startswith('+'):
             line_num = f"{new_line_num:>4}"
-            bg_color = Theme.FADED_GREEN if rejected else Theme.DARK_GREEN
+            fg_color = Theme.FADED_GREEN if rejected else Theme.GREEN
             components.append(UI.Box(flex=Axis.HORIZONTAL)[
                 UI.Text(f'{line_num} '),
-                UI.Text(Colors.bg_hex('+  ', bg_color)),
-                UI.Text(Colors.bg_hex(delta, bg_color)),
+                UI.Text(Colors.hex('+  ', fg_color)),
+                UI.Text(Colors.hex(delta, fg_color)),
             ])
             new_line_num += 1
         elif line.startswith(' '):
