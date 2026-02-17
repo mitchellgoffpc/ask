@@ -90,7 +90,6 @@ class ANSIExtension(Extension):
     def render_code_block(self, element: Element) -> str:
         language = element.attrib.get('language', '')
         code = element.text or ''
-
         return highlight_code(code, language=language) + (element.tail or "")
 
     def render_basic_element(self, element: Element, stream: StringIO, indent: int) -> None:
@@ -106,9 +105,10 @@ class ANSIExtension(Extension):
         prev_tag = None
         for sub in element:
             if prev_tag:
-                if prev_tag == 'li' and sub.tag == 'li':
+                if (sub.tag == 'li' and (prev_tag == 'li' or prev_tag not in self.BLOCK_TAGS)) or \
+                   (sub.tag in ('ul', 'ol') and element.tag == 'li'):
                     stream.write('\n')
-                elif prev_tag in self.BLOCK_TAGS and sub.tag in self.BLOCK_TAGS :
+                elif sub.tag in self.BLOCK_TAGS:
                     stream.write('\n\n')
             self.render_element(sub, stream, indent)
             prev_tag = sub.tag

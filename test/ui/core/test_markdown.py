@@ -26,8 +26,12 @@ class TestRenderMarkdown(unittest.TestCase):
         assert result == f"{Styles.BOLD}bold {Styles.ITALIC}italic{Styles.ITALIC_END} text{Styles.BOLD_END}"
 
     def test_nested_lists(self) -> None:
-        result = render_markdown("* Item 1\n  * Subitem 1.1\n  Another item\n* Item 2")
-        assert result == "• Item 1\n  • Subitem 1.1\n  Another item\n• Item 2"
+        result = render_markdown("- Item 1\n  - Subitem 1.1\n  Subitem 1.1 cont\n- Item 2")
+        assert result == "• Item 1\n  • Subitem 1.1\n  Subitem 1.1 cont\n• Item 2"
+        result = render_markdown("- **Item 1**:\n  - Subitem 1.1\n  - Subitem 1.2\n- **Item 2**")
+        assert result == f"• {Styles.BOLD}Item 1{Styles.BOLD_END}:\n  • Subitem 1.1\n  • Subitem 1.2\n• {Styles.BOLD}Item 2{Styles.BOLD_END}"
+        result = render_markdown("- **Item 1**:\n  - Subitem 1.1\n  - Subitem 1.2\n\n- **Item 2**")
+        assert result == f"• {Styles.BOLD}Item 1{Styles.BOLD_END}:\n  • Subitem 1.1\n  • Subitem 1.2\n• {Styles.BOLD}Item 2{Styles.BOLD_END}"
 
     def test_html_special_characters(self) -> None:
         test_cases = [
