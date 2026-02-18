@@ -12,7 +12,8 @@ class TestRenderMarkdown(unittest.TestCase):
             ("**bold text**", f"{Styles.BOLD}bold text{Styles.BOLD_END}", "bold formatting"),
             ("*italic text*", f"{Styles.ITALIC}italic text{Styles.ITALIC_END}", "italic formatting"),
             ("`code snippet`", f"{Colors.HEX(Theme.BLUE)}code snippet{Colors.END}", "inline code formatting"),
-            ("- list item", "• list item", "list item formatting"),
+            ("- list item", "• list item", "unordered list item formatting"),
+            ("1. list item", "1. list item", "ordered list item formatting"),
             ("# Heading", f"{Styles.BOLD}Heading{Styles.BOLD_END}", "heading formatting"),
             ("```\n*hello*\n```", "*hello*", "fenced code block"),
         ]

@@ -96,8 +96,8 @@ class ANSIExtension(Extension):
         code = element.text or ''
         return highlight_code(code, language=language) + (element.tail or "")
 
-    def render_basic_element(self, element: Element, stream: StringIO, indent: int) -> None:
-        start, end = self.HTML_TO_ANSI.get(element.tag, ('', ''))
+    def render_basic_element(self, element: Element, stream: StringIO, indent: int, *, list_type: str | None = None, list_index: int | None = None) -> None:
+        start, end = (f'{list_index}. ', '') if list_type == 'ol' else self.HTML_TO_ANSI.get(element.tag, ('', ''))
         stream.write(start)
         if element.text and element.tag in self.BLOCK_TAGS:
             element.text = element.text.lstrip('\n')
@@ -107,14 +107,17 @@ class ANSIExtension(Extension):
                 stream.write('\n')
 
         prev_tag = None
-        for sub in element:
+        for idx, sub in enumerate(element, start=1):
             if prev_tag:
                 if (sub.tag == 'li' and (prev_tag == 'li' or prev_tag not in self.BLOCK_TAGS)) or \
                    (sub.tag in ('ul', 'ol') and element.tag == 'li'):
                     stream.write('\n')
                 elif sub.tag in self.BLOCK_TAGS:
                     stream.write('\n\n')
-            self.render_element(sub, stream, indent)
+            if element.tag in ('ul', 'ol') and sub.tag == 'li':
+                self.render_element(sub, stream, indent, list_type=element.tag, list_index=idx)
+            else:
+                self.render_element(sub, stream, indent)
             prev_tag = sub.tag
 
         stream.write(end)
@@ -123,7 +126,7 @@ class ANSIExtension(Extension):
                 element.tail = element.tail.rstrip('\n')
             stream.write(html.unescape(element.tail))
 
-    def render_element(self, element: Element, stream: StringIO, indent: int) -> None:
+    def render_element(self, element: Element, stream: StringIO, indent: int, *, list_type: str | None = None, list_index: int | None = None) -> None:
         if element.tag == "pre":
             stream.write(self.render_code_block(element).rstrip('\n'))
             if element.tail:
@@ -135,7 +138,7 @@ class ANSIExtension(Extension):
             result = ''.join(' ' * self.tab_length * min(1, indent) + line if line.strip() else line for line in lines)
             stream.write(result)
         else:
-            self.render_basic_element(element, stream, indent)
+            self.render_basic_element(element, stream, indent, list_type=list_type, list_index=list_index)
 
     def render_root(self, element: Element) -> str:
         stream = StringIO()
