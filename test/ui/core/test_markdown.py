@@ -18,19 +18,19 @@ class TestRenderMarkdown(unittest.TestCase):
         ]
         for input_text, expected, description in test_cases:
             with self.subTest(description=description):
-                result = render_markdown(input_text)
+                result = render_markdown(input_text, code_color=Theme.BLUE)
                 assert result == expected
 
     def test_nested_formatting(self) -> None:
-        result = render_markdown("**bold *italic* text**")
+        result = render_markdown("**bold *italic* text**", code_color=Theme.BLUE)
         assert result == f"{Styles.BOLD}bold {Styles.ITALIC}italic{Styles.ITALIC_END} text{Styles.BOLD_END}"
 
     def test_nested_lists(self) -> None:
-        result = render_markdown("- Item 1\n  - Subitem 1.1\n  Subitem 1.1 cont\n- Item 2")
+        result = render_markdown("- Item 1\n  - Subitem 1.1\n  Subitem 1.1 cont\n- Item 2", code_color=Theme.BLUE)
         assert result == "• Item 1\n  • Subitem 1.1\n  Subitem 1.1 cont\n• Item 2"
-        result = render_markdown("- **Item 1**:\n  - Subitem 1.1\n  - Subitem 1.2\n- **Item 2**")
+        result = render_markdown("- **Item 1**:\n  - Subitem 1.1\n  - Subitem 1.2\n- **Item 2**", code_color=Theme.BLUE)
         assert result == f"• {Styles.BOLD}Item 1{Styles.BOLD_END}:\n  • Subitem 1.1\n  • Subitem 1.2\n• {Styles.BOLD}Item 2{Styles.BOLD_END}"
-        result = render_markdown("- **Item 1**:\n  - Subitem 1.1\n  - Subitem 1.2\n\n- **Item 2**")
+        result = render_markdown("- **Item 1**:\n  - Subitem 1.1\n  - Subitem 1.2\n\n- **Item 2**", code_color=Theme.BLUE)
         assert result == f"• {Styles.BOLD}Item 1{Styles.BOLD_END}:\n  • Subitem 1.1\n  • Subitem 1.2\n• {Styles.BOLD}Item 2{Styles.BOLD_END}"
 
     def test_html_special_characters(self) -> None:
@@ -44,5 +44,5 @@ class TestRenderMarkdown(unittest.TestCase):
         ]
         for input_text, expected, description in test_cases:
             with self.subTest(description=description):
-                result = render_markdown(input_text)
+                result = render_markdown(input_text, code_color=Theme.BLUE)
                 assert result == expected

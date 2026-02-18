@@ -37,7 +37,7 @@ def PromptMessage(text: Text) -> UI.Component | None:
 def ResponseMessage(text: Text) -> UI.Component:
     return UI.Box(flex=Axis.HORIZONTAL, margin={'top': 1})[
         UI.Text("● "),
-        UI.Text(render_markdown(text.text)),
+        UI.Text(render_markdown(text.text, code_color=Theme.BLUE)),
     ]
 
 def ErrorMessage(error: Error) -> UI.Component:

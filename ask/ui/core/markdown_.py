@@ -1,6 +1,7 @@
 import html
 import re
 from collections.abc import Callable
+from functools import cache
 from io import StringIO
 from typing import Any, cast
 from xml.etree.ElementTree import Element, SubElement
@@ -15,7 +16,6 @@ from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, guess_lex
 from pygments.util import ClassNotFound
 
 from ask.ui.core.styles import ANSI_16M_SUPPORT, ANSI_256_SUPPORT, Colors, Styles
-from ask.ui.theme import Theme
 
 
 def highlight_code(code: str, *, language: str = '', file_path: str = '') -> str:
@@ -83,9 +83,13 @@ class ANSIExtension(Extension):
     HTML_TO_ANSI = {
         'strong': (Styles.BOLD, Styles.BOLD_END),
         'em': (Styles.ITALIC, Styles.ITALIC_END),
-        'code': (Colors.HEX(Theme.BLUE), Colors.END),
         'li': ('• ', ''),
     } | {f'h{i}': (Styles.BOLD, Styles.BOLD_END) for i in range(1, 7)}
+
+    def __init__(self, *, code_color: str | None = None) -> None:
+        super().__init__()
+        if code_color:
+            self.HTML_TO_ANSI = self.HTML_TO_ANSI | {'code': (Colors.HEX(code_color), Colors.END)}
 
     def render_code_block(self, element: Element) -> str:
         language = element.attrib.get('language', '')
@@ -147,7 +151,9 @@ class ANSIExtension(Extension):
 
 # Markdown renderer
 
-md = Markdown(tab_length=2, extensions=[FencedCodeExtension(), ANSIExtension()])
+@cache
+def markdown(code_color: str | None = None) -> Markdown:
+    return Markdown(tab_length=2, extensions=[FencedCodeExtension(), ANSIExtension(code_color=code_color)])
 
-def render_markdown(text: str) -> str:
-    return md.convert(text)
+def render_markdown(text: str, code_color: str | None = None) -> str:
+    return markdown(code_color=code_color).convert(text)
