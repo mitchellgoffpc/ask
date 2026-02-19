@@ -2,40 +2,23 @@ import asyncio
 import glob
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 
 from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
+from ask.ui.commands import COLORS, PREFIXES, Mode
 from ask.ui.core import UI, Axis, Colors, Styles
 from ask.ui.dialogs import EDIT_TOOLS
 from ask.ui.theme import Theme
 
-
-class Mode(Enum):
-    TEXT = 'text'
-    BASH = 'bash'
-    MEMORIZE = 'memorize'
-    PYTHON = 'python'
-
-COLORS = {
-    Mode.BASH: Theme.PINK,
-    Mode.MEMORIZE: Theme.BLUE,
-    Mode.PYTHON: Theme.GREEN}
-PREFIXES = {
-    Mode.BASH: '!',
-    Mode.MEMORIZE: '#',
-    Mode.PYTHON: '$'}
 SHORTCUTS = {
-    '!': 'Run bash command',
-    '$': 'Run python code',
-    '#': 'Add to memory',
+    PREFIXES[Mode.BASH]: 'Run bash command',
+    PREFIXES[Mode.MEMORIZE]: 'Add to memory',
     '/': 'Run slash command'}
 
 PLACEHOLDERS = {
     Mode.BASH: "Run bash command. Try 'ls -la'",
     Mode.MEMORIZE: "Add to memory. Try 'Always use descriptive variable names'",
-    Mode.PYTHON: "Run python code. Try 'print(2 + 2)'",
     Mode.TEXT: "Try 'how do I log an error?'"}
 
 COMMANDS = {
@@ -140,14 +123,11 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         elif cursor_pos == 0 and ch == '?':
             self.show_shortcuts = not self.show_shortcuts
             return False
-        elif cursor_pos == 0 and ch == '!':
+        elif cursor_pos == 0 and ch == PREFIXES[Mode.BASH]:
             self.mode = Mode.BASH
             return False
-        elif cursor_pos == 0 and ch == '#':
+        elif cursor_pos == 0 and ch == PREFIXES[Mode.MEMORIZE]:
             self.mode = Mode.MEMORIZE
-            return False
-        elif cursor_pos == 0 and ch == '$':
-            self.mode = Mode.PYTHON
             return False
 
         # Tab completion
@@ -193,15 +173,12 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         self.mode = Mode.TEXT
 
     def handle_textbox_change(self, value: str) -> None:
-        if value.startswith('!'):
-            value = value.removeprefix('!')
+        if value.startswith(PREFIXES[Mode.BASH]):
+            value = value.removeprefix(PREFIXES[Mode.BASH])
             self.mode = Mode.BASH
-        elif value.startswith('#'):
-            value = value.removeprefix('#')
+        elif value.startswith(PREFIXES[Mode.MEMORIZE]):
+            value = value.removeprefix(PREFIXES[Mode.MEMORIZE])
             self.mode = Mode.MEMORIZE
-        elif value.startswith('$'):
-            value = value.removeprefix('$')
-            self.mode = Mode.PYTHON
         if value != self.text:
             self.selected_idx = 0
             self.autocomplete_matches = []
@@ -237,7 +214,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
 
         return [
             UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
-                UI.Text(PREFIXES.get(self.mode, '>'), margin={'left': 1, 'right': 1}, width=3),
+                UI.Text(Colors.apply(PREFIXES[self.mode], COLORS.get(self.mode)), margin={'right': 1}),
                 UI.TextBox(
                     width=1.0,
                     text=self.text,
@@ -249,7 +226,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                     handle_change=self.handle_textbox_change,
                     handle_submit=self.handle_textbox_submit),
             ],
-            UI.Text('Press Ctrl+C again to exit', margin={'left': 2})
+            UI.Text(Styles.dim('Press Ctrl+C again to exit'), margin={'left': 2})
                 if self.show_exit_prompt else
             CommandsList(dict.fromkeys(self.autocomplete_matches, ''), self.selected_idx)
                 if self.autocomplete_matches else
@@ -260,8 +237,8 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
             CommandsList(SHORTCUTS, -1)
                 if self.show_shortcuts else
             UI.Box(flex=Axis.HORIZONTAL)[
-                UI.Text(self.get_context_percent() + self.get_hint_text(), width=1.0, margin={'left': 2}),
-                UI.Text(self.props.model.api.display_name),
+                UI.Text(Styles.dim(self.get_context_percent() + self.get_hint_text()), width=1.0, margin={'left': 2}),
+                UI.Text(Styles.bold(self.props.model.api.display_name)),
                 UI.Text(self.props.model.name, margin={'left': 2, 'right': 2}),
             ],
         ]

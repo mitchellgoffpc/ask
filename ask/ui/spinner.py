@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from ask.ui.core import UI, Axis, Colors, ElementTree
+from ask.ui.core import UI, Axis, Colors, ElementTree, Styles
 from ask.ui.theme import Theme
 from ask.ui.tools.todo import ToDos
 
@@ -38,7 +38,7 @@ class SpinnerController(UI.Controller[Spinner]):
         after = self.text[min(len(self.text), highlight_pos + 3):]
 
         highlighted_text = Colors.hex(before, Theme.ORANGE) + Colors.hex(window, Theme.LIGHT_ORANGE) + Colors.hex(after, Theme.ORANGE)
-        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} (esc to interrupt)"
+        spinner_text = f"{Colors.hex(spinner_char, Theme.ORANGE)} {highlighted_text} {Styles.dim('(esc to interrupt)')}"
         return [
             UI.Text(spinner_text, margin={'top': 1}),
             UI.Box(flex=Axis.HORIZONTAL)[

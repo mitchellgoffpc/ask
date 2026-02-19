@@ -1,15 +1,24 @@
+from enum import Enum
+
 from ask.commands import BashCommand, SlashCommand
 from ask.messages import Error, Text, ToolCallStatus, ToolRequest, ToolResponse
 from ask.ui.core import UI, Axis, Colors, render_markdown
 from ask.ui.theme import Theme
 from ask.ui.tools import TOOL_COMPONENTS
 
-NUM_PREVIEW_LINES = 5
-STATUS_COLORS = {
-    ToolCallStatus.PENDING: '',
-    ToolCallStatus.COMPLETED: Theme.GREEN,
-    ToolCallStatus.CANCELLED: Theme.RED,
-    ToolCallStatus.FAILED: Theme.RED}
+
+class Mode(Enum):
+    TEXT = 'text'
+    BASH = 'bash'
+    MEMORIZE = 'memorize'
+
+COLORS = {
+    Mode.BASH: Theme.PINK,
+    Mode.MEMORIZE: Theme.BLUE}
+PREFIXES = {
+    Mode.TEXT: '›',
+    Mode.BASH: '!',
+    Mode.MEMORIZE: '#'}
 
 def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: float) -> tuple[str, str]:
     if status is ToolCallStatus.PENDING:
@@ -28,9 +37,11 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
 
 # Components
 
-def PromptMessage(text: Text) -> UI.Component | None:
+def PromptMessage(text: Text, mode: Mode = Mode.TEXT) -> UI.Component | None:
+    prefix = PREFIXES[mode]
+    color = COLORS.get(mode)
     return UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
-        UI.Text(">", margin={'left': 1, 'right': 1}),
+        UI.Text(Colors.apply(prefix, color), margin={'right': 1}),
         UI.Text(text.text),
     ] if text.text.strip() else None
 
@@ -53,7 +64,7 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
 
 def SlashCommandMessage(command: SlashCommand) -> UI.Component:
     return UI.Box()[
-        PromptMessage(text=Text(command.command)),
+        PromptMessage(text=Text(command.command), mode=Mode.TEXT),
         UI.Box(margin={'top': 1})[
             UI.Text(command.output) if command.output else None,
             UI.Text(Colors.hex(command.error, Theme.RED)) if command.error else None,
@@ -62,18 +73,11 @@ def SlashCommandMessage(command: SlashCommand) -> UI.Component:
 
 def BashCommandMessage(command: BashCommand, elapsed: float) -> UI.Component:
     output, error = get_bash_output(command.stdout, command.stderr, command.status, elapsed)
-    return UI.Box(margin={'top': 1})[
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text(Colors.hex("! ", Theme.PINK)),
-            UI.Text(command.command),
-        ],
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text("  ⎿  "),
-            UI.Text(output),
-        ] if output else None,
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text("  ⎿  "),
-            UI.Text(Colors.hex(error, Theme.RED)),
-        ] if error else None,
+    return UI.Box()[
+        PromptMessage(text=Text(command.command), mode=Mode.BASH),
+        UI.Box(margin={'top': 1})[
+            UI.Text(output) if output else None,
+            UI.Text(Colors.hex(error, Theme.RED)) if error else None,
+        ] if output or error else None,
     ]
 
