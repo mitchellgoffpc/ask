@@ -5,7 +5,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from ask.commands.bash import BashCommand
-from ask.commands.python import PythonCommand
 from ask.config import Config
 from ask.messages import Blob, Command, Message, Text, ToolCallStatus, ToolRequest, ToolResponse, Usage
 from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME, Model
@@ -138,7 +137,6 @@ __all__ = [
     "FormatCommand",
     "InitCommand",
     "ModelCommand",
-    "PythonCommand",
     "SlashCommand",
     "get_usage",
     "get_current_model",

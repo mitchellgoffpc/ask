@@ -7,14 +7,14 @@ __pycache__/
 dist/
 build/
 
-# System
-.DS_Store
-.ropeproject
-
 # Cache
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
 
-# Git
+# Misc
 .worktrees/
+.venv/
+.claude/
+.DS_Store
+.ropeproject

@@ -7,13 +7,13 @@ import traceback
 from dataclasses import dataclass
 from uuid import UUID
 
-from ask.commands import BashCommand, PythonCommand, SlashCommand, get_current_model, get_usage
+from ask.commands import BashCommand, FilesCommand, SlashCommand, get_current_model, get_usage
 from ask.config import HISTORY_PATH, History
 from ask.messages import Error, Message, Text, ToolRequest, ToolResponse, Usage
 from ask.query import query_agent_with_commands
-from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, ToDoTool, WriteTool
+from ask.tools import BashTool, EditTool, MultiEditTool, ToDoTool, WriteTool
 from ask.tree import MessageTree
-from ask.ui.commands import BashCommandMessage, ErrorMessage, PromptMessage, PythonCommandMessage, ResponseMessage, SlashCommandMessage, ToolCallMessage
+from ask.ui.commands import BashCommandMessage, ErrorMessage, PromptMessage, ResponseMessage, SlashCommandMessage, ToolCallMessage
 from ask.ui.core import UI, Colors, ElementTree
 from ask.ui.dialogs import EDIT_TOOLS, ApprovalDialog
 from ask.ui.spinner import Spinner
@@ -57,7 +57,7 @@ class AppController(UI.Controller[App]):
             self.elapsed = 0
 
     async def approve(self, request: ToolRequest) -> bool:
-        approval_tools = {BashTool.name, EditTool.name, MultiEditTool.name, PythonTool.name, WriteTool.name}
+        approval_tools = {BashTool.name, EditTool.name, MultiEditTool.name, WriteTool.name}
         if request.tool not in approval_tools or request.tool in self.approved_tools:
             return True
         future = asyncio.get_running_loop().create_future()
@@ -179,8 +179,8 @@ class AppController(UI.Controller[App]):
                     messages.append(ErrorMessage(error=error))
                 case ('user', BashCommand() as command):
                     messages.append(BashCommandMessage(command=command, elapsed=self.elapsed))
-                case ('user', PythonCommand() as command):
-                    messages.append(PythonCommandMessage(command=command, elapsed=self.elapsed))
+                case ('user', FilesCommand()):
+                    pass
                 case ('user', SlashCommand() as command):
                     messages.append(SlashCommandMessage(command=command))
                 case ('assistant', Text() as text):

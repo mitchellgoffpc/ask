@@ -67,7 +67,6 @@ class TestEncoderDecoder(unittest.TestCase):
                 'Grep': {'pattern': 'test'},
                 'List': {'path': temp_dir},
                 'MultiEdit': {'file_path': test_file_path, 'edits': [{'old_string': 'old', 'new_string': 'new'}]},
-                'PythonShell': {'code': 'print("test")'},
                 'Read': {'file_path': test_file_path},
                 'ToDo': {'todos': []},
                 'Write': {'file_path': test_file_path, 'content': 'test'},

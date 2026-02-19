@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from functools import partial
 
 from ask.messages import ToolRequest
-from ask.tools import BashTool, EditTool, MultiEditTool, PythonTool, WriteTool
+from ask.tools import BashTool, EditTool, MultiEditTool, WriteTool
 from ask.ui.core import UI, Colors
 from ask.ui.theme import Theme
 
@@ -30,7 +30,6 @@ def ApprovalDialog(tool_call: ToolRequest, future: asyncio.Future) -> UI.Compone
         BashTool.name: partial(SelectionDialog, approved_tools={BashTool.name}, options=get_formatted_options('bash commands')),
         EditTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits')),
         MultiEditTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits')),
-        PythonTool.name: partial(SelectionDialog, approved_tools={PythonTool.name}, options=get_formatted_options('Python commands')),
         WriteTool.name: partial(SelectionDialog, approved_tools=EDIT_TOOLS, options=get_formatted_options('edits'))}
     return UI.Box(margin={'top': 1})[
         components[tool_call.tool](tool_call=tool_call, future=future)

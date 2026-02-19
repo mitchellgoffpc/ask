@@ -1,4 +1,4 @@
-from ask.commands import BashCommand, PythonCommand, SlashCommand
+from ask.commands import BashCommand, SlashCommand
 from ask.messages import Error, Text, ToolCallStatus, ToolRequest, ToolResponse
 from ask.ui.core import UI, Axis, Colors, render_markdown
 from ask.ui.theme import Theme
@@ -30,7 +30,7 @@ def get_bash_output(stdout: str, stderr: str, status: ToolCallStatus, elapsed: f
 
 def PromptMessage(text: Text) -> UI.Component | None:
     return UI.Box(flex=Axis.HORIZONTAL, width=1.0, margin={'top': 1}, padding={'bottom': 1, 'top': 1}, background_color=Theme.background())[
-        UI.Text(">", margin={'left': 1, 'right': 1}, width=3),
+        UI.Text(">", margin={'left': 1, 'right': 1}),
         UI.Text(text.text),
     ] if text.text.strip() else None
 
@@ -53,15 +53,11 @@ def ToolCallMessage(request: ToolRequest, response: ToolResponse | None, expande
 
 def SlashCommandMessage(command: SlashCommand) -> UI.Component:
     return UI.Box()[
-        PromptMessage(Text(command.render_command())),
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text("  ⎿  "),
-            UI.Text(command.output),
-        ] if command.output else None,
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text("  ⎿  "),
-            UI.Text(Colors.hex(command.error, Theme.RED)),
-        ] if command.error else None,
+        PromptMessage(text=Text(command.command)),
+        UI.Box(margin={'top': 1})[
+            UI.Text(command.output) if command.output else None,
+            UI.Text(Colors.hex(command.error, Theme.RED)) if command.error else None,
+        ] if command.output or command.error else None,
     ]
 
 def BashCommandMessage(command: BashCommand, elapsed: float) -> UI.Component:
@@ -81,19 +77,3 @@ def BashCommandMessage(command: BashCommand, elapsed: float) -> UI.Component:
         ] if error else None,
     ]
 
-def PythonCommandMessage(command: PythonCommand, elapsed: float) -> UI.Component:
-    output, error = get_bash_output(command.output, command.error, command.status, elapsed)
-    return UI.Box(margin={'top': 1})[
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text(Colors.hex(">>> ", Theme.GREEN)),
-            UI.Text(command.command),
-        ],
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text("  ⎿  "),
-            UI.Text(output),
-        ] if output else None,
-        UI.Box(flex=Axis.HORIZONTAL)[
-            UI.Text("  ⎿  "),
-            UI.Text(error),
-        ] if error else None,
-    ]

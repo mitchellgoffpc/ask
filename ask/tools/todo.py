@@ -8,7 +8,7 @@ from ask.tools.base import Parameter, ParameterType, Tool
 
 class ToDoTool(Tool):
     name = "ToDo"
-    description = load_tool_prompt('python')
+    description = load_tool_prompt('todo')
     parameters = [
         Parameter("todos", "The updated todo list", ParameterType.Array([
             Parameter("content", "The todo item content", ParameterType.String),

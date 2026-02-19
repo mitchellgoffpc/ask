@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 import aiohttp
 
-from ask.commands import BashCommand, FilesCommand, InitCommand, ModelCommand, PythonCommand, SlashCommand, get_current_model, get_usage
+from ask.commands import BashCommand, FilesCommand, InitCommand, ModelCommand, SlashCommand, get_current_model, get_usage
 from ask.messages import Command, Content, Message, Reasoning, Text, ToolCallStatus, ToolRequest, ToolResponse
 from ask.models import MODEL_SHORTCUTS, MODELS_BY_NAME
 from ask.prompts import load_prompt_file
@@ -191,10 +191,6 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
         yield messages.add('user', head, SlashCommand(command='/cost', output=get_usage(messages, head)))
     elif query.startswith('!'):
         head, tasks = BashCommand.create(query.removeprefix('!').strip(), messages, head)
-        yield head
-        await asyncio.gather(*tasks)
-    elif query.startswith('$'):
-        head, tasks = PythonCommand.create(query.removeprefix('$').strip(), messages, head)
         yield head
         await asyncio.gather(*tasks)
     elif query.startswith('/model'):
