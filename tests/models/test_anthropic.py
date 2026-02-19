@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.anthropic import AnthropicAPI
 from ask.models.base import Capabilities, Context, Model
-from test.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
+from tests.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
 
 
 class TestAnthropicAPI(unittest.IsolatedAsyncioTestCase):

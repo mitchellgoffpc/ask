@@ -5,7 +5,7 @@ from ask.commands import ModelCommand
 from ask.messages import Content, Message, Reasoning, Text, ToolCallStatus, ToolDescriptor, ToolRequest, ToolResponse, Usage
 from ask.query import query_agent
 from ask.tools.base import Tool
-from test.models.helpers import to_async
+from tests.models.helpers import to_async
 
 
 def create_mock_tool(name: str = 'test_tool', description: str = 'A test tool') -> MagicMock:

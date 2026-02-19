@@ -5,7 +5,7 @@ from ask.ui.core.components import Box, Text
 from ask.ui.core.layout import layout
 from ask.ui.core.styles import Axis, Colors, Wrap
 from ask.ui.core.tree import ElementTree, mount
-from test.ui.core.helpers import DeepTree, WideTree
+from tests.ui.core.helpers import DeepTree, WideTree
 
 
 class TestLayout(unittest.TestCase):

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from ask.models.base import Capabilities, Context, Model
 from ask.models.google import GoogleAPI
-from test.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
+from tests.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
 
 
 class TestGoogleAPI(unittest.IsolatedAsyncioTestCase):

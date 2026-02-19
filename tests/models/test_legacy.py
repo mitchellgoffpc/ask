@@ -4,7 +4,7 @@ import unittest
 
 from ask.models.base import Capabilities, Context, Model
 from ask.models.legacy import LegacyOpenAIAPI
-from test.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
+from tests.models.helpers import DECODE_OUTPUT, INPUT_MESSAGES, RESULT_OUTPUT, to_async
 
 
 class TestLegacyOpenAIAPI(unittest.IsolatedAsyncioTestCase):
