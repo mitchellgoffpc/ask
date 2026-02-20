@@ -15,6 +15,7 @@ class Mode(Enum):
 COLORS = {
     Mode.BASH: Theme.PINK,
     Mode.MEMORIZE: Theme.BLUE}
+
 PREFIXES = {
     Mode.TEXT: '›',
     Mode.BASH: '!',

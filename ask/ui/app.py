@@ -154,6 +154,7 @@ class AppController(UI.Controller[App]):
         return [
             UI.Box(visible=dialog is None)[
                 PromptTextBox(
+                    history=History['queries'],
                     model=get_current_model(self.messages.values(self.head)),
                     approved_tools=self.approved_tools,
                     context_used=self.get_context_used(),

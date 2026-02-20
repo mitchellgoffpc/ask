@@ -4,22 +4,25 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from ask.config import History
 from ask.models import MODELS_BY_NAME, Model
 from ask.ui.commands import COLORS, PREFIXES, Mode
 from ask.ui.core import UI, Axis, Colors, Styles
 from ask.ui.dialogs import EDIT_TOOLS
 from ask.ui.theme import Theme
 
-SHORTCUTS = {
-    PREFIXES[Mode.BASH]: 'Run bash command',
-    PREFIXES[Mode.MEMORIZE]: 'Add to memory',
-    '/': 'Run slash command'}
-
 PLACEHOLDERS = {
     Mode.BASH: "Run bash command. Try 'ls -la'",
     Mode.MEMORIZE: "Add to memory. Try 'Always use descriptive variable names'",
     Mode.TEXT: "Try 'how do I log an error?'"}
+
+SHORTCUT_COMMANDS = {
+    Mode.BASH: '/bash ',
+    Mode.MEMORIZE: '/memorize '}
+
+SHORTCUTS = {
+    PREFIXES[Mode.BASH]: 'Run bash command',
+    PREFIXES[Mode.MEMORIZE]: 'Add to memory',
+    '/': 'Run slash command'}
 
 COMMANDS = {
     '/clear': 'Clear conversation history and free up context',
@@ -47,6 +50,7 @@ class PromptTextBox(UI.Widget):
     model: Model
     approved_tools: set[str]
     context_used: int
+    history: list[str]
     handle_submit: Callable[[str], bool]
     handle_exit: Callable[[], None]
 
@@ -173,11 +177,11 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         self.mode = Mode.TEXT
 
     def handle_textbox_change(self, value: str) -> None:
-        if value.startswith(PREFIXES[Mode.BASH]):
-            value = value.removeprefix(PREFIXES[Mode.BASH])
+        if value.startswith('/bash '):
+            value = value.removeprefix('/bash ')
             self.mode = Mode.BASH
-        elif value.startswith(PREFIXES[Mode.MEMORIZE]):
-            value = value.removeprefix(PREFIXES[Mode.MEMORIZE])
+        elif value.startswith('/memorize '):
+            value = value.removeprefix('/memorize ')
             self.mode = Mode.MEMORIZE
         if value != self.text:
             self.selected_idx = 0
@@ -200,8 +204,8 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
         elif matching_models := self.get_matching_models():
             value = f"/model {matching_models[self.selected_idx]} "
 
-        prefix = PREFIXES.get(self.mode, '')
-        if self.props.handle_submit(f"{prefix}{value}"):
+        command = SHORTCUT_COMMANDS.get(self.mode, '')
+        if self.props.handle_submit(f"{command}{value}"):
             self.text = ''
             self.mode = Mode.TEXT
             self.autocomplete_matches = []
@@ -220,7 +224,7 @@ class PromptTextBoxController(UI.Controller[PromptTextBox]):
                     text=self.text,
                     placeholder=PLACEHOLDERS[self.mode],
                     highlight_color='#333333',
-                    history=History['queries'],
+                    history=self.props.history,
                     handle_input=self.handle_textbox_input,
                     handle_page=self.handle_textbox_page,
                     handle_change=self.handle_textbox_change,

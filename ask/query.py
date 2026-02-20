@@ -189,8 +189,8 @@ async def query_agent_with_commands(messages: MessageTree, head: UUID, query: st
         yield messages.add('user', head, InitCommand(command='/init'))
     elif query == '/cost':
         yield messages.add('user', head, SlashCommand(command='/cost', output=get_usage(messages, head)))
-    elif query.startswith('!'):
-        head, tasks = BashCommand.create(query.removeprefix('!').strip(), messages, head)
+    elif query.startswith('/bash'):
+        head, tasks = BashCommand.create(query.removeprefix('/bash').strip(), messages, head)
         yield head
         await asyncio.gather(*tasks)
     elif query.startswith('/model'):
